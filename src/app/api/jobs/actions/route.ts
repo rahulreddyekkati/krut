@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
                     jobId,
                     workerId: session.user.id,
                     status: "PENDING",
-                    date: job.date ? new Date(job.date) : null
+                    date: job?.date ? new Date(job.date) : null
                 }
             });
 

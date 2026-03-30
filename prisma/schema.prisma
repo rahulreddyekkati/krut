@@ -1,0 +1,255 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String
+  name          String
+  role          String    // ADMIN, MARKET_MANAGER, WORKER
+  status        String    @default("INVITED") // INVITED, ACTIVE, SUSPENDED, DEACTIVATED
+  hourlyWage    Float?
+  manualWorkedHours Float?
+  
+  market        Market?   @relation("UserMarket", fields: [marketId], references: [id])
+  marketId      String?
+  
+  // Managed scope
+  managedMarket   Market?   @relation("ManagedMarket", fields: [managedMarketId], references: [id])
+  managedMarketId String?
+  
+  jobs          JobAssignment[]
+  createdJobs   Job[]     @relation("JobCreator")
+
+  releaseRequests ReleaseRequest[]
+  shiftRequests   ShiftRequest[]
+  
+  sentMessages     Message[]      @relation("SentMessages")
+  notifications    Notification[]
+  sentInvites      Invite[]       @relation("InviteSender")
+  chatThreads      ChatThread[]
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Market {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  stores    Store[]
+  users     User[]   @relation("UserMarket")
+  managers  User[]   @relation("ManagedMarket")
+  jobs      Job[]
+  createdAt DateTime @default(now())
+}
+
+model Store {
+  id        String   @id @default(cuid())
+  name      String
+  address   String
+  latitude  Float
+  longitude Float
+  radius    Float    @default(100)
+  
+  market    Market   @relation(fields: [marketId], references: [id])
+  marketId  String
+  
+  jobs      Job[]
+  createdAt DateTime @default(now())
+}
+
+model Job {
+  id           String   @id @default(cuid())
+  title        String   @unique
+  startTimeStr String   // HH:MM — e.g. "09:00"
+  endTimeStr   String   // HH:MM — e.g. "17:00"
+  date         DateTime? // Added to support shift overrides and open shift specific dates
+  bonus        Float    @default(0)
+  status       String   @default("OPEN") // OPEN, ASSIGNED, ACCEPTED, IN_PROGRESS, RECAP_PENDING, COMPLETED, NO_SHOW
+
+  store     Store    @relation(fields: [storeId], references: [id])
+  storeId   String
+  market    Market   @relation(fields: [marketId], references: [id])
+  marketId  String
+
+  createdBy User     @relation("JobCreator", fields: [creatorId], references: [id])
+  creatorId String
+
+  assignments JobAssignment[]
+  recaps      Recap[]
+
+  releaseRequests ReleaseRequest[]
+  shiftRequests   ShiftRequest[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+
+model JobAssignment {
+  id        String   @id @default(cuid())
+  job       Job      @relation(fields: [jobId], references: [id])
+  jobId     String
+  worker    User     @relation(fields: [workerId], references: [id])
+  workerId  String
+  
+  date        DateTime?
+  dayOfWeek   Int?         // 0: Sunday, 1: Monday, etc.
+  isRecurring Boolean      @default(false)
+
+  clockIn   DateTime?
+  clockOut  DateTime?
+  breakTimeMinutes Int @default(0)
+  workedHours      Float?
+
+  recap     Recap?
+
+  createdAt DateTime @default(now())
+}
+
+model ReleaseRequest {
+  id        String   @id @default(cuid())
+  job       Job      @relation(fields: [jobId], references: [id])
+  jobId     String
+  worker    User     @relation(fields: [workerId], references: [id])
+  workerId  String
+
+  date        DateTime?
+  dayOfWeek   Int?
+  isRecurring Boolean      @default(false)
+
+  status    String   @default("PENDING") // PENDING, APPROVED, DENIED
+  reason    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ShiftRequest {
+  id        String   @id @default(cuid())
+  job       Job      @relation(fields: [jobId], references: [id])
+  jobId     String
+  worker    User     @relation(fields: [workerId], references: [id])
+  workerId  String
+
+  date        DateTime?
+  dayOfWeek   Int?
+  isRecurring Boolean      @default(false)
+
+  status    String   @default("PENDING") // PENDING, APPROVED, DENIED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Recap {
+  id                String   @id @default(cuid())
+  job               Job      @relation(fields: [jobId], references: [id])
+  jobId             String
+  assignment        JobAssignment @relation(fields: [assignmentId], references: [id])
+  assignmentId      String   @unique
+  
+  consumersAttended Int
+  consumersSampled  Int
+  reimbursement     Float    @default(0)
+  receiptTotal      Float    @default(0)
+  receiptUrl        String?
+  comments          String?
+  rushLevel         String?
+  customerFeedback  String?
+  managerSignature  String?  // Base64 signature
+  managerReview     String?
+  status            String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  
+  overtimeRequest   OvertimeRequest?
+
+  skus              RecapSKU[]
+  
+  createdAt         DateTime @default(now())
+}
+
+model OvertimeRequest {
+  id        String   @id @default(cuid())
+  recap     Recap    @relation(fields: [recapId], references: [id])
+  recapId   String   @unique
+  minutes   Int
+  reason    String
+  status    String   @default("PENDING") // PENDING, APPROVED, DENIED
+  createdAt DateTime @default(now())
+}
+
+model RecapSKU {
+  id                 String @id @default(cuid())
+  recap              Recap  @relation(fields: [recapId], references: [id])
+  recapId            String
+  skuName            String
+  beginningInventory Int    @default(0)
+  purchased          Int    @default(0)
+  bottlesSold        Int    @default(0)
+  storePrice         Float  @default(0)
+}
+
+model TrainingDocument {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  url         String
+  category    String   // PRODUCTS, POLICIES, PROCEDURES
+  createdAt   DateTime @default(now())
+}
+
+model ChatThread {
+  id           String    @id @default(cuid())
+  type         String    @default("DIRECT") // MARKET_MANAGER, ADMIN, DIRECT
+  participants User[]
+  messages     Message[]
+  createdAt    DateTime  @default(now())
+}
+
+model Message {
+  id        String     @id @default(cuid())
+  thread    ChatThread @relation(fields: [threadId], references: [id])
+  threadId  String
+  sender    User       @relation("SentMessages", fields: [senderId], references: [id])
+  senderId  String
+  content   String
+  createdAt DateTime   @default(now())
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Invite {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  token     String   @unique
+  role      String
+  hourlyWage Float?
+  marketId  String?
+  storeId   String?
+  sender    User     @relation("InviteSender", fields: [senderId], references: [id])
+  senderId  String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+model InventoryItem {
+  id        String   @id @default(cuid())
+  name      String
+  category  String?  // e.g. "white", "red"
+  volume    String?  // e.g. "350"
+  unit      String?  // e.g. "ml"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

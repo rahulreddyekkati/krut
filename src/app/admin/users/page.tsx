@@ -392,6 +392,7 @@ export default function AdminUsersPage() {
                             <p style={{ fontSize: "0.75rem", fontWeight: "bold", marginBottom: "0.5rem" }}>Registration Link:</p>
                             <code style={{ fontSize: "0.75rem", wordBreak: "break-all", display: "block" }}>{inviteLink}</code>
                             <button
+                                type="button"
                                 className="btn btn-secondary btn-sm"
                                 style={{ marginTop: "0.5rem", width: "100%" }}
                                 onClick={() => {
@@ -434,6 +435,7 @@ export default function AdminUsersPage() {
                                                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                                                     <strong>{user.name}</strong>
                                                     <button
+                                                        type="button"
                                                         onClick={() => startEditing(user)}
                                                         className="btn btn-ghost btn-sm"
                                                         style={{ padding: "2px", height: "auto" }}
@@ -530,18 +532,21 @@ export default function AdminUsersPage() {
                                                 {isEditing ? (
                                                     <>
                                                         <button
+                                                            type="button"
                                                             onClick={() => handleSaveEdit(user.id)}
                                                             className="btn btn-primary btn-sm"
                                                         >
                                                             Save
                                                         </button>
                                                         <button
+                                                            type="button"
                                                             onClick={() => handleDeleteUser(user.id, user.name)}
                                                             className="btn btn-danger btn-sm"
                                                         >
                                                             Delete
                                                         </button>
                                                         <button
+                                                            type="button"
                                                             onClick={handleCancelEdit}
                                                             className="btn btn-secondary btn-sm"
                                                         >
@@ -552,12 +557,14 @@ export default function AdminUsersPage() {
                                                     user.role === "WORKER" && (
                                                         <>
                                                             <button
+                                                                type="button"
                                                                 onClick={() => window.open(`/admin/users/${user.id}/assign`, '_blank')}
                                                                 className="btn btn-primary btn-sm"
                                                             >
                                                                 Add Job
                                                             </button>
                                                             <button
+                                                                type="button"
                                                                 onClick={() => generateUserReportPDF(user)}
                                                                 className="btn btn-secondary btn-sm"
                                                             >
@@ -583,7 +590,7 @@ export default function AdminUsersPage() {
                         <div className={`${styles.modal} card glass animate-scale-in`} style={{ maxWidth: "800px" }}>
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
                                 <h3 className="heading h4">Weekly Schedule for {selectedUser.name}</h3>
-                                <button onClick={() => setShowJobModal(false)} className="btn btn-secondary btn-sm">Close</button>
+                                <button type="button" onClick={() => setShowJobModal(false)} className="btn btn-secondary btn-sm">Close</button>
                             </div>
 
                             <form onSubmit={handleQuickJobSubmit} className="flex-column gap-3" style={{ display: "flex" }}>

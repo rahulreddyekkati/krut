@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, FlatList, RefreshControl } from 'react-native';
-import { useAuth } from '../providers/AuthProvider';
+import { useAuth } from '../../providers/AuthProvider';
 import { router } from 'expo-router';
-import { fetchWithAuth } from '../utils/apiClient';
-import ShiftCard from '../components/ShiftCard';
+import { fetchWithAuth } from '../../utils/apiClient';
+import ShiftCard from '../../components/ShiftCard';
 
 export default function Home() {
   const { token, isLoading, signOut } = useAuth();

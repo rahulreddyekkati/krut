@@ -36,6 +36,7 @@
     "typescript": "^5"
   },
   "prisma": {
-    "seed": "node prisma/seed.js"
+    "schema": "../../prisma/schema.prisma",
+    "seed": "node ../../prisma/seed.js"
   }
 }

@@ -4,8 +4,9 @@ import { AuthProvider } from '../providers/AuthProvider';
 export default function Layout() {
   return (
     <AuthProvider>
-      <Stack>
-        <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="login" />
       </Stack>
     </AuthProvider>
   );

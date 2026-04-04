@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Dimensions, ScrollView } from 'react-native';
 import { useAuth } from '../../providers/AuthProvider';
 import { fetchWithAuth } from '../../utils/apiClient';
+import { router } from 'expo-router';
 
 const CIRCLE_SIZE = Dimensions.get('window').width * 0.44;
 
@@ -82,10 +83,10 @@ export default function HomeTab() {
           <Text style={styles.userName}>Worker One</Text>
         </View>
         <View style={styles.navIcons}>
-          <TouchableOpacity style={styles.iconBtn}>
+          <TouchableOpacity style={styles.iconBtn} onPress={() => router.push('/messages')}>
             <Text style={styles.iconEmoji}>💬</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconBtn}>
+          <TouchableOpacity style={styles.iconBtn} onPress={() => router.push('/notifications')}>
             <Text style={styles.iconEmoji}>🔔</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconBtn} onPress={signOut}>

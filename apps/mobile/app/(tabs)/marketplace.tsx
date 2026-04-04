@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ActivityIndicator, FlatList, RefreshControl, Al
 import { useAuth } from '../../providers/AuthProvider';
 import { fetchWithAuth } from '../../utils/apiClient';
 import ShiftCard from '../../components/ShiftCard';
+import { router } from 'expo-router';
 
 export default function Marketplace() {
   const { signOut } = useAuth();
@@ -53,10 +54,10 @@ export default function Marketplace() {
           <Text style={styles.userName}>Open Shifts</Text>
         </View>
         <View style={styles.navIcons}>
-          <TouchableOpacity style={styles.iconBtn}>
+          <TouchableOpacity style={styles.iconBtn} onPress={() => router.push('/messages')}>
             <Text style={styles.iconEmoji}>💬</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconBtn}>
+          <TouchableOpacity style={styles.iconBtn} onPress={() => router.push('/notifications')}>
             <Text style={styles.iconEmoji}>🔔</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconBtn} onPress={signOut}>

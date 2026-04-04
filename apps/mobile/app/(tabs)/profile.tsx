@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useAuth } from '../../providers/AuthProvider';
+import { router } from 'expo-router';
 
 export default function ProfileTab() {
   const { signOut } = useAuth();
@@ -14,10 +15,10 @@ export default function ProfileTab() {
           <Text style={styles.navSubtitle}>Profile</Text>
         </View>
         <View style={styles.navIcons}>
-          <TouchableOpacity style={styles.iconBtn}>
+          <TouchableOpacity style={styles.iconBtn} onPress={() => router.push('/messages')}>
             <Text style={styles.iconEmoji}>💬</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconBtn}>
+          <TouchableOpacity style={styles.iconBtn} onPress={() => router.push('/notifications')}>
             <Text style={styles.iconEmoji}>🔔</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconBtn} onPress={signOut}>

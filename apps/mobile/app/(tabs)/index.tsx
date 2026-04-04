@@ -36,10 +36,10 @@ export default function MyShiftsTab() {
           <Text style={styles.userName}>My Shifts</Text>
         </View>
         <View style={styles.navIcons}>
-          <TouchableOpacity style={styles.iconBtn}>
+          <TouchableOpacity style={styles.iconBtn} onPress={() => router.push('/messages')}>
             <Text style={styles.iconEmoji}>💬</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconBtn}>
+          <TouchableOpacity style={styles.iconBtn} onPress={() => router.push('/notifications')}>
             <Text style={styles.iconEmoji}>🔔</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconBtn} onPress={signOut}>

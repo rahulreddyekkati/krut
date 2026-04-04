@@ -1,5 +1,5 @@
 import { SignJWT, jwtVerify } from "jose";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
 const secretKey = "secret"; // In a real app, use process.env.JWT_SECRET
@@ -21,7 +21,18 @@ export async function decrypt(input: string): Promise<any> {
 }
 
 export async function getSession() {
-    const session = (await cookies()).get("session")?.value;
+    const cookiesList = await cookies();
+    const headersList = await headers();
+    
+    let session = cookiesList.get("session")?.value;
+    
+    if (!session) {
+        const authHeader = headersList.get("Authorization");
+        if (authHeader && authHeader.startsWith("Bearer ")) {
+            session = authHeader.substring(7);
+        }
+    }
+    
     if (!session) return null;
     try {
         return await decrypt(session);

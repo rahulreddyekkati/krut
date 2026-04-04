@@ -6,47 +6,70 @@ export default function ProfileTab() {
   const { signOut } = useAuth();
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-      {/* Avatar */}
-      <View style={styles.avatarSection}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>W</Text>
+    <View style={styles.container}>
+      {/* ─── Navbar ─── */}
+      <View style={styles.navbar}>
+        <View>
+          <Text style={styles.brand}>Workforce OS</Text>
+          <Text style={styles.navSubtitle}>Profile</Text>
         </View>
-        <Text style={styles.name}>Worker</Text>
-        <Text style={styles.role}>WORKER</Text>
-      </View>
-
-      {/* Menu Items */}
-      <View style={styles.menuSection}>
-        <View style={styles.menuItem}>
-          <Text style={styles.menuIcon}>📋</Text>
-          <Text style={styles.menuText}>My Recaps</Text>
-          <Text style={styles.menuArrow}>›</Text>
-        </View>
-        <View style={styles.menuItem}>
-          <Text style={styles.menuIcon}>📊</Text>
-          <Text style={styles.menuText}>Pay History</Text>
-          <Text style={styles.menuArrow}>›</Text>
-        </View>
-        <View style={styles.menuItem}>
-          <Text style={styles.menuIcon}>📄</Text>
-          <Text style={styles.menuText}>Training Materials</Text>
-          <Text style={styles.menuArrow}>›</Text>
-        </View>
-        <View style={styles.menuItem}>
-          <Text style={styles.menuIcon}>⚙️</Text>
-          <Text style={styles.menuText}>Notifications</Text>
-          <Text style={styles.menuArrow}>›</Text>
+        <View style={styles.navIcons}>
+          <TouchableOpacity style={styles.iconBtn}>
+            <Text style={styles.iconEmoji}>💬</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.iconBtn}>
+            <Text style={styles.iconEmoji}>🔔</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.iconBtn} onPress={signOut}>
+            <Text style={styles.logoutIcon}>↗</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
-      {/* Logout */}
-      <TouchableOpacity style={styles.logoutButton} onPress={signOut}>
-        <Text style={styles.logoutText}>Log Out</Text>
-      </TouchableOpacity>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Avatar */}
+        <View style={styles.avatarSection}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>W</Text>
+          </View>
+          <Text style={styles.name}>Worker</Text>
+          <View style={styles.roleBadge}>
+            <Text style={styles.roleText}>WORKER</Text>
+          </View>
+        </View>
 
-      <Text style={styles.version}>Workforce OS v1.0.0</Text>
-    </ScrollView>
+        {/* Menu Items */}
+        <View style={styles.menuSection}>
+          <TouchableOpacity style={styles.menuItem}>
+            <Text style={styles.menuIcon}>📋</Text>
+            <Text style={styles.menuText}>My Recaps</Text>
+            <Text style={styles.menuArrow}>›</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.menuItem}>
+            <Text style={styles.menuIcon}>📊</Text>
+            <Text style={styles.menuText}>Pay History</Text>
+            <Text style={styles.menuArrow}>›</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.menuItem}>
+            <Text style={styles.menuIcon}>📄</Text>
+            <Text style={styles.menuText}>Training Materials</Text>
+            <Text style={styles.menuArrow}>›</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.menuItem}>
+            <Text style={styles.menuIcon}>⚙️</Text>
+            <Text style={styles.menuText}>Notification Settings</Text>
+            <Text style={styles.menuArrow}>›</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Logout */}
+        <TouchableOpacity style={styles.logoutButton} onPress={signOut}>
+          <Text style={styles.logoutText}>Log Out</Text>
+        </TouchableOpacity>
+
+        <Text style={styles.version}>Workforce OS v1.0.0</Text>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -54,13 +77,38 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F3F4F6' },
   scrollContent: { paddingBottom: 60 },
 
-  avatarSection: { alignItems: 'center', paddingTop: 70, paddingBottom: 32, backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#E5E7EB' },
-  avatar: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#6366F1', justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
-  avatarText: { color: '#fff', fontSize: 32, fontWeight: '800' },
-  name: { fontSize: 22, fontWeight: '700', color: '#111827', marginBottom: 4 },
-  role: { fontSize: 13, fontWeight: '600', color: '#9CA3AF', letterSpacing: 1 },
+  /* ── Navbar ── */
+  navbar: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingTop: 56, paddingBottom: 14, paddingHorizontal: 20,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1, borderColor: '#F3F4F6',
+  },
+  brand: { fontSize: 20, fontWeight: '800', color: '#6366F1' },
+  navSubtitle: { fontSize: 13, color: '#9CA3AF', marginTop: 2 },
+  navIcons: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  iconBtn: {
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: '#F9FAFB', justifyContent: 'center', alignItems: 'center',
+    borderWidth: 1, borderColor: '#F3F4F6',
+  },
+  iconEmoji: { fontSize: 18 },
+  logoutIcon: { fontSize: 18, color: '#EF4444', fontWeight: '700' },
 
-  menuSection: { marginTop: 24, marginHorizontal: 16 },
+  /* ── Avatar ── */
+  avatarSection: { alignItems: 'center', paddingTop: 32, paddingBottom: 24, backgroundColor: '#fff', marginBottom: 12 },
+  avatar: {
+    width: 72, height: 72, borderRadius: 36,
+    backgroundColor: '#6366F1', justifyContent: 'center', alignItems: 'center', marginBottom: 14,
+    shadowColor: '#6366F1', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 10, elevation: 6,
+  },
+  avatarText: { color: '#fff', fontSize: 28, fontWeight: '800' },
+  name: { fontSize: 20, fontWeight: '700', color: '#111827', marginBottom: 6 },
+  roleBadge: { backgroundColor: '#EEF2FF', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20 },
+  roleText: { fontSize: 11, fontWeight: '700', color: '#6366F1', letterSpacing: 1 },
+
+  /* ── Menu ── */
+  menuSection: { marginTop: 8, marginHorizontal: 16 },
   menuItem: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff',
     padding: 18, borderRadius: 12, marginBottom: 8,
@@ -71,7 +119,7 @@ const styles = StyleSheet.create({
   menuArrow: { fontSize: 22, color: '#D1D5DB' },
 
   logoutButton: {
-    marginHorizontal: 16, marginTop: 32, padding: 16, borderRadius: 12,
+    marginHorizontal: 16, marginTop: 24, padding: 16, borderRadius: 12,
     backgroundColor: '#FEE2E2', alignItems: 'center',
   },
   logoutText: { color: '#EF4444', fontSize: 16, fontWeight: '700' },

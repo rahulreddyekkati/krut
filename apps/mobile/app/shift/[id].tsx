@@ -43,7 +43,9 @@ export default function ShiftDetails() {
       });
       const data = await res.json();
       if (res.ok) {
-        Alert.alert("Success", "You have clocked out.");
+        Alert.alert("Success", "You have clocked out.", [
+           { text: "Log Recap", onPress: () => router.replace({ pathname: "/recap/[id]", params: { id, date } }) }
+        ]);
         setHasClockedIn(false);
       } else {
         Alert.alert("Error", data.error || "Failed to clock out");

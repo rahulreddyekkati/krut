@@ -5,18 +5,14 @@ import { router } from 'expo-router';
 import { fetchWithAuth } from '../../utils/apiClient';
 import ShiftCard from '../../components/ShiftCard';
 
-export default function Home() {
-  const { token, isLoading, signOut } = useAuth();
+export default function MyShiftsTab() {
+  const { token } = useAuth();
   const [shifts, setShifts] = useState<{upcoming: any[], currentCycle: any[]}>({ upcoming: [], currentCycle: [] });
   const [fetching, setFetching] = useState(true);
 
   useEffect(() => {
-    if (!isLoading && !token) {
-      router.replace('/login');
-    } else if (token) {
-      loadShifts();
-    }
-  }, [isLoading, token]);
+    if (token) loadShifts();
+  }, [token]);
 
   const loadShifts = async () => {
     setFetching(true);
@@ -31,24 +27,13 @@ export default function Home() {
     }
   };
 
-  if (isLoading || !token) {
-    return (
-      <View style={[styles.container, styles.center]}>
-        <ActivityIndicator size="large" color="#0F172A" />
-      </View>
-    );
-  }
+
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <View>
-          <Text style={styles.title}>My Shifts</Text>
-          <Text style={styles.subtitle}>Your scheduled assignments</Text>
-        </View>
-        <TouchableOpacity style={styles.logoutButton} onPress={signOut}>
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
+        <Text style={styles.title}>My Shifts</Text>
+        <Text style={styles.subtitle}>Your scheduled assignments</Text>
       </View>
 
       {fetching && shifts.upcoming.length === 0 ? (

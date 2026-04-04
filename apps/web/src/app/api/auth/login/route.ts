@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
             expires
         });
 
-        const response = NextResponse.json({ success: true });
+        const response = NextResponse.json({ success: true, token: session });
         response.cookies.set({
             name: "session",
             value: session,

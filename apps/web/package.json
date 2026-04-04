@@ -4,14 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npx prisma generate --schema=../../prisma/schema.prisma && next build",
     "start": "next start",
-    "lint": "eslint",
-    "postinstall": "prisma generate --schema=../../prisma/schema.prisma"
+    "lint": "eslint"
   },
   "dependencies": {
     "@libsql/client": "0.8.0",
-    "@prisma/adapter-libsql": "^6.4.1",
+    "@prisma/adapter-libsql": "6.4.1",
     "@types/bcryptjs": "^2.4.6",
     "@types/papaparse": "^5.5.2",
     "bcryptjs": "^3.0.3",
@@ -25,14 +24,14 @@
     "react-dom": "19.2.3"
   },
   "devDependencies": {
-    "@prisma/client": "^6.4.1",
+    "@prisma/client": "6.4.1",
     "@types/node": "^20",
     "@types/nodemailer": "^7.0.11",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
-    "prisma": "^6.4.1",
+    "prisma": "6.4.1",
     "typescript": "^5"
   },
   "prisma": {

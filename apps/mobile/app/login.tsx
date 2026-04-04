@@ -20,22 +20,30 @@ export default function Login() {
 
     setLoading(true);
     setError('');
+    console.log("[LOGIN] Attempting login with:", email);
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/login`, {
+      const url = `${API_BASE_URL}/auth/login`;
+      console.log("[LOGIN] Fetching:", url);
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password })
       });
       
+      console.log("[LOGIN] Response status:", res.status);
       const data = await res.json();
+      console.log("[LOGIN] Response data:", JSON.stringify(data));
       
       if (res.ok && data.success && data.token) {
+        console.log("[LOGIN] Success! Storing token...");
         await signIn(data.token);
-        router.replace('/');
+        router.replace('/(tabs)');
       } else {
+        console.log("[LOGIN] Failed:", data.error);
         setError(data.error || "Failed to log in.");
       }
-    } catch (e) {
+    } catch (e: any) {
+      console.log("[LOGIN] CATCH ERROR:", e.message || e);
       setError("Network error. Please try again.");
     } finally {
       setLoading(false);

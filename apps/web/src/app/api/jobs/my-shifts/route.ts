@@ -100,11 +100,8 @@ export async function GET() {
                 if (maxDate && shiftDate > maxDate) return false;
 
                 const dateStr = shiftDate.toISOString().split('T')[0];
-                if (a.date) {
-                    if (approvedReleaseDates.includes(dateStr)) return false;
-                }
                 
-                // For recurring shifts, check the jobId|date occurrence
+                // Check the jobId|date key for approved releases (works for both specific and recurring)
                 const key = `${a.jobId}|${dateStr}`;
                 if (approvedReleaseKeys.includes(key)) {
                     return false;

@@ -25,7 +25,7 @@ const formatTimeStr = (timeStr?: string) => {
 };
 
 export default function HomeTab() {
-  const { token, signOut } = useAuth();
+  const { token, signOut, user } = useAuth();
   const [activeAssignment, setActiveAssignment] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [clockLoading, setClockLoading] = useState(false);
@@ -80,7 +80,7 @@ export default function HomeTab() {
       <View style={styles.navbar}>
         <View>
           <Text style={styles.brand}>Workforce OS</Text>
-          <Text style={styles.userName}>Worker One</Text>
+          <Text style={styles.userName}>{user?.name || 'Worker'}</Text>
         </View>
         <View style={styles.navIcons}>
           <TouchableOpacity style={styles.iconBtn} onPress={() => router.push('/messages')}>

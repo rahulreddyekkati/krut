@@ -4,7 +4,7 @@ import { useAuth } from '../../providers/AuthProvider';
 import { router } from 'expo-router';
 
 export default function ProfileTab() {
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
 
   return (
     <View style={styles.container}>
@@ -31,11 +31,11 @@ export default function ProfileTab() {
         {/* Avatar */}
         <View style={styles.avatarSection}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>W</Text>
+            <Text style={styles.avatarText}>{user?.name?.charAt(0)?.toUpperCase() || 'W'}</Text>
           </View>
-          <Text style={styles.name}>Worker</Text>
+          <Text style={styles.name}>{user?.name || 'Worker'}</Text>
           <View style={styles.roleBadge}>
-            <Text style={styles.roleText}>WORKER</Text>
+            <Text style={styles.roleText}>{user?.role?.toUpperCase() || 'WORKER'}</Text>
           </View>
         </View>
 

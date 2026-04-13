@@ -321,7 +321,7 @@ export default function AssignJobPage() {
                                     <div key={a.id} style={{ background: "white", padding: "1.25rem", borderRadius: "16px", border: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                                         <div>
                                             <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#6366f1", textTransform: "uppercase", marginBottom: "0.25rem" }}>
-                                                {new Date(a.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                                            {new Date(a.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' })}
                                             </div>
                                             <div style={{ fontWeight: 600, color: "#111827" }}>{a.job.title}</div>
                                             <div style={{ fontSize: "0.8125rem", color: "#6b7280" }}>{a.job.startTimeStr} – {a.job.endTimeStr}</div>

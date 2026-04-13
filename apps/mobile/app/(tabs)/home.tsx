@@ -156,7 +156,7 @@ export default function HomeTab() {
               </Text>
               <Text style={styles.shiftDate}>
                 {activeAssignment.date
-                  ? new Date(activeAssignment.date).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
+                  ? new Date(activeAssignment.date).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' })
                   : new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
               </Text>
               <Text style={styles.shiftLocation}>{activeAssignment.job?.store?.address}</Text>

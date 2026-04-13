@@ -35,7 +35,7 @@ export default function ShiftCard({ shift, onPress, onRelease, releaseStatus = '
 
   if (shift.date) {
     shiftDate = new Date(shift.date);
-    displayDate = shiftDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    displayDate = shiftDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
   } else if (shift.isRecurring && shift.dayOfWeek !== null && shift.dayOfWeek !== undefined) {
     shiftDate = getNextOccurrence(shift.dayOfWeek);
     displayDate = shiftDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });

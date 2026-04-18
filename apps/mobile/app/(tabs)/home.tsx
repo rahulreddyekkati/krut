@@ -29,9 +29,13 @@ export default function HomeTab() {
   const [activeAssignment, setActiveAssignment] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [clockLoading, setClockLoading] = useState(false);
+  const [pendingRecap, setPendingRecap] = useState<any>(null);
 
   useEffect(() => {
-    if (token) loadTodayShift();
+    if (token) {
+      loadTodayShift();
+      checkPendingRecaps();
+    }
   }, [token]);
 
   const loadTodayShift = async () => {
@@ -49,6 +53,23 @@ export default function HomeTab() {
     }
   };
 
+  const checkPendingRecaps = async () => {
+    try {
+      const res = await fetchWithAuth('/jobs/my-shifts');
+      if (res.ok) {
+        const data = await res.json();
+        // Find shifts with clockOut set and job status RECAP_PENDING
+        const allShifts = [...(data.currentCycle || []), ...(data.upcoming || [])];
+        const pending = allShifts.find((a: any) =>
+          a.clockOut && a.job?.status === 'RECAP_PENDING'
+        );
+        setPendingRecap(pending || null);
+      }
+    } catch (e) {
+      console.log('Failed to check pending recaps', e);
+    }
+  };
+
   const handleClock = async () => {
     if (!activeAssignment) return;
     const action = activeAssignment.clockIn ? "CLOCK_OUT" : "CLOCK_IN";
@@ -59,7 +80,15 @@ export default function HomeTab() {
         body: JSON.stringify({ action, assignmentId: activeAssignment.id })
       });
       if (res.ok) {
-        await loadTodayShift();
+        if (action === 'CLOCK_OUT') {
+          // Navigate to recap form after clocking out
+          const shiftDate = activeAssignment.date
+            ? new Date(activeAssignment.date).toISOString().split('T')[0]
+            : new Date().toISOString().split('T')[0];
+          router.push(`/recap/${activeAssignment.jobId}?date=${shiftDate}&assignmentId=${activeAssignment.id}`);
+        } else {
+          await loadTodayShift();
+        }
       } else {
         const data = await res.json();
         console.log("Clock action failed:", data.error);
@@ -146,6 +175,27 @@ export default function HomeTab() {
           </View>
         </View>
 
+        {/* ─── Pending Recap Banner ─── */}
+        {pendingRecap && (
+          <TouchableOpacity
+            style={styles.recapBanner}
+            onPress={() => {
+              const shiftDate = pendingRecap.date
+                ? new Date(pendingRecap.date).toISOString().split('T')[0]
+                : new Date().toISOString().split('T')[0];
+              router.push(`/recap/${pendingRecap.jobId}?date=${shiftDate}&assignmentId=${pendingRecap.id}`);
+            }}
+          >
+            <View>
+              <Text style={styles.recapBannerTitle}>📋 Pending Recap</Text>
+              <Text style={styles.recapBannerText}>
+                {pendingRecap.job?.title || 'Shift'} at {pendingRecap.job?.store?.name || 'Store'}
+              </Text>
+            </View>
+            <Text style={styles.recapBannerBtn}>Submit →</Text>
+          </TouchableOpacity>
+        )}
+
         {/* ─── Today's Shift Card ─── */}
         <View style={styles.shiftCard}>
           <Text style={styles.shiftCardTitle}>Today's Shift</Text>
@@ -226,4 +276,14 @@ const styles = StyleSheet.create({
   shiftDate: { fontSize: 14, color: '#6B7280', marginBottom: 2 },
   shiftLocation: { fontSize: 13, color: '#9CA3AF' },
   emptyText: { fontSize: 14, color: '#6B7280' },
+
+  /* ── Recap Banner ── */
+  recapBanner: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    backgroundColor: '#FFF7ED', marginHorizontal: 20, marginTop: 16,
+    padding: 16, borderRadius: 12, borderWidth: 1, borderColor: '#FDBA74',
+  },
+  recapBannerTitle: { fontSize: 15, fontWeight: '700', color: '#9A3412', marginBottom: 2 },
+  recapBannerText: { fontSize: 13, color: '#C2410C' },
+  recapBannerBtn: { fontSize: 15, fontWeight: '700', color: '#EA580C' },
 });

@@ -43,7 +43,8 @@ export async function GET() {
             include: {
                 job: {
                     include: {
-                        store: { select: { name: true } }
+                        store: { select: { name: true } },
+                        market: { select: { name: true } }
                     }
                 }
             },

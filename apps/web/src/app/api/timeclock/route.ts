@@ -2,12 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
     try {
         const session = await getSession();
         if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+        const tzOffset = parseInt(request.headers.get("x-timezone-offset") || "0");
         const now = new Date();
+        // Adjust "now" to local time based on the offset for hour/minute comparisons
+        const localNow = new Date(now.getTime() - (tzOffset * 60 * 1000));
+        
         const startOfToday = new Date(now);
         startOfToday.setHours(0, 0, 0, 0);
         const endOfToday = new Date(now);
@@ -80,7 +84,7 @@ export async function GET() {
         // Robustness: If this is a recurring shift, check if the timestamps are from today. 
         // If not, treat them as null for the active session.
         if (activeAssignment) {
-            const nowTime = now.getHours() * 60 + now.getMinutes();
+            const nowTime = localNow.getUTCHours() * 60 + localNow.getUTCMinutes();
             const [endH, endM] = (activeAssignment.job.endTimeStr || "23:59").split(':').map(Number);
             const endTimeMins = endH * 60 + endM;
 
@@ -154,6 +158,7 @@ export async function POST(request: NextRequest) {
         const session = await getSession();
         if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+        const tzOffset = parseInt(request.headers.get("x-timezone-offset") || "0");
         const body = await request.json();
         const { action, assignmentId } = body; // action: 'CLOCK_IN' or 'CLOCK_OUT'
 
@@ -171,23 +176,25 @@ export async function POST(request: NextRequest) {
         }
 
         const now = new Date();
+        const localNow = new Date(now.getTime() - (tzOffset * 60 * 1000));
 
         if (action === "CLOCK_IN") {
             let targetAssignmentId = assignmentId;
             
             // If it's a recurring template, materialize it into a specific date instance
             if (assignment.isRecurring) {
-                // Check if already materialized today
-                const startOfToday = new Date(now);
-                startOfToday.setHours(0, 0, 0, 0);
-                const endOfToday = new Date(now);
-                endOfToday.setHours(23, 59, 59, 999);
+                // Check if already materialized today (using worker's calendar day).
+                const localTodayStart = new Date(localNow);
+                localTodayStart.setUTCHours(0,0,0,0);
+                // Convert back to UTC for DB query
+                const dbTodayStart = new Date(localTodayStart.getTime() + (tzOffset * 60 * 1000));
+                const dbTodayEnd = new Date(dbTodayStart.getTime() + 24 * 60 * 60 * 1000 - 1);
 
                 const existingInstance = await prisma.jobAssignment.findFirst({
                     where: {
                         workerId: session.user.id,
                         jobId: assignment.jobId,
-                        date: { gte: startOfToday, lte: endOfToday },
+                        date: { gte: dbTodayStart, lte: dbTodayEnd },
                         isRecurring: false
                     }
                 });
@@ -198,12 +205,12 @@ export async function POST(request: NextRequest) {
                         return NextResponse.json({ error: "Already clocked in" }, { status: 400 });
                     }
                 } else {
-                    // Create new instance for today
+                    // Create new instance for today (use the computed dbTodayStart)
                     const newInstance = await prisma.jobAssignment.create({
                         data: {
                             workerId: session.user.id,
                             jobId: assignment.jobId,
-                            date: startOfToday,
+                            date: dbTodayStart,
                             isRecurring: false,
                             breakTimeMinutes: assignment.breakTimeMinutes
                         }

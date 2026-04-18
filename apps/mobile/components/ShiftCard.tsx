@@ -46,8 +46,26 @@ export default function ShiftCard({ shift, onPress, onRelease, releaseStatus = '
   const endTime = formatTimeStr(shift.job?.endTimeStr);
   const timeRange = startTime && endTime ? `${startTime} - ${endTime}` : '';
 
+  // 2-hour release buffer check
+  const BUFFER_HOURS = 2;
+  let canRelease = true;
+  if (shiftDate && shift.job?.startTimeStr) {
+    const [startH, startM] = shift.job.startTimeStr.split(':').map(Number);
+    const shiftStartTime = new Date(shiftDate);
+    shiftStartTime.setHours(startH, startM, 0, 0);
+    const now = new Date();
+    const hoursUntilShift = (shiftStartTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+    if (hoursUntilShift < BUFFER_HOURS) {
+      canRelease = false;
+    }
+  }
+
   const handleRelease = () => {
     if (!onRelease || !shiftDate) return;
+    if (!canRelease) {
+      Alert.alert('Cannot Release', 'Shifts cannot be released within 2 hours of the start time.');
+      return;
+    }
     Alert.alert(
       'Release Shift',
       `Are you sure you want to release this shift on ${displayDate}?`,
@@ -73,6 +91,10 @@ export default function ShiftCard({ shift, onPress, onRelease, releaseStatus = '
         {releaseStatus === 'pending' ? (
           <View style={styles.requestedBadge}>
             <Text style={styles.requestedText}>Requested</Text>
+          </View>
+        ) : !canRelease && onRelease ? (
+          <View style={[styles.releaseBtn, { opacity: 0.4 }]}>
+            <Text style={[styles.releaseBtnText, { color: '#9CA3AF' }]}>Too Late</Text>
           </View>
         ) : onRelease ? (
           <TouchableOpacity style={styles.releaseBtn} onPress={handleRelease} activeOpacity={0.7}>

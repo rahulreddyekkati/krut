@@ -99,8 +99,9 @@ export async function GET() {
 
             // 2. Auto clock-out if past end time OR if it's a shift from a previous day
             if (activeAssignment.clockIn && !activeAssignment.clockOut && (isPastDay || nowTime > endTimeMins)) {
-                console.log(`Auto clock-out triggered for assignment ${activeAssignment.id}`);
-                const autoClockOut = new Date(activeAssignment.clockIn);
+                // Use the shift date (not clockIn) as the base for computing end time
+                const shiftDay = activeAssignment.date ? new Date(activeAssignment.date) : new Date(activeAssignment.clockIn);
+                const autoClockOut = new Date(shiftDay);
                 
                 // If it's an overnight shift (end time is smaller than start time), add 1 day
                 const [startH, startM] = (activeAssignment.job.startTimeStr || "00:00").split(':').map(Number);
@@ -109,6 +110,13 @@ export async function GET() {
                 }
                 
                 autoClockOut.setHours(endH, endM, 0, 0);
+
+                // Safety: if clockOut is still before clockIn (timezone edge case), 
+                // set clockOut to clockIn + shift duration
+                if (autoClockOut.getTime() <= activeAssignment.clockIn.getTime()) {
+                    const shiftDurationMins = ((endH * 60 + endM) - (startH * 60 + startM) + 1440) % 1440;
+                    autoClockOut.setTime(activeAssignment.clockIn.getTime() + shiftDurationMins * 60 * 1000);
+                }
 
                 const diffMinutes = (autoClockOut.getTime() - activeAssignment.clockIn.getTime()) / (1000 * 60);
                 const breakTimeMinutes = activeAssignment.breakTimeMinutes || 0;

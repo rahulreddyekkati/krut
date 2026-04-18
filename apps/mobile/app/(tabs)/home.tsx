@@ -37,10 +37,10 @@ export default function HomeTab() {
   const loadTodayShift = async () => {
     setLoading(true);
     try {
-      const res = await fetchWithAuth('/timeclock/active');
+      const res = await fetchWithAuth('/timeclock');
       if (res.ok) {
         const data = await res.json();
-        setActiveAssignment(data.assignment || null);
+        setActiveAssignment(data.activeAssignment || null);
       }
     } catch (e) {
       console.log("Failed to load active assignment", e);
@@ -71,8 +71,8 @@ export default function HomeTab() {
     }
   };
 
-  const isDone = activeAssignment?.clockIn && activeAssignment?.clockOut;
-  const isClockedIn = activeAssignment?.clockIn && !activeAssignment?.clockOut;
+  const isDone = !!(activeAssignment?.clockIn && activeAssignment?.clockOut);
+  const isClockedIn = !!(activeAssignment?.clockIn && !activeAssignment?.clockOut);
 
   return (
     <View style={styles.container}>

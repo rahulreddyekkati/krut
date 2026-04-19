@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
                 }
             });
 
-            const data = assignments.map(a => ({
+            const data = assignments.map((a: any) => ({
                 id: a.id,
                 workerName: a.worker?.name || "Unknown",
                 storeName: a.job.store.name,
@@ -116,38 +116,46 @@ export async function GET(request: NextRequest) {
         }
 
         if (type === "recaps") {
-            // Pending Recaps: jobs with RECAP_PENDING status, include assignment info
-            const jobs = await prisma.job.findMany({
+            let assignmentDateFilter: any = {};
+            if (dateParam) {
+                const startStr = `${dateParam}T00:00:00`;
+                const endStr = `${dateParam}T23:59:59`;
+                assignmentDateFilter = {
+                    OR: [
+                        { date: { gte: new Date(startStr), lte: new Date(endStr) } },
+                        { job: { isRecurring: true } },
+                        { job: { date: { gte: new Date(startStr), lte: new Date(endStr) } } }
+                    ]
+                };
+            }
+
+            const assignments = await prisma.jobAssignment.findMany({
                 where: {
-                    ...whereJob,
-                    status: "RECAP_PENDING",
-                    ...dateFilter
+                    job: whereJob,
+                    clockOut: { not: null },
+                    recap: { is: null },
+                    ...assignmentDateFilter
                 },
                 include: {
-                    store: {
-                        include: { market: { select: { name: true } } }
-                    },
-                    assignments: {
+                    worker: { select: { id: true, name: true } },
+                    job: {
                         include: {
-                            worker: { select: { id: true, name: true } }
-                        },
-                        where: { clockOut: { not: null } }
+                            store: { include: { market: { select: { name: true } } } }
+                        }
                     }
                 }
             });
 
-            const data = jobs.flatMap(job =>
-                job.assignments.map((a: any) => ({
-                    id: a.id,
-                    jobId: job.id,
-                    workerId: a.worker?.id,
-                    workerName: a.worker?.name || "Unknown",
-                    storeName: job.store.name,
-                    marketName: job.store.market?.name || "—",
-                    clockIn: a.clockIn,
-                    clockOut: a.clockOut
-                }))
-            );
+            const data = assignments.map((a: any) => ({
+                id: a.id,
+                jobId: a.job.id,
+                workerId: a.worker?.id,
+                workerName: a.worker?.name || "Unknown",
+                storeName: a.job.store.name,
+                marketName: a.job.store.market?.name || "—",
+                clockIn: a.clockIn,
+                clockOut: a.clockOut
+            }));
 
             return NextResponse.json({ data });
         }

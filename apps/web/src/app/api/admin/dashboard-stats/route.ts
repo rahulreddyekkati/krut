@@ -62,12 +62,26 @@ export async function GET(request: NextRequest) {
             }
         });
 
-        // Pending Recaps: Jobs where the worker clocked out but hasn't submitted a recap
-        const pendingRecaps = await prisma.job.count({
+        // Pending Recaps: Assignments where the worker clocked out but hasn't submitted a recap
+        let assignmentDateFilter: any = {};
+        if (dateParam) {
+            const startStr = `${dateParam}T00:00:00`;
+            const endStr = `${dateParam}T23:59:59`;
+            assignmentDateFilter = {
+                OR: [
+                    { date: { gte: new Date(startStr), lte: new Date(endStr) } },
+                    { job: { isRecurring: true } },
+                    { job: { date: { gte: new Date(startStr), lte: new Date(endStr) } } }
+                ]
+            };
+        }
+
+        const pendingRecaps = await prisma.jobAssignment.count({
             where: {
-                ...whereJob,
-                status: "RECAP_PENDING",
-                ...dateFilter
+                job: whereJob,
+                clockOut: { not: null },
+                recap: { is: null },
+                ...assignmentDateFilter
             }
         });
 

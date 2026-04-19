@@ -55,15 +55,10 @@ export default function HomeTab() {
 
   const checkPendingRecaps = async () => {
     try {
-      const res = await fetchWithAuth('/jobs/my-shifts');
+      const res = await fetchWithAuth('/pending-recaps');
       if (res.ok) {
         const data = await res.json();
-        // Find all shifts with clockOut set and job status RECAP_PENDING
-        const allShifts = [...(data.currentCycle || []), ...(data.upcoming || [])];
-        const pending = allShifts.filter((a: any) =>
-          a.clockOut && a.job?.status === 'RECAP_PENDING'
-        );
-        setPendingRecaps(pending);
+        setPendingRecaps(data.pendingRecaps || []);
       }
     } catch (e) {
       console.log('Failed to check pending recaps', e);
@@ -190,7 +185,7 @@ export default function HomeTab() {
             <View>
               <Text style={styles.recapBannerTitle}>📋 Pending Recap</Text>
               <Text style={styles.recapBannerText}>
-                {recap.job?.title || 'Shift'} at {recap.job?.store?.name || 'Store'}
+                {recap.jobTitle || 'Shift'} at {recap.storeName || 'Store'}
               </Text>
             </View>
             <Text style={styles.recapBannerBtn}>Submit →</Text>

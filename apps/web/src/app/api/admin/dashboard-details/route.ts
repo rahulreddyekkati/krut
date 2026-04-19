@@ -27,8 +27,8 @@ export async function GET(request: NextRequest) {
 
         let dateFilter: any = {};
         if (dateParam) {
-            const startStr = `${dateParam}T00:00:00`;
-            const endStr = `${dateParam}T23:59:59`;
+            const startStr = `${dateParam}T00:00:00Z`;
+            const endStr = `${dateParam}T23:59:59Z`;
             dateFilter = {
                 OR: [
                     { date: { gte: new Date(startStr), lte: new Date(endStr) } },
@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
                 orderBy: { createdAt: "desc" }
             });
 
-            const data = jobs.map(job => ({
+            const data = jobs.map((job: any) => ({
                 id: job.id,
                 storeName: job.store.name,
                 startTime: job.startTimeStr || "--",
@@ -118,8 +118,8 @@ export async function GET(request: NextRequest) {
         if (type === "recaps") {
             let assignmentDateFilter: any = {};
             if (dateParam) {
-                const startStr = `${dateParam}T00:00:00`;
-                const endStr = `${dateParam}T23:59:59`;
+                const startStr = `${dateParam}T00:00:00Z`;
+                const endStr = `${dateParam}T23:59:59Z`;
                 assignmentDateFilter = {
                     OR: [
                         { date: { gte: new Date(startStr), lte: new Date(endStr) } },

@@ -22,8 +22,8 @@ export async function GET(request: NextRequest) {
         const dateParam = request.nextUrl.searchParams.get("date");
         let dateFilter: any = {};
         if (dateParam) {
-            const startStr = `${dateParam}T00:00:00`;
-            const endStr = `${dateParam}T23:59:59`;
+            const startStr = `${dateParam}T00:00:00Z`;
+            const endStr = `${dateParam}T23:59:59Z`;
             dateFilter = {
                 OR: [
                     { date: { gte: new Date(startStr), lte: new Date(endStr) } },
@@ -65,8 +65,8 @@ export async function GET(request: NextRequest) {
         // Pending Recaps: Assignments where the worker clocked out but hasn't submitted a recap
         let assignmentDateFilter: any = {};
         if (dateParam) {
-            const startStr = `${dateParam}T00:00:00`;
-            const endStr = `${dateParam}T23:59:59`;
+            const startStr = `${dateParam}T00:00:00Z`;
+            const endStr = `${dateParam}T23:59:59Z`;
             assignmentDateFilter = {
                 OR: [
                     { date: { gte: new Date(startStr), lte: new Date(endStr) } },

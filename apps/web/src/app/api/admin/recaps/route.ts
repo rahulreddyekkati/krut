@@ -88,9 +88,9 @@ export async function GET(request: NextRequest) {
         });
 
         return NextResponse.json({ recaps: data });
-    } catch (error) {
+    } catch (error: any) {
         console.error("Recaps list error:", error);
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+        return NextResponse.json({ error: "Internal server error", msg: error.message, stack: error.stack }, { status: 500 });
     }
 }
 

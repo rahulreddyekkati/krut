@@ -72,9 +72,10 @@ export default function SubmitRecap() {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
       quality: 0.7,
+      base64: true,
     });
     if (!result.canceled && result.assets) {
-      setReceiptImages(prev => [...prev, ...result.assets.map(a => a.uri)]);
+      setReceiptImages(prev => [...prev, ...result.assets.map(a => `data:image/jpeg;base64,${a.base64}`)]);
     }
   };
 
@@ -86,9 +87,10 @@ export default function SubmitRecap() {
     }
     const result = await ImagePicker.launchCameraAsync({
       quality: 0.7,
+      base64: true,
     });
     if (!result.canceled && result.assets) {
-      setReceiptImages(prev => [...prev, ...result.assets.map(a => a.uri)]);
+      setReceiptImages(prev => [...prev, ...result.assets.map(a => `data:image/jpeg;base64,${a.base64}`)]);
     }
   };
 
@@ -111,6 +113,7 @@ export default function SubmitRecap() {
         receiptTotal,
         reimbursementTotal,
         customerFeedback,
+        receiptUrl: JSON.stringify(receiptImages),
       };
       if (assignmentId) body.assignmentId = assignmentId;
 

@@ -29,7 +29,7 @@ export default function HomeTab() {
   const [activeAssignment, setActiveAssignment] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [clockLoading, setClockLoading] = useState(false);
-  const [pendingRecap, setPendingRecap] = useState<any>(null);
+  const [pendingRecaps, setPendingRecaps] = useState<any[]>([]);
 
   useEffect(() => {
     if (token) {
@@ -58,12 +58,12 @@ export default function HomeTab() {
       const res = await fetchWithAuth('/jobs/my-shifts');
       if (res.ok) {
         const data = await res.json();
-        // Find shifts with clockOut set and job status RECAP_PENDING
+        // Find all shifts with clockOut set and job status RECAP_PENDING
         const allShifts = [...(data.currentCycle || []), ...(data.upcoming || [])];
-        const pending = allShifts.find((a: any) =>
+        const pending = allShifts.filter((a: any) =>
           a.clockOut && a.job?.status === 'RECAP_PENDING'
         );
-        setPendingRecap(pending || null);
+        setPendingRecaps(pending);
       }
     } catch (e) {
       console.log('Failed to check pending recaps', e);
@@ -175,26 +175,27 @@ export default function HomeTab() {
           </View>
         </View>
 
-        {/* ─── Pending Recap Banner ─── */}
-        {pendingRecap && (
+        {/* ─── Pending Recap Banners ─── */}
+        {pendingRecaps.map(recap => (
           <TouchableOpacity
+            key={recap.id}
             style={styles.recapBanner}
             onPress={() => {
-              const shiftDate = pendingRecap.date
-                ? new Date(pendingRecap.date).toISOString().split('T')[0]
+              const shiftDate = recap.date
+                ? new Date(recap.date).toISOString().split('T')[0]
                 : new Date().toISOString().split('T')[0];
-              router.push(`/recap/${pendingRecap.jobId}?date=${shiftDate}&assignmentId=${pendingRecap.id}`);
+              router.push(`/recap/${recap.jobId}?date=${shiftDate}&assignmentId=${recap.id}`);
             }}
           >
             <View>
               <Text style={styles.recapBannerTitle}>📋 Pending Recap</Text>
               <Text style={styles.recapBannerText}>
-                {pendingRecap.job?.title || 'Shift'} at {pendingRecap.job?.store?.name || 'Store'}
+                {recap.job?.title || 'Shift'} at {recap.job?.store?.name || 'Store'}
               </Text>
             </View>
             <Text style={styles.recapBannerBtn}>Submit →</Text>
           </TouchableOpacity>
-        )}
+        ))}
 
         {/* ─── Today's Shift Card ─── */}
         <View style={styles.shiftCard}>

@@ -447,7 +447,7 @@ export default function WorkerDashboard({
                         </div>
                         <div className={styles.dateLabel}>
                             {activeAssignment.date
-                                ? new Date(activeAssignment.date).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
+                                ? new Date(activeAssignment.date).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' })
                                 : `Today, ${new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}`}
                         </div>
                         <div className={styles.location}>{activeAssignment.job.store.address}</div>
@@ -464,7 +464,7 @@ export default function WorkerDashboard({
                         <div>
                             <div className={styles.recapTitle}>Incomplete Recap</div>
                             <div className={styles.recapSubtitle}>
-                                {new Date(recap.shiftDate).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                                {new Date(recap.shiftDate).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })}
                                 {' — '}{recap.storeName}
                             </div>
                         </div>
@@ -503,7 +503,7 @@ export default function WorkerDashboard({
                                 <div className={styles.listInfo}>
                                     <div className={styles.listTitle}>
                                         {a.date
-                                            ? new Date(a.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
+                                            ? new Date(a.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })
                                             : getNextOccurrenceDate(a.dayOfWeek).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
                                     </div>
                                     <div className={styles.listSubtitle}>{a.job?.store?.name}</div>
@@ -582,7 +582,7 @@ export default function WorkerDashboard({
                         <div key={job.id} className={styles.listItem}>
                             <div className={styles.listInfo}>
                                 <div className={styles.listTitle}>
-                                    {job.date ? new Date(job.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) : 'Open Shift'}
+                                    {job.date ? new Date(job.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }) : 'Open Shift'}
                                     {job.isReleasedShift && <span style={{ marginLeft: '0.5rem', fontSize: '0.7rem', color: '#10b981', background: '#d1fae5', padding: '0.2rem 0.5rem', borderRadius: '4px', fontWeight: 600 }}>Released Shift</span>}
                                 </div>
                                 <div className={styles.listSubtitle}>{job.store?.name}</div>

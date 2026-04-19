@@ -5,7 +5,13 @@ import { useEffect, useState } from "react";
 export default function RecapsPage() {
     const [recaps, setRecaps] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
+    const [selectedDate, setSelectedDate] = useState(() => {
+        const d = new Date();
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    });
 
     const fetchRecaps = async (date: string) => {
         setLoading(true);

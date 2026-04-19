@@ -8,7 +8,13 @@ export default function AdminDashboardPage() {
     const [stats, setStats] = useState({ totalJobs: 0, activeWorkers: 0, pendingRecaps: 0 });
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState<any>(null);
-    const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
+    const [selectedDate, setSelectedDate] = useState(() => {
+        const d = new Date();
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    });
     const [activeDetail, setActiveDetail] = useState<DetailType>(null);
     const [detailData, setDetailData] = useState<any[]>([]);
     const [detailLoading, setDetailLoading] = useState(false);

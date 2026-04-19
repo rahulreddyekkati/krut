@@ -123,7 +123,7 @@ export async function GET(request: NextRequest) {
                 assignmentDateFilter = {
                     OR: [
                         { date: { gte: new Date(startStr), lte: new Date(endStr) } },
-                        { job: { isRecurring: true } },
+                        { isRecurring: true },
                         { job: { date: { gte: new Date(startStr), lte: new Date(endStr) } } }
                     ]
                 };

@@ -55,7 +55,7 @@ export default function HomeTab() {
 
   const checkPendingRecaps = async () => {
     try {
-      const res = await fetchWithAuth('/pending-recaps');
+      const res = await fetchWithAuth('/worker/pending-recaps');
       if (res.ok) {
         const data = await res.json();
         setPendingRecaps(data.pendingRecaps || []);

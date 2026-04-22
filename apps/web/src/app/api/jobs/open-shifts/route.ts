@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { resolveTimezone, localTimeToUTC, toLocalDateStr } from "@/lib/timezone";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
     try {
         const session = await getSession();
         if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -70,15 +71,15 @@ export async function GET() {
 
         // Filter out jobs that have already started and map with requested status
         const now = new Date();
+        const tz = resolveTimezone(request);
         const filteredJobs = allAvailableJobs
             .filter(job => {
                 if (!job.startTimeStr) return true;
 
-                const [h, m] = job.startTimeStr.split(':').map(Number);
-                const shiftDate = job.date ? new Date(job.date) : new Date();
-                shiftDate.setHours(h, m, 0, 0);
+                const dateStr = job.date ? toLocalDateStr(new Date(job.date), tz) : toLocalDateStr(new Date(), tz);
+                const shiftStart = localTimeToUTC(dateStr, job.startTimeStr, tz);
 
-                return now < shiftDate;
+                return now < shiftStart;
             })
             .map(job => ({
                 ...job,

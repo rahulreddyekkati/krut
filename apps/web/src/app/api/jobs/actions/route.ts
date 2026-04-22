@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { resolveTimezone, localTimeToUTC, toLocalDateStr } from "@/lib/timezone";
 
 export async function POST(request: NextRequest) {
     try {
@@ -71,11 +72,11 @@ export async function POST(request: NextRequest) {
 
             // Enforce 2-hour minimum window before shift starts
             if (date) {
+                const tz = resolveTimezone(request);
                 const job = await prisma.job.findUnique({ where: { id: jobId } });
                 if (job && job.startTimeStr) {
-                    const [h, m] = job.startTimeStr.split(':').map(Number);
-                    const shiftStart = new Date(date);
-                    shiftStart.setHours(h, m, 0, 0);
+                    const dateStr = toLocalDateStr(new Date(date), tz);
+                    const shiftStart = localTimeToUTC(dateStr, job.startTimeStr, tz);
                     const diffMs = shiftStart.getTime() - Date.now();
                     if (diffMs < 2 * 60 * 60 * 1000) {
                         return NextResponse.json(

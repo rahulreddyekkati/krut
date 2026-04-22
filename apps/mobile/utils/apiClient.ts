@@ -6,8 +6,9 @@ export async function fetchWithAuth(endpoint: string, options: RequestInit = {})
   const token = await getToken();
   
   const headers = new Headers(options.headers || {});
-  // Add timezone offset in minutes (e.g. 300 for -05:00) 
-  // This helps the server handle local time vs UTC correctly
+  // Send full IANA timezone (e.g. "America/Chicago") for DST-aware server logic
+  headers.set("x-timezone", Intl.DateTimeFormat().resolvedOptions().timeZone);
+  // Keep numeric offset as backward-compatible fallback
   headers.set("x-timezone-offset", new Date().getTimezoneOffset().toString());
   
   if (token) {

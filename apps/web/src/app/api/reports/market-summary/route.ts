@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { resolveTimezone, getLocalDayBoundsUTC } from "@/lib/timezone";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
     try {
         const session = await getSession();
         if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -27,9 +28,8 @@ export async function GET() {
             }
         });
 
-        const now = new Date();
-        const startOfToday = new Date(now.setHours(0, 0, 0, 0));
-        const endOfToday = new Date(now.setHours(23, 59, 59, 999));
+        const tz = resolveTimezone(request);
+        const { start: startOfToday, end: endOfToday } = getLocalDayBoundsUTC(tz);
 
         const jobsToday = await prisma.job.count({
             where: {

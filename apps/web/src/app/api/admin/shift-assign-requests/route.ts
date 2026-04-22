@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { resolveTimezone, localTimeToUTC, toLocalDateStr } from "@/lib/timezone";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
     try {
         const session = await getSession();
         if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -50,14 +51,14 @@ export async function GET() {
 
         // Auto-reject requests where the shift is now in the past
         const now = new Date();
+        const tz = resolveTimezone(request);
         const validRequests: any[] = [];
 
         for (const req of requests) {
             const shiftDate = req.date ? new Date(req.date) : null;
             if (shiftDate && req.job.startTimeStr) {
-                const [h, m] = req.job.startTimeStr.split(':').map(Number);
-                const shiftStart = new Date(shiftDate);
-                shiftStart.setHours(h, m, 0, 0);
+                const dateStr = toLocalDateStr(shiftDate, tz);
+                const shiftStart = localTimeToUTC(dateStr, req.job.startTimeStr, tz);
                 
                 if (now > shiftStart) {
                     await prisma.shiftRequest.update({

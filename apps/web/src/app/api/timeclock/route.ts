@@ -1,24 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { resolveTimezone, getLocalDayBoundsUTC, localShiftEndToUTC, toLocalDateStr } from "@/lib/timezone";
+import { toZonedTime } from "date-fns-tz";
 
 export async function GET(request: NextRequest) {
     try {
         const session = await getSession();
         if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-        const tzOffset = parseInt(request.headers.get("x-timezone-offset") || "0");
+        // Resolve timezone ONCE per request
+        const tz = resolveTimezone(request);
         const now = new Date();
-        // Adjust "now" to local time based on the offset for hour/minute comparisons
-        const localNow = new Date(now.getTime() - (tzOffset * 60 * 1000));
-        
-        // Compute "today" boundaries in the WORKER's local timezone, stored as UTC
-        // localNow represents the worker's local clock (but stored in a Date object using UTC fields)
-        const startOfToday = new Date(localNow);
-        startOfToday.setUTCHours(0, 0, 0, 0);
-        // Convert back to UTC for DB comparison
-        const startOfTodayUTC = new Date(startOfToday.getTime() + (tzOffset * 60 * 1000));
-        const endOfTodayUTC = new Date(startOfTodayUTC.getTime() + 24 * 60 * 60 * 1000 - 1);
+        const { start: startOfTodayUTC, end: endOfTodayUTC } = getLocalDayBoundsUTC(tz);
+
+        // Get "local now" for hour/minute comparisons
+        const zonedNow = toZonedTime(now, tz);
+        const nowTimeMins = zonedNow.getHours() * 60 + zonedNow.getMinutes();
 
         // 1. Find the currently active shift (Clocked In but not Out)
         // This takes priority over "today's template" because a worker might have a stale shift from yesterday.
@@ -47,7 +45,7 @@ export async function GET(request: NextRequest) {
                         { date: { gte: startOfTodayUTC, lte: endOfTodayUTC } },
                         {
                             isRecurring: true,
-                            dayOfWeek: now.getDay()
+                            dayOfWeek: zonedNow.getDay()
                         }
                     ]
                 },
@@ -84,18 +82,17 @@ export async function GET(request: NextRequest) {
             }
         }
 
-        // Robustness: If this is a recurring shift, check if the timestamps are from today. 
-        // If not, treat them as null for the active session.
+        // Robustness: If this is a recurring shift, check if the timestamps are from today.
         if (activeAssignment) {
-            const nowTime = localNow.getUTCHours() * 60 + localNow.getUTCMinutes();
-            const [endH, endM] = (activeAssignment.job.endTimeStr || "23:59").split(':').map(Number);
+            const endTimeStr = activeAssignment.job.endTimeStr || "23:59";
+            const startTimeStr = activeAssignment.job.startTimeStr || "00:00";
+            const [endH, endM] = endTimeStr.split(':').map(Number);
             const endTimeMins = endH * 60 + endM;
 
             // 1. Reset stale timestamps for recurring shifts (TEMPLATE ONLY)
             if (activeAssignment.isRecurring) {
                 const clockInDate = activeAssignment.clockIn ? new Date(activeAssignment.clockIn) : null;
                 if (clockInDate && (clockInDate < startOfTodayUTC || clockInDate > endOfTodayUTC)) {
-                    // This is a safety reset for the template record itself if it leaked data
                     activeAssignment.clockIn = null;
                     activeAssignment.clockOut = null;
                 }
@@ -105,38 +102,29 @@ export async function GET(request: NextRequest) {
             const isPastDay = shiftDate < startOfTodayUTC;
 
             // 2. Auto clock-out if past end time OR if it's a shift from a previous day
-            if (activeAssignment.clockIn && !activeAssignment.clockOut && (isPastDay || nowTime > endTimeMins)) {
-                // Build the auto-clock-out time in the WORKER'S local timezone
-                // shiftDay is in UTC; we need to place endH:endM in the worker's local tz
-                const shiftDay = activeAssignment.date ? new Date(activeAssignment.date) : new Date(activeAssignment.clockIn);
-                
-                // Create a date for the shift day at midnight UTC
-                const autoClockOut = new Date(shiftDay);
-                // Set the time to endH:endM in UTC, then add the tzOffset to convert from local -> UTC
-                // e.g. endTimeStr "17:00" CDT (offset 300) => 17:00 + 300min = 22:00 UTC
-                autoClockOut.setUTCHours(endH, endM, 0, 0);
-                autoClockOut.setTime(autoClockOut.getTime() + (tzOffset * 60 * 1000));
-                
-                // If it's an overnight shift (end time is smaller than start time), add 1 day
-                const [startH, startM] = (activeAssignment.job.startTimeStr || "00:00").split(':').map(Number);
-                if (endH < startH || (endH === startH && endM < startM)) {
-                    autoClockOut.setDate(autoClockOut.getDate() + 1);
-                }
+            if (activeAssignment.clockIn && !activeAssignment.clockOut && (isPastDay || nowTimeMins > endTimeMins)) {
+                // Use localShiftEndToUTC for DST-aware, overnight-aware clock-out
+                const shiftDateStr = toLocalDateStr(
+                    activeAssignment.date ? new Date(activeAssignment.date) : new Date(activeAssignment.clockIn),
+                    tz
+                );
+                const autoClockOut = localShiftEndToUTC(shiftDateStr, startTimeStr, endTimeStr, tz);
 
-                // Safety: if clockOut is still before clockIn (edge case), 
-                // set clockOut to clockIn + shift duration
+                // Safety: if clockOut is still before clockIn (shouldn't happen now, but guard anyway)
+                let finalClockOut = autoClockOut;
                 if (autoClockOut.getTime() <= activeAssignment.clockIn.getTime()) {
-                    const shiftDurationMins = ((endH * 60 + endM) - (startH * 60 + startM) + 1440) % 1440;
-                    autoClockOut.setTime(activeAssignment.clockIn.getTime() + shiftDurationMins * 60 * 1000);
+                    const [sH, sM] = startTimeStr.split(':').map(Number);
+                    const shiftDurationMins = ((endH * 60 + endM) - (sH * 60 + sM) + 1440) % 1440;
+                    finalClockOut = new Date(activeAssignment.clockIn.getTime() + shiftDurationMins * 60 * 1000);
                 }
 
-                const diffMinutes = (autoClockOut.getTime() - activeAssignment.clockIn.getTime()) / (1000 * 60);
+                const diffMinutes = (finalClockOut.getTime() - activeAssignment.clockIn.getTime()) / (1000 * 60);
                 const breakTimeMinutes = activeAssignment.breakTimeMinutes || 0;
                 const workedHours = parseFloat(Math.max(0, (diffMinutes - breakTimeMinutes) / 60).toFixed(2));
 
                 activeAssignment = await prisma.jobAssignment.update({
                     where: { id: activeAssignment.id },
-                    data: { clockOut: autoClockOut, workedHours } as any,
+                    data: { clockOut: finalClockOut, workedHours } as any,
                     include: {
                         job: {
                             include: {
@@ -166,7 +154,8 @@ export async function POST(request: NextRequest) {
         const session = await getSession();
         if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-        const tzOffset = parseInt(request.headers.get("x-timezone-offset") || "0");
+        // Resolve timezone ONCE
+        const tz = resolveTimezone(request);
         const body = await request.json();
         const { action, assignmentId } = body; // action: 'CLOCK_IN' or 'CLOCK_OUT'
 
@@ -184,19 +173,13 @@ export async function POST(request: NextRequest) {
         }
 
         const now = new Date();
-        const localNow = new Date(now.getTime() - (tzOffset * 60 * 1000));
 
         if (action === "CLOCK_IN") {
             let targetAssignmentId = assignmentId;
-            
+
             // If it's a recurring template, materialize it into a specific date instance
             if (assignment.isRecurring) {
-                // Check if already materialized today (using worker's calendar day).
-                const localTodayStart = new Date(localNow);
-                localTodayStart.setUTCHours(0,0,0,0);
-                // Convert back to UTC for DB query
-                const dbTodayStart = new Date(localTodayStart.getTime() + (tzOffset * 60 * 1000));
-                const dbTodayEnd = new Date(dbTodayStart.getTime() + 24 * 60 * 60 * 1000 - 1);
+                const { start: dbTodayStart, end: dbTodayEnd } = getLocalDayBoundsUTC(tz);
 
                 const existingInstance = await prisma.jobAssignment.findFirst({
                     where: {
@@ -213,7 +196,7 @@ export async function POST(request: NextRequest) {
                         return NextResponse.json({ error: "Already clocked in" }, { status: 400 });
                     }
                 } else {
-                    // Create new instance for today (use the computed dbTodayStart)
+                    // Create new instance for today
                     const newInstance = await prisma.jobAssignment.create({
                         data: {
                             workerId: session.user.id,
@@ -233,7 +216,7 @@ export async function POST(request: NextRequest) {
 
             const updated = await prisma.jobAssignment.update({
                 where: { id: targetAssignmentId },
-                data: { clockIn: now, clockOut: null } 
+                data: { clockIn: now, clockOut: null }
             });
             return NextResponse.json(updated);
         } else if (action === "CLOCK_OUT") {

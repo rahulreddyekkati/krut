@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { resolveTimezone, localTimeToUTC } from "@/lib/timezone";
 
 export async function GET(request: NextRequest) {
     try {
@@ -17,10 +18,9 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: "Missing date range" }, { status: 400 });
         }
 
-        const startDate = new Date(startDateStr);
-        startDate.setHours(0, 0, 0, 0);
-        const endDate = new Date(endDateStr);
-        endDate.setHours(23, 59, 59, 999);
+        const tz = resolveTimezone(request);
+        const startDate = localTimeToUTC(startDateStr, "00:00", tz);
+        const endDate = localTimeToUTC(endDateStr, "23:59", tz);
 
         // Scoping logic (similar to /api/users)
         const where: any = {};

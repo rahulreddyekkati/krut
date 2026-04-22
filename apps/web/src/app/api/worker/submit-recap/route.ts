@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { resolveTimezone, getLocalDayBoundsUTC } from "@/lib/timezone";
 
 export async function POST(request: NextRequest) {
     try {
@@ -32,11 +33,8 @@ export async function POST(request: NextRequest) {
             });
         } else {
             // Fallback: find today's instance for this job/worker.
-            const now = new Date();
-            const startOfToday = new Date(now);
-            startOfToday.setHours(0, 0, 0, 0);
-            const endOfToday = new Date(now);
-            endOfToday.setHours(23, 59, 59, 999);
+            const tz = resolveTimezone(request);
+            const { start: startOfToday, end: endOfToday } = getLocalDayBoundsUTC(tz);
 
             assignment = await prisma.jobAssignment.findFirst({
                 where: { 

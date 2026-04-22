@@ -12,10 +12,13 @@ export async function GET(request: NextRequest) {
         // Adjust "now" to local time based on the offset for hour/minute comparisons
         const localNow = new Date(now.getTime() - (tzOffset * 60 * 1000));
         
-        const startOfToday = new Date(now);
-        startOfToday.setHours(0, 0, 0, 0);
-        const endOfToday = new Date(now);
-        endOfToday.setHours(23, 59, 59, 999);
+        // Compute "today" boundaries in the WORKER's local timezone, stored as UTC
+        // localNow represents the worker's local clock (but stored in a Date object using UTC fields)
+        const startOfToday = new Date(localNow);
+        startOfToday.setUTCHours(0, 0, 0, 0);
+        // Convert back to UTC for DB comparison
+        const startOfTodayUTC = new Date(startOfToday.getTime() + (tzOffset * 60 * 1000));
+        const endOfTodayUTC = new Date(startOfTodayUTC.getTime() + 24 * 60 * 60 * 1000 - 1);
 
         // 1. Find the currently active shift (Clocked In but not Out)
         // This takes priority over "today's template" because a worker might have a stale shift from yesterday.
@@ -41,7 +44,7 @@ export async function GET(request: NextRequest) {
                 where: {
                     workerId: session.user.id,
                     OR: [
-                        { date: { gte: startOfToday, lte: endOfToday } },
+                        { date: { gte: startOfTodayUTC, lte: endOfTodayUTC } },
                         {
                             isRecurring: true,
                             dayOfWeek: now.getDay()
@@ -64,7 +67,7 @@ export async function GET(request: NextRequest) {
                     where: {
                         workerId: session.user.id,
                         jobId: activeAssignment.jobId,
-                        date: { gte: startOfToday, lte: endOfToday },
+                        date: { gte: startOfTodayUTC, lte: endOfTodayUTC },
                         isRecurring: false
                     },
                     include: {
@@ -91,31 +94,36 @@ export async function GET(request: NextRequest) {
             // 1. Reset stale timestamps for recurring shifts (TEMPLATE ONLY)
             if (activeAssignment.isRecurring) {
                 const clockInDate = activeAssignment.clockIn ? new Date(activeAssignment.clockIn) : null;
-                if (clockInDate && (clockInDate < startOfToday || clockInDate > endOfToday)) {
+                if (clockInDate && (clockInDate < startOfTodayUTC || clockInDate > endOfTodayUTC)) {
                     // This is a safety reset for the template record itself if it leaked data
                     activeAssignment.clockIn = null;
                     activeAssignment.clockOut = null;
                 }
             }
 
-            const shiftDate = activeAssignment.date ? new Date(activeAssignment.date) : startOfToday;
-            const isPastDay = shiftDate < startOfToday;
+            const shiftDate = activeAssignment.date ? new Date(activeAssignment.date) : startOfTodayUTC;
+            const isPastDay = shiftDate < startOfTodayUTC;
 
             // 2. Auto clock-out if past end time OR if it's a shift from a previous day
             if (activeAssignment.clockIn && !activeAssignment.clockOut && (isPastDay || nowTime > endTimeMins)) {
-                // Use the shift date (not clockIn) as the base for computing end time
+                // Build the auto-clock-out time in the WORKER'S local timezone
+                // shiftDay is in UTC; we need to place endH:endM in the worker's local tz
                 const shiftDay = activeAssignment.date ? new Date(activeAssignment.date) : new Date(activeAssignment.clockIn);
+                
+                // Create a date for the shift day at midnight UTC
                 const autoClockOut = new Date(shiftDay);
+                // Set the time to endH:endM in UTC, then add the tzOffset to convert from local -> UTC
+                // e.g. endTimeStr "17:00" CDT (offset 300) => 17:00 + 300min = 22:00 UTC
+                autoClockOut.setUTCHours(endH, endM, 0, 0);
+                autoClockOut.setTime(autoClockOut.getTime() + (tzOffset * 60 * 1000));
                 
                 // If it's an overnight shift (end time is smaller than start time), add 1 day
                 const [startH, startM] = (activeAssignment.job.startTimeStr || "00:00").split(':').map(Number);
                 if (endH < startH || (endH === startH && endM < startM)) {
                     autoClockOut.setDate(autoClockOut.getDate() + 1);
                 }
-                
-                autoClockOut.setHours(endH, endM, 0, 0);
 
-                // Safety: if clockOut is still before clockIn (timezone edge case), 
+                // Safety: if clockOut is still before clockIn (edge case), 
                 // set clockOut to clockIn + shift duration
                 if (autoClockOut.getTime() <= activeAssignment.clockIn.getTime()) {
                     const shiftDurationMins = ((endH * 60 + endM) - (startH * 60 + startM) + 1440) % 1440;

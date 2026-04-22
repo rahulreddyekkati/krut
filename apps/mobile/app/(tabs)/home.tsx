@@ -171,15 +171,15 @@ export default function HomeTab() {
         </View>
 
         {/* ─── Pending Recap Banners ─── */}
-        {pendingRecaps.map(recap => (
+        {pendingRecaps.map((recap: any) => (
           <TouchableOpacity
-            key={recap.id}
+            key={recap.assignmentId}
             style={styles.recapBanner}
             onPress={() => {
-              const shiftDate = recap.date
-                ? new Date(recap.date).toISOString().split('T')[0]
+              const shiftDate = recap.shiftDate
+                ? new Date(recap.shiftDate).toISOString().split('T')[0]
                 : new Date().toISOString().split('T')[0];
-              router.push(`/recap/${recap.jobId}?date=${shiftDate}&assignmentId=${recap.id}`);
+              router.push(`/recap/${recap.jobId}?date=${shiftDate}&assignmentId=${recap.assignmentId}`);
             }}
           >
             <View>

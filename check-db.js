@@ -7,10 +7,14 @@ const libsql = createClient({
 });
 
 async function main() {
-    const jobsInfo = await libsql.execute("PRAGMA table_info(Job)");
-    console.log("Job Columns:", jobsInfo.rows.map(r => r.name));
-    
-    const assignInfo = await libsql.execute("PRAGMA table_info(JobAssignment)");
-    console.log("JobAssignment Columns:", assignInfo.rows.map(r => r.name));
+    const assignments = await libsql.execute(`
+        SELECT a.id, a.date, a.clockIn, a.clockOut, a.workedHours, j.startTimeStr, j.endTimeStr, j.title
+        FROM JobAssignment a 
+        JOIN Job j ON a.jobId = j.id 
+        WHERE a.clockOut IS NOT NULL
+        ORDER BY a.clockOut DESC LIMIT 5
+    `);
+    console.log("Recent clocked-out assignments:");
+    assignments.rows.forEach(r => console.log(r));
 }
 main();

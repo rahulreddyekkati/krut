@@ -132,6 +132,10 @@ export async function GET(request: NextRequest) {
                 where: {
                     job: whereJob,
                     status: "RECAP_PENDING",
+                    OR: [
+                        { recap: { is: null } },
+                        { recap: { status: "REJECTED" } }
+                    ],
                     ...assignmentDateFilter
                 },
                 include: {

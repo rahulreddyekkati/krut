@@ -79,8 +79,11 @@ export async function GET(request: NextRequest) {
         const pendingRecaps = await prisma.jobAssignment.count({
             where: {
                 job: whereJob,
-                clockOut: { not: null },
-                recap: { is: null },
+                status: "RECAP_PENDING",
+                OR: [
+                    { recap: { is: null } },
+                    { recap: { status: "REJECTED" } }
+                ],
                 ...assignmentDateFilter
             }
         });

@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { randomUUID } from "crypto";
 import { ZodError } from "zod";
 
 /**
@@ -33,7 +32,7 @@ export function handleApiError(error: unknown): NextResponse {
     }
 
     // Unknown / unexpected errors — log full details server-side only
-    const errorId = randomUUID();
+    const errorId = crypto.randomUUID();
     console.error(`[ERROR ${errorId}]`, error);
 
     // Prisma unique constraint → 409

@@ -139,13 +139,17 @@ export default function RecapsPage() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "1rem" }}>
                 <div>
                     <h1 className="heading h2" style={{ color: '#111827' }}>Recaps</h1>
-                    <p className="text-secondary" style={{ color: '#6b7280' }}>Review and approve submitted recaps.</p>
+                    <p className="text-secondary" style={{ color: '#6b7280' }}>Review and approve submitted worker recaps.</p>
                 </div>
             </div>
 
             {/* TABS */}
             <div style={{ display: "flex", gap: "2rem", borderBottom: "1px solid #e5e7eb", marginTop: "1.5rem" }}>
-                {["Pending Review", "Incomplete", "Reviewed"].map((label, i) => (
+                {[
+                    { label: "Pending Review", count: pendingRecaps.length },
+                    { label: "Incomplete", count: incompleteRecaps.length },
+                    { label: "Reviewed", count: 0 }
+                ].map((tab, i) => (
                     <div
                         key={i}
                         onClick={() => setActiveTab(i)}
@@ -157,9 +161,24 @@ export default function RecapsPage() {
                             color: activeTab === i ? "#6366f1" : "#6b7280",
                             borderBottom: activeTab === i ? "2px solid #6366f1" : "2px solid transparent",
                             marginBottom: "-1px",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.5rem"
                         }}
                     >
-                        {label} {i === 0 && pendingRecaps.length > 0 && `(${pendingRecaps.length})`}
+                        {tab.label}
+                        {tab.count > 0 && (
+                            <span style={{
+                                background: i === 1 ? "#f59e0b" : "#6366f1",
+                                color: "white",
+                                fontSize: "0.7rem",
+                                padding: "0.1rem 0.5rem",
+                                borderRadius: "10px",
+                                fontWeight: 700
+                            }}>
+                                {tab.count}
+                            </span>
+                        )}
                     </div>
                 ))}
             </div>
@@ -173,7 +192,7 @@ export default function RecapsPage() {
                         <div style={{ padding: "4rem 2rem", textAlign: "center" }}>
                             <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>✅</div>
                             <h3 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#111827", marginBottom: "0.25rem" }}>All caught up!</h3>
-                            <p style={{ color: "#6b7280" }}>No recaps are waiting for your review.</p>
+                            <p style={{ color: "#6b7280" }}>No recaps are currently waiting for your review.</p>
                         </div>
                     ) : (
                         <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
@@ -201,19 +220,15 @@ export default function RecapsPage() {
                                             <td style={tdStyle}>
                                                 <a
                                                     href={`/admin/recaps/${r.id}`}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
+                                                    className="btn-primary"
                                                     style={{
                                                         padding: "0.375rem 1rem",
                                                         background: "#6366f1",
                                                         color: "white",
-                                                        border: "none",
                                                         borderRadius: "8px",
                                                         fontSize: "0.75rem",
                                                         fontWeight: 700,
-                                                        cursor: "pointer",
-                                                        textDecoration: "none",
-                                                        display: "inline-block"
+                                                        textDecoration: "none"
                                                     }}
                                                 >
                                                     View
@@ -237,7 +252,7 @@ export default function RecapsPage() {
                         <div style={{ padding: "4rem 2rem", textAlign: "center" }}>
                             <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>🎉</div>
                             <h3 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#111827", marginBottom: "0.25rem" }}>All recaps submitted!</h3>
-                            <p style={{ color: "#6b7280" }}>Every worker has submitted their recap.</p>
+                            <p style={{ color: "#6b7280" }}>Every worker has submitted their recap for current shifts.</p>
                         </div>
                     ) : (
                         <PendingRecapsTable recaps={incompleteRecaps} />
@@ -271,7 +286,9 @@ export default function RecapsPage() {
                         {loadingReviewed ? (
                             <p style={{ padding: "2rem", textAlign: "center", color: "#9ca3af" }}>Loading reviewed recaps...</p>
                         ) : reviewedRecaps.length === 0 ? (
-                            <p style={{ padding: "3rem 2rem", textAlign: "center", color: "#9ca3af", fontSize: "0.95rem" }}>No reviewed recaps found for this date.</p>
+                            <div style={{ padding: "4rem 2rem", textAlign: "center" }}>
+                                <p style={{ color: "#9ca3af", fontSize: "0.95rem" }}>No reviewed recaps found for this date.</p>
+                            </div>
                         ) : (
                             <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
                                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -298,19 +315,14 @@ export default function RecapsPage() {
                                                 <td style={tdStyle}>
                                                     <a
                                                         href={`/admin/recaps/${r.id}`}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
                                                         style={{
                                                             padding: "0.375rem 1rem",
                                                             background: "#6366f1",
                                                             color: "white",
-                                                            border: "none",
                                                             borderRadius: "8px",
                                                             fontSize: "0.75rem",
                                                             fontWeight: 700,
-                                                            cursor: "pointer",
-                                                            textDecoration: "none",
-                                                            display: "inline-block"
+                                                            textDecoration: "none"
                                                         }}
                                                     >
                                                         View

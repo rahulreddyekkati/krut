@@ -369,7 +369,11 @@ export default function WorkerDashboard({
             console.log(`Executing ${action} on ${endpoint} with`, body);
             const res = await fetch(endpoint, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { 
+                    "Content-Type": "application/json",
+                    "x-timezone": Intl.DateTimeFormat().resolvedOptions().timeZone,
+                    "x-timezone-offset": new Date().getTimezoneOffset().toString()
+                },
                 body: JSON.stringify(body)
             });
             const data = await res.json();

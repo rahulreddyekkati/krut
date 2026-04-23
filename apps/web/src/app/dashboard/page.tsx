@@ -27,10 +27,15 @@ export default function DashboardPage() {
     const router = useRouter();
 
     const fetchWorkerData = useCallback(async () => {
+        const tzHeaders = {
+            "x-timezone": Intl.DateTimeFormat().resolvedOptions().timeZone,
+            "x-timezone-offset": new Date().getTimezoneOffset().toString()
+        };
+
         const [clockRes, shiftsRes, openRes] = await Promise.all([
-            fetch("/api/timeclock"),
-            fetch("/api/jobs/my-shifts"),
-            fetch("/api/jobs/open-shifts")
+            fetch("/api/timeclock", { headers: tzHeaders }),
+            fetch("/api/jobs/my-shifts", { headers: tzHeaders }),
+            fetch("/api/jobs/open-shifts", { headers: tzHeaders })
         ]);
         if (clockRes.ok) setActiveAssignment((await clockRes.json()).activeAssignment);
         if (shiftsRes.ok) setMyShifts(await shiftsRes.json());

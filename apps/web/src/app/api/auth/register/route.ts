@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import prisma from "@/lib/prisma";
+import { handleApiError } from "@/lib/apiError";
+import { validate, registerSchema } from "@/lib/validate";
 
 export async function POST(request: NextRequest) {
     try {
-        const { token, password, name, email } = await request.json();
+        const body = await request.json();
+        const { token, password, name, email } = validate(registerSchema, body);
 
         const invite = await prisma.invite.findUnique({
             where: { token },
@@ -45,7 +48,6 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({ success: true });
     } catch (error) {
-        console.error("Registration error:", error);
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+        return handleApiError(error);
     }
 }

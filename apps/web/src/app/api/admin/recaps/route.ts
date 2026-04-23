@@ -1,18 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getSession } from "@/lib/auth";
+import { requireAuth } from "@/lib/auth";
+import { handleApiError, AppError } from "@/lib/apiError";
 
 export async function GET(request: NextRequest) {
     try {
-        const session = await getSession();
-        if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-        const requester = await prisma.user.findUnique({ where: { id: session.user.id } });
-        if (!requester || (requester.role !== "ADMIN" && requester.role !== "MARKET_MANAGER")) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
+        const user = await requireAuth(request, ["ADMIN", "MARKET_MANAGER"]);
 
         const dateParam = request.nextUrl.searchParams.get("date");
+        const statusParam = request.nextUrl.searchParams.get("status");
 
         let dateFilter: any = {};
         if (dateParam) {
@@ -28,13 +24,20 @@ export async function GET(request: NextRequest) {
         }
 
         let jobWhere: any = {};
-        if (requester.role === "MARKET_MANAGER") {
-            jobWhere = { store: { marketId: requester.managedMarketId } };
+        if (user.role === "MARKET_MANAGER") {
+            jobWhere = { store: { marketId: user.managedMarketId } };
+        }
+
+        let statusFilter: any = {};
+        if (statusParam) {
+            const statuses = statusParam.split(',');
+            statusFilter = { status: { in: statuses } };
         }
 
         const recaps = await (prisma.recap as any).findMany({
             where: {
                 ...dateFilter,
+                ...statusFilter,
                 job: jobWhere
             },
             include: {
@@ -86,71 +89,9 @@ export async function GET(request: NextRequest) {
         });
 
         return NextResponse.json({ recaps: data });
-    } catch (error: any) {
-        console.error("Recaps list error:", error);
-        return NextResponse.json({ error: "Internal server error", msg: error.message, stack: error.stack }, { status: 500 });
-    }
-}
-
-// PATCH: approve or reject a recap
-export async function PATCH(request: NextRequest) {
-    try {
-        const session = await getSession();
-        if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-        const requester = await prisma.user.findUnique({ where: { id: session.user.id } });
-        if (!requester || (requester.role !== "ADMIN" && requester.role !== "MARKET_MANAGER")) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
-
-        const { recapId, action, managerReview } = await request.json();
-
-        if (!recapId || !action) {
-            return NextResponse.json({ error: "recapId and action are required" }, { status: 400 });
-        }
-
-        const recap = await (prisma.recap as any).findUnique({
-            where: { id: recapId },
-            include: {
-                job: {
-                    include: {
-                        assignments: {
-                            include: { worker: true }
-                        }
-                    }
-                }
-            }
-        });
-
-        if (!recap) {
-            return NextResponse.json({ error: "Recap not found" }, { status: 404 });
-        }
-
-        if (action === "APPROVE") {
-            await (prisma.recap as any).update({
-                where: { id: recapId },
-                data: {
-                    status: "APPROVED",
-                    managerReview: managerReview || null
-                }
-            });
-
-            return NextResponse.json({ success: true, message: "Recap approved. Reimbursement added to pay cycle." });
-        } else if (action === "REJECT") {
-            await (prisma.recap as any).update({
-                where: { id: recapId },
-                data: {
-                    status: "REJECTED",
-                    managerReview: managerReview || null
-                }
-            });
-
-            return NextResponse.json({ success: true, message: "Recap rejected." });
-        }
-
-        return NextResponse.json({ error: "Invalid action" }, { status: 400 });
     } catch (error) {
-        console.error("Recap approve error:", error);
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+        return handleApiError(error);
     }
 }
+
+

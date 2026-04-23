@@ -1,119 +1,151 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getSession } from "@/lib/auth";
+import { requireAuth } from "@/lib/auth";
+import { handleApiError, AppError } from "@/lib/apiError";
+import { validate, recapSchema } from "@/lib/validate";
 import { resolveTimezone, getLocalDayBoundsUTC } from "@/lib/timezone";
 
 export async function POST(request: NextRequest) {
     try {
-        const session = await getSession();
-        if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        const user = await requireAuth(request, ["WORKER"]);
 
         const body = await request.json();
+
+        // Validate all recap fields via Zod (MAJ-11: no negatives, MAJ-12: 2MB limit)
         const {
             jobId,
-            assignmentId, // NEW: Expect assignmentId
+            assignmentId,
             rushLevel,
             customersSampled,
             receiptTotal,
             reimbursementTotal,
-            inventoryData,
             customerFeedback,
-            receiptUrl
-        } = body;
+            receiptUrl,
+            inventoryData,
+        } = validate(recapSchema, body);
 
-        if (!jobId) {
-            return NextResponse.json({ error: "jobId is required" }, { status: 400 });
-        }
-
-        // 1. Find the specific assignment (materialized instance)
-        let assignment;
+        // Find the specific assignment
+        let assignment: any;
         if (assignmentId) {
             assignment = await prisma.jobAssignment.findFirst({
-                where: { id: assignmentId, workerId: session.user.id }
+                where: { id: assignmentId, workerId: user.id },
+                include: { job: true }
             });
         } else {
-            // Fallback: find today's instance for this job/worker.
             const tz = resolveTimezone(request);
             const { start: startOfToday, end: endOfToday } = getLocalDayBoundsUTC(tz);
-
             assignment = await prisma.jobAssignment.findFirst({
-                where: { 
-                    jobId, 
-                    workerId: session.user.id,
+                where: {
+                    jobId,
+                    workerId: user.id,
                     OR: [
                         { date: { gte: startOfToday, lte: endOfToday } },
                         { isRecurring: true }
                     ]
                 },
-                orderBy: { date: 'desc' }
+                include: { job: true },
+                orderBy: { date: "desc" }
             });
         }
 
         if (!assignment) {
-            return NextResponse.json({ error: "No active assignment found for this job today" }, { status: 404 });
+            throw new AppError("No active assignment found for this job today", 404);
         }
 
-        // Build SKU data from inventoryData
-        const skuData: { 
-            skuName: string; 
+        // CRIT-05: Require clockIn, clockOut, AND job status === RECAP_PENDING
+        if (!assignment.clockIn) {
+            throw new AppError("Cannot submit recap — you have not clocked in for this shift", 400);
+        }
+        if (!assignment.clockOut) {
+            throw new AppError("Cannot submit recap — you must clock out before submitting", 400);
+        }
+        if (assignment.status !== "RECAP_PENDING") {
+            throw new AppError(
+                `Cannot submit recap — assignment status is '${assignment.status}', expected 'RECAP_PENDING'`,
+                400
+            );
+        }
+
+        // Build SKU data — inventory validation already done by Zod recapSchema
+        const skuData: {
+            skuName: string;
             beginningInventory: number;
             purchased: number;
             bottlesSold: number;
             storePrice: number;
         }[] = [];
-        if (inventoryData && typeof inventoryData === 'object') {
-            Object.values(inventoryData).forEach((item: any) => {
-                // If there's any data for this item, store it
-                if (item.name) {
-                    const beginning = parseInt(item.beginning);
-                    const purchased = parseInt(item.purchased);
-                    const sold = parseInt(item.sold);
-                    const price = parseFloat(item.storePrice);
 
+        if (inventoryData && typeof inventoryData === "object") {
+            Object.values(inventoryData).forEach((item: any) => {
+                if (item.name) {
                     skuData.push({
-                        skuName: item.name || 'Unknown',
-                        beginningInventory: isNaN(beginning) ? 0 : beginning,
-                        purchased: isNaN(purchased) ? 0 : purchased,
-                        bottlesSold: isNaN(sold) ? 0 : sold,
-                        storePrice: isNaN(price) ? 0 : price
+                        skuName: item.name,
+                        beginningInventory: parseInt(item.beginning) || 0,
+                        purchased: parseInt(item.purchased) || 0,
+                        bottlesSold: parseInt(item.sold) || 0,
+                        storePrice: parseFloat(item.storePrice) || 0,
                     });
                 }
             });
         }
 
-        // Create the recap linked to the assignment
-        const recap = await (prisma.recap as any).create({
-            data: {
-                jobId,
-                assignmentId: assignment.id, // NEW: Link to specific assignment
-                consumersAttended: parseInt(customersSampled) || 0,
-                consumersSampled: parseInt(customersSampled) || 0,
-                reimbursement: parseFloat(reimbursementTotal) || 0,
-                receiptTotal: parseFloat(receiptTotal) || 0,
-                rushLevel: rushLevel || null,
-                customerFeedback: customerFeedback || null,
-                receiptUrl: receiptUrl || null,
-                comments: customerFeedback || null,
-                status: "PENDING",
-                skus: {
-                    create: skuData
-                }
-            }
-        });
+        // MAJ-16: Wrap recap create + assignment update + job update in a single $transaction
+        const recap = await prisma.$transaction(async (tx: any) => {
+            const recapData = {
+                consumersAttended: customersSampled,
+                consumersSampled: customersSampled,
+                reimbursement: reimbursementTotal,
+                receiptTotal,
+                rushLevel: rushLevel ?? null,
+                customerFeedback: customerFeedback ?? null,
+                receiptUrl: receiptUrl ?? null,
+                comments: customerFeedback ?? null,
+                status: "PENDING"
+            };
 
-        // Update job status from RECAP_PENDING to COMPLETED
-        await prisma.job.update({
-            where: { id: jobId },
-            data: { status: "COMPLETED" }
+            // Check for existing rejected recap for this assignment
+            const existingRejected = await tx.recap.findFirst({
+                where: { assignmentId: assignment.id, status: "REJECTED" }
+            });
+
+            let created;
+            if (existingRejected) {
+                // Update the rejected recap — don't create a duplicate
+                created = await tx.recap.update({
+                    where: { id: existingRejected.id },
+                    data: { 
+                        ...recapData,
+                        skus: {
+                            deleteMany: {}, // Clear old SKUs
+                            create: skuData
+                        }
+                    }
+                });
+            } else {
+                // First submission — create new
+                created = await tx.recap.create({
+                    data: {
+                        ...recapData,
+                        jobId,
+                        assignmentId: assignment.id,
+                        skus: { create: skuData }
+                    }
+                });
+            }
+
+            // Job status stays RECAP_PENDING or moves to RECAP_PENDING if it was something else
+            // Actually, once submitted, the job status should probably stay RECAP_PENDING 
+            // until all recaps are approved.
+            await tx.job.update({
+                where: { id: jobId },
+                data: { status: "RECAP_PENDING" }
+            });
+
+            return created;
         });
 
         return NextResponse.json({ success: true, recap });
     } catch (error: any) {
-        console.error("Recap submit error:", error);
-        // If recap already exists
-        if (error?.code === 'P2002') {
-            return NextResponse.json({ error: "Recap already submitted for this job" }, { status: 409 });
-        }
-        return NextResponse.json({ error: "Internal server error: " + error.message, details: error }, { status: 500 });
+        return handleApiError(error);
     }
 }

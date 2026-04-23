@@ -43,6 +43,7 @@ export async function POST(
             data: {
                 clockOut: clockOutTime,
                 workedHours,
+                status: "RECAP_PENDING",
                 job: { update: { status: "RECAP_PENDING" } }
             }
         });

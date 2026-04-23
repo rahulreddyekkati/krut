@@ -8,8 +8,18 @@
   "engines": {
     "node": ">=18"
   },
+  "scripts": {
+    "prisma:generate": "./node_modules/.bin/prisma generate",
+    "prisma:migrate": "./node_modules/.bin/prisma migrate dev",
+    "prisma:studio": "./node_modules/.bin/prisma studio",
+    "prisma:push": "./node_modules/.bin/prisma db push"
+  },
   "devDependencies": {
     "@prisma/client": "^6.4.1",
     "prisma": "^6.4.1"
+  },
+  "dependencies": {
+    "@types/jsonwebtoken": "^9.0.10",
+    "jsonwebtoken": "^9.0.3"
   }
 }

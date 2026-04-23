@@ -1,37 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getSession } from "@/lib/auth";
+import { requireAuth } from "@/lib/auth";
+import { handleApiError } from "@/lib/apiError";
 
 // GET /api/markets - List all markets
-export async function GET() {
+export async function GET(request: NextRequest) {
     try {
-        const session = await getSession();
-        if (!session || (session.user.role !== "ADMIN" && session.user.role !== "MARKET_MANAGER")) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
+        const user = await requireAuth(request, ["ADMIN", "MARKET_MANAGER"]);
+
+        // MAJ-04: Market Managers only see their own market
+        const where: any =
+            user.role === "MARKET_MANAGER"
+                ? { id: user.managedMarketId }
+                : {};
 
         const markets = await prisma.market.findMany({
+            where,
             include: {
-                _count: {
-                    select: { stores: true, managers: true, jobs: true }
-                }
+                _count: { select: { stores: true, managers: true, jobs: true } }
             },
             orderBy: { name: "asc" }
         });
 
         return NextResponse.json(markets);
     } catch (error) {
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+        return handleApiError(error);
     }
 }
 
 // POST /api/markets - Create a new market
 export async function POST(request: NextRequest) {
     try {
-        const session = await getSession();
-        if (!session || session.user.role !== "ADMIN") {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
+        const user = await requireAuth(request, ["ADMIN"]);
 
         const { name } = await request.json();
         if (!name) {
@@ -44,9 +44,6 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json(market);
     } catch (error) {
-        if ((error as any).code === "P2002") {
-            return NextResponse.json({ error: "Market name already exists" }, { status: 400 });
-        }
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+        return handleApiError(error);
     }
 }

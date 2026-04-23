@@ -88,8 +88,7 @@ export async function GET(request: NextRequest) {
             const assignments = await prisma.jobAssignment.findMany({
                 where: {
                     job: whereJob,
-                    clockIn: { not: null },
-                    clockOut: null
+                    status: "IN_PROGRESS"
                 },
                 include: {
                     worker: { select: { name: true } },
@@ -132,8 +131,7 @@ export async function GET(request: NextRequest) {
             const assignments = await prisma.jobAssignment.findMany({
                 where: {
                     job: whereJob,
-                    clockOut: { not: null },
-                    recap: { is: null },
+                    status: "RECAP_PENDING",
                     ...assignmentDateFilter
                 },
                 include: {

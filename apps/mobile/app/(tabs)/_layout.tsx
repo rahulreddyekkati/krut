@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 import { Text } from 'react-native';
 
 export default function TabLayout() {
-  const { token, isLoading } = useAuth();
+  const { token, isLoading, user } = useAuth();
 
   useEffect(() => {
     if (!isLoading && !token) {
@@ -14,6 +14,8 @@ export default function TabLayout() {
   }, [isLoading, token]);
 
   if (isLoading || !token) return null;
+
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'MARKET_MANAGER';
 
   return (
     <Tabs
@@ -40,16 +42,17 @@ export default function TabLayout() {
       }}
     >
       <Tabs.Screen
-        name="home"
+        name="index"
         options={{
           title: 'Home',
           tabBarIcon: ({ color }) => <Text style={{ fontSize: 22 }}>🏠</Text>,
         }}
       />
       <Tabs.Screen
-        name="index"
+        name="my-shifts"
         options={{
           title: 'My Shifts',
+          href: isAdmin ? null : undefined, // Hide for ADMIN/MARKET_MANAGER
           tabBarIcon: ({ color }) => <Text style={{ fontSize: 22 }}>📅</Text>,
         }}
       />
@@ -57,7 +60,25 @@ export default function TabLayout() {
         name="marketplace"
         options={{
           title: 'Open Shifts',
+          href: isAdmin ? null : undefined, // Hide for ADMIN/MARKET_MANAGER
           tabBarIcon: ({ color }) => <Text style={{ fontSize: 22 }}>🔍</Text>,
+        }}
+      />
+      {/* Admin specific tabs - we define them here to appear in bottom bar for Admin */}
+      <Tabs.Screen
+        name="recaps"
+        options={{
+          title: 'Recaps',
+          href: isAdmin ? '/(admin)/recaps' : null, // Only for ADMIN
+          tabBarIcon: ({ color }) => <Text style={{ fontSize: 22 }}>🧾</Text>,
+        }}
+      />
+      <Tabs.Screen
+        name="messages"
+        options={{
+          title: 'Messages',
+          href: isAdmin ? '/messages' : null, // Only for ADMIN
+          tabBarIcon: ({ color }) => <Text style={{ fontSize: 22 }}>💬</Text>,
         }}
       />
       <Tabs.Screen

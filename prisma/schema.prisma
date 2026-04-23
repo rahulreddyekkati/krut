@@ -18,19 +18,25 @@ model User {
   hourlyWage    Float?
   manualWorkedHours Float?
   
-  market        Market?   @relation("UserMarket", fields: [marketId], references: [id])
+  // Market membership (non-admin users belong to one market)
+  // onDelete: SetNull — user stays in DB if market is deleted; requires manual reassignment
+  market        Market?   @relation("UserMarket", fields: [marketId], references: [id], onDelete: SetNull)
   marketId      String?
   
-  // Managed scope
-  managedMarket   Market?   @relation("ManagedMarket", fields: [managedMarketId], references: [id])
+  // Market Manager scope
+  // onDelete: SetNull — manager stays if their market is deleted
+  managedMarket   Market?   @relation("ManagedMarket", fields: [managedMarketId], references: [id], onDelete: SetNull)
   managedMarketId String?
   
+  // onDelete: Restrict — do not silently delete work history; require explicit cleanup first
   jobs          JobAssignment[]
   createdJobs   Job[]     @relation("JobCreator")
 
+  // onDelete: Restrict — preserve request audit trail
   releaseRequests ReleaseRequest[]
   shiftRequests   ShiftRequest[]
   
+  // onDelete: Cascade — messages/notifications are owned by the user
   sentMessages     Message[]      @relation("SentMessages")
   notifications    Notification[]
   sentInvites      Invite[]       @relation("InviteSender")
@@ -43,6 +49,7 @@ model User {
 model Market {
   id        String   @id @default(cuid())
   name      String   @unique
+  // onDelete: Restrict — can't delete store if it still has jobs; require cleanup first
   stores    Store[]
   users     User[]   @relation("UserMarket")
   managers  User[]   @relation("ManagedMarket")
@@ -58,9 +65,11 @@ model Store {
   longitude Float
   radius    Float    @default(100)
   
-  market    Market   @relation(fields: [marketId], references: [id])
+  // onDelete: Restrict — don't silently delete a store that belongs to a market with active jobs
+  market    Market   @relation(fields: [marketId], references: [id], onDelete: Restrict)
   marketId  String
   
+  // onDelete: Restrict — jobs must be explicitly cleaned up before store deletion
   jobs      Job[]
   createdAt DateTime @default(now())
 }
@@ -70,21 +79,23 @@ model Job {
   title        String   @unique
   startTimeStr String   // HH:MM — e.g. "09:00"
   endTimeStr   String   // HH:MM — e.g. "17:00"
-  date         DateTime? // Added to support shift overrides and open shift specific dates
+  date         DateTime?
   bonus        Float    @default(0)
   status       String   @default("OPEN") // OPEN, ASSIGNED, ACCEPTED, IN_PROGRESS, RECAP_PENDING, COMPLETED, NO_SHOW
 
-  store     Store    @relation(fields: [storeId], references: [id])
+  // onDelete: Restrict — job must not be deleted if it has active assignments (preserve work history)
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Restrict)
   storeId   String
-  market    Market   @relation(fields: [marketId], references: [id])
+  market    Market   @relation(fields: [marketId], references: [id], onDelete: Restrict)
   marketId  String
 
-  createdBy User     @relation("JobCreator", fields: [creatorId], references: [id])
+  // onDelete: Restrict — preserve audit trail of who created the job
+  createdBy User     @relation("JobCreator", fields: [creatorId], references: [id], onDelete: Restrict)
   creatorId String
 
-  assignments JobAssignment[]
-  recaps      Recap[]
-
+  // onDelete: Cascade — assignments, recaps, requests have no meaning without the parent job
+  assignments     JobAssignment[]
+  recaps          Recap[]
   releaseRequests ReleaseRequest[]
   shiftRequests   ShiftRequest[]
 
@@ -95,9 +106,11 @@ model Job {
 
 model JobAssignment {
   id        String   @id @default(cuid())
-  job       Job      @relation(fields: [jobId], references: [id])
+  // onDelete: Cascade — assignment has no meaning if the job is deleted
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
   jobId     String
-  worker    User     @relation(fields: [workerId], references: [id])
+  // onDelete: Restrict — don't silently delete work history if worker is deleted
+  worker    User     @relation(fields: [workerId], references: [id], onDelete: Restrict)
   workerId  String
   
   date        DateTime?
@@ -108,7 +121,9 @@ model JobAssignment {
   clockOut  DateTime?
   breakTimeMinutes Int @default(0)
   workedHours      Float?
+  status    String   @default("ASSIGNED") // ASSIGNED, IN_PROGRESS, RECAP_PENDING, COMPLETED
 
+  // onDelete: Cascade — recap is tied to assignment; if assignment deleted, recap is moot
   recap     Recap?
 
   createdAt DateTime @default(now())
@@ -116,9 +131,11 @@ model JobAssignment {
 
 model ReleaseRequest {
   id        String   @id @default(cuid())
-  job       Job      @relation(fields: [jobId], references: [id])
+  // onDelete: Cascade — release request has no meaning without the job
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
   jobId     String
-  worker    User     @relation(fields: [workerId], references: [id])
+  // onDelete: Restrict — preserve audit trail
+  worker    User     @relation(fields: [workerId], references: [id], onDelete: Restrict)
   workerId  String
 
   date        DateTime?
@@ -133,9 +150,11 @@ model ReleaseRequest {
 
 model ShiftRequest {
   id        String   @id @default(cuid())
-  job       Job      @relation(fields: [jobId], references: [id])
+  // onDelete: Cascade — request has no meaning without the job
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
   jobId     String
-  worker    User     @relation(fields: [workerId], references: [id])
+  // onDelete: Restrict — preserve audit trail
+  worker    User     @relation(fields: [workerId], references: [id], onDelete: Restrict)
   workerId  String
 
   date        DateTime?
@@ -149,9 +168,11 @@ model ShiftRequest {
 
 model Recap {
   id                String   @id @default(cuid())
-  job               Job      @relation(fields: [jobId], references: [id])
+  // onDelete: Cascade — recap has no meaning without the job
+  job               Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
   jobId             String
-  assignment        JobAssignment @relation(fields: [assignmentId], references: [id])
+  // onDelete: Cascade — recap is entirely owned by the assignment
+  assignment        JobAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
   assignmentId      String   @unique
   
   consumersAttended Int
@@ -166,8 +187,10 @@ model Recap {
   managerReview     String?
   status            String   @default("PENDING") // PENDING, APPROVED, REJECTED
   
+  // onDelete: Cascade — overtime request tied to recap
   overtimeRequest   OvertimeRequest?
 
+  // onDelete: Cascade — SKU rows tied to recap
   skus              RecapSKU[]
   
   createdAt         DateTime @default(now())
@@ -175,7 +198,8 @@ model Recap {
 
 model OvertimeRequest {
   id        String   @id @default(cuid())
-  recap     Recap    @relation(fields: [recapId], references: [id])
+  // onDelete: Cascade — overtime request tied to recap
+  recap     Recap    @relation(fields: [recapId], references: [id], onDelete: Cascade)
   recapId   String   @unique
   minutes   Int
   reason    String
@@ -185,7 +209,8 @@ model OvertimeRequest {
 
 model RecapSKU {
   id                 String @id @default(cuid())
-  recap              Recap  @relation(fields: [recapId], references: [id])
+  // onDelete: Cascade — SKU rows have no meaning without the recap
+  recap              Recap  @relation(fields: [recapId], references: [id], onDelete: Cascade)
   recapId            String
   skuName            String
   beginningInventory Int    @default(0)
@@ -207,15 +232,18 @@ model ChatThread {
   id           String    @id @default(cuid())
   type         String    @default("DIRECT") // MARKET_MANAGER, ADMIN, DIRECT
   participants User[]
+  // onDelete: Cascade — messages owned by the thread
   messages     Message[]
   createdAt    DateTime  @default(now())
 }
 
 model Message {
   id        String     @id @default(cuid())
-  thread    ChatThread @relation(fields: [threadId], references: [id])
+  // onDelete: Cascade — message has no meaning without the thread
+  thread    ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
   threadId  String
-  sender    User       @relation("SentMessages", fields: [senderId], references: [id])
+  // onDelete: Restrict — preserve message history even if sender is deleted
+  sender    User       @relation("SentMessages", fields: [senderId], references: [id], onDelete: Restrict)
   senderId  String
   content   String
   createdAt DateTime   @default(now())
@@ -223,7 +251,8 @@ model Message {
 
 model Notification {
   id        String   @id @default(cuid())
-  user      User     @relation(fields: [userId], references: [id])
+  // onDelete: Cascade — notifications are owned by the user
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String
   title     String
   message   String
@@ -239,11 +268,13 @@ model Invite {
   hourlyWage Float?
   marketId  String?
   storeId   String?
-  sender    User     @relation("InviteSender", fields: [senderId], references: [id])
+  // onDelete: Restrict — preserve audit of who sent the invite
+  sender    User     @relation("InviteSender", fields: [senderId], references: [id], onDelete: Restrict)
   senderId  String
   expiresAt DateTime
   createdAt DateTime @default(now())
 }
+
 model InventoryItem {
   id        String   @id @default(cuid())
   name      String

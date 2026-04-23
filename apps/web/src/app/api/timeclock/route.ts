@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getSession } from "@/lib/auth";
+import { requireAuth } from "@/lib/auth";
+import { handleApiError, AppError } from "@/lib/apiError";
 import { resolveTimezone, getLocalDayBoundsUTC, localShiftEndToUTC, toLocalDateStr } from "@/lib/timezone";
 import { toZonedTime } from "date-fns-tz";
 
 export async function GET(request: NextRequest) {
     try {
-        const session = await getSession();
-        if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        const user = await requireAuth(request);
 
         // Resolve timezone ONCE per request
         const tz = resolveTimezone(request);
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
         // This takes priority over "today's template" because a worker might have a stale shift from yesterday.
         let activeAssignment = await prisma.jobAssignment.findFirst({
             where: {
-                workerId: session.user.id,
+                workerId: user.id,
                 clockIn: { not: null },
                 clockOut: null
             },
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
         if (!activeAssignment) {
             activeAssignment = await prisma.jobAssignment.findFirst({
                 where: {
-                    workerId: session.user.id,
+                    workerId: user.id,
                     OR: [
                         { date: { gte: startOfTodayUTC, lte: endOfTodayUTC } },
                         {
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
             if (activeAssignment?.isRecurring) {
                 const instance = await prisma.jobAssignment.findFirst({
                     where: {
-                        workerId: session.user.id,
+                        workerId: user.id,
                         jobId: activeAssignment.jobId,
                         date: { gte: startOfTodayUTC, lte: endOfTodayUTC },
                         isRecurring: false
@@ -124,7 +124,7 @@ export async function GET(request: NextRequest) {
 
                 activeAssignment = await prisma.jobAssignment.update({
                     where: { id: activeAssignment.id },
-                    data: { clockOut: finalClockOut, workedHours } as any,
+                    data: { clockOut: finalClockOut, workedHours, status: "RECAP_PENDING" } as any,
                     include: {
                         job: {
                             include: {
@@ -144,32 +144,30 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json({ activeAssignment });
     } catch (error) {
-        console.error("Timeclock status error:", error);
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+        return handleApiError(error);
     }
 }
 
 export async function POST(request: NextRequest) {
     try {
-        const session = await getSession();
-        if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        const user = await requireAuth(request);
 
         // Resolve timezone ONCE
         const tz = resolveTimezone(request);
         const body = await request.json();
-        const { action, assignmentId } = body; // action: 'CLOCK_IN' or 'CLOCK_OUT'
+        const { action, assignmentId } = body;
 
         if (!assignmentId || !action) {
-            return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+            throw new AppError("Missing required fields", 400);
         }
 
         const assignment = await prisma.jobAssignment.findUnique({
             where: { id: assignmentId },
-            include: { job: true }
+            include: { job: { include: { store: true } } }
         });
 
-        if (!assignment || assignment.workerId !== session.user.id) {
-            return NextResponse.json({ error: "Assignment not found or unauthorized" }, { status: 404 });
+        if (!assignment || assignment.workerId !== user.id) {
+            throw new AppError("Assignment not found or unauthorized", 404);
         }
 
         const now = new Date();
@@ -183,7 +181,7 @@ export async function POST(request: NextRequest) {
 
                 const existingInstance = await prisma.jobAssignment.findFirst({
                     where: {
-                        workerId: session.user.id,
+                        workerId: user.id,
                         jobId: assignment.jobId,
                         date: { gte: dbTodayStart, lte: dbTodayEnd },
                         isRecurring: false
@@ -196,10 +194,9 @@ export async function POST(request: NextRequest) {
                         return NextResponse.json({ error: "Already clocked in" }, { status: 400 });
                     }
                 } else {
-                    // Create new instance for today
                     const newInstance = await prisma.jobAssignment.create({
                         data: {
-                            workerId: session.user.id,
+                            workerId: user.id,
                             jobId: assignment.jobId,
                             date: dbTodayStart,
                             isRecurring: false,
@@ -214,40 +211,58 @@ export async function POST(request: NextRequest) {
                 }
             }
 
-            const updated = await prisma.jobAssignment.update({
-                where: { id: targetAssignmentId },
+            // MAJ-06: Atomic clock-in — only update if clockIn is still null
+            const updated = await prisma.jobAssignment.updateMany({
+                where: { id: targetAssignmentId, clockIn: null },
                 data: { clockIn: now, clockOut: null }
             });
-            return NextResponse.json(updated);
+            if (updated.count === 0) {
+                throw new AppError("Already clocked in", 409);
+            }
+            return NextResponse.json({ success: true });
         } else if (action === "CLOCK_OUT") {
             if (!assignment.clockIn) {
-                return NextResponse.json({ error: "Must clock in first" }, { status: 400 });
-            }
-            if (assignment.clockOut) {
-                return NextResponse.json({ error: "Already clocked out" }, { status: 400 });
+                throw new AppError("Must clock in first", 400);
             }
 
+            const now = new Date();
             const diffMinutes = (now.getTime() - assignment.clockIn.getTime()) / (1000 * 60);
             const breakTimeMinutes = assignment.breakTimeMinutes || 0;
             const workedHours = parseFloat(Math.max(0, (diffMinutes - breakTimeMinutes) / 60).toFixed(2));
 
-            const updated = await prisma.jobAssignment.update({
-                where: { id: assignmentId },
-                data: { clockOut: now, workedHours }
+            // CRIT-09 + MAJ-07: Atomic $transaction with clockOut null guard
+            const result = await prisma.$transaction(async (tx: any) => {
+                // Atomic guard — only proceed if clockOut is still null
+                const guard = await tx.jobAssignment.updateMany({
+                    where: { id: assignmentId, clockOut: null },
+                    data: { clockOut: now, workedHours, status: "RECAP_PENDING" }
+                });
+
+                if (guard.count === 0) {
+                    throw new AppError("Already clocked out", 409);
+                }
+
+                await tx.job.update({
+                    where: { id: assignment.jobId },
+                    data: { status: "RECAP_PENDING" }
+                });
+
+                await tx.notification.create({
+                    data: {
+                        userId: assignment.workerId,
+                        title: 'Recap Required',
+                        message: `Please submit your recap for your shift at ${assignment.job.store?.name || 'the store'}. You have clocked out — don't forget to submit your recap.`
+                    }
+                });
+
+                return { clockOut: now, workedHours };
             });
 
-            // Update job status if needed
-            await prisma.job.update({
-                where: { id: assignment.jobId },
-                data: { status: "RECAP_PENDING" }
-            });
-
-            return NextResponse.json(updated);
+            return NextResponse.json(result);
         }
 
-        return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+        throw new AppError("Invalid action", 400);
     } catch (error) {
-        console.error("Timeclock POST error:", error);
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+        return handleApiError(error);
     }
 }

@@ -1,30 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import prisma from "@/lib/prisma";
-import { getSession } from "@/lib/auth";
+import { requireAuth } from "@/lib/auth";
+import { handleApiError } from "@/lib/apiError";
 
 export async function POST(request: NextRequest) {
     try {
-        const session = await getSession();
-        if (!session || (session.user.role !== "ADMIN" && session.user.role !== "MARKET_MANAGER")) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
+        const user = await requireAuth(request, ["ADMIN", "MARKET_MANAGER"]);
 
         const { email, role, marketId, hourlyWage } = await request.json();
 
         // Market Managers can only invite Workers
-        if (session.user.role === "MARKET_MANAGER" && role !== "WORKER") {
+        if (user.role === "MARKET_MANAGER" && role !== "WORKER") {
             return NextResponse.json({ error: "You can only invite Workers" }, { status: 403 });
         }
 
         // Auto-assign market for Market Managers
         let resolvedMarketId = marketId;
-        const requester = await prisma.user.findUnique({
-            where: { id: session.user.id }
-        });
-
-        if (session.user.role === "MARKET_MANAGER" && requester?.managedMarketId) {
-            resolvedMarketId = requester.managedMarketId;
+        if (user.role === "MARKET_MANAGER" && user.managedMarketId) {
+            resolvedMarketId = user.managedMarketId;
         }
 
         if (!email || !role) {
@@ -50,7 +44,7 @@ export async function POST(request: NextRequest) {
                 token,
                 hourlyWage: hourlyWage ? parseFloat(hourlyWage) : null,
                 marketId: resolvedMarketId,
-                senderId: session.user.id,
+                senderId: user.id,
                 expiresAt,
             },
             create: {
@@ -59,7 +53,7 @@ export async function POST(request: NextRequest) {
                 token,
                 hourlyWage: hourlyWage ? parseFloat(hourlyWage) : null,
                 marketId: resolvedMarketId,
-                senderId: session.user.id,
+                senderId: user.id,
                 expiresAt,
             },
         });
@@ -69,7 +63,6 @@ export async function POST(request: NextRequest) {
             inviteLink: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/invite/${token}`
         });
     } catch (error) {
-        console.error("Invite error:", error);
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+        return handleApiError(error);
     }
 }

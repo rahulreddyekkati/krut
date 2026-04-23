@@ -13,8 +13,11 @@ export async function GET() {
         const pendingRecaps = await prisma.jobAssignment.findMany({
             where: {
                 workerId: session.user.id,
-                clockOut: { not: null },
-                recap: { is: null }
+                status: "RECAP_PENDING",
+                OR: [
+                    { recap: { is: null } },
+                    { recap: { status: "REJECTED" } }
+                ]
             },
             include: {
                 job: {
@@ -30,7 +33,7 @@ export async function GET() {
             orderBy: { clockOut: "desc" }
         });
 
-        const data = pendingRecaps.map(a => ({
+        const data = pendingRecaps.map((a: any) => ({
             assignmentId: a.id,
             jobId: a.job.id,
             jobTitle: a.job.title,

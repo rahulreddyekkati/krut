@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import PendingRecapsTable from "@/components/admin/PendingRecapsTable";
 
 type DetailType = "jobs" | "active" | "recaps" | null;
 
@@ -184,6 +185,9 @@ export default function AdminDashboardPage() {
                         <p style={{ padding: "2rem", textAlign: "center", color: "#9ca3af" }}>No records found.</p>
                     ) : (
                         <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+                            {activeDetail === "recaps" ? (
+                                <PendingRecapsTable recaps={detailData} />
+                            ) : (
                             <table style={tableStyle}>
                                 <thead>
                                     {activeDetail === "jobs" && (
@@ -202,16 +206,6 @@ export default function AdminDashboardPage() {
                                             <th style={thStyle}>Market</th>
                                             <th style={thStyle}>Clocked In</th>
                                             <th style={thStyle}>Shift Ends</th>
-                                        </tr>
-                                    )}
-                                    {activeDetail === "recaps" && (
-                                        <tr>
-                                            <th style={thStyle}>Worker Name</th>
-                                            <th style={thStyle}>Store Name</th>
-                                            <th style={thStyle}>Market</th>
-                                            <th style={thStyle}>Clock In</th>
-                                            <th style={thStyle}>Clock Out</th>
-                                            <th style={thStyle}>Action</th>
                                         </tr>
                                     )}
                                 </thead>
@@ -234,37 +228,9 @@ export default function AdminDashboardPage() {
                                             <td style={tdStyle}>{row.shiftEnd}</td>
                                         </tr>
                                     ))}
-                                    {activeDetail === "recaps" && detailData.map((row: any) => (
-                                        <tr key={row.id}>
-                                            <td style={tdStyle}>{row.workerName}</td>
-                                            <td style={tdStyle}>{row.storeName}</td>
-                                            <td style={tdStyle}>{row.marketName}</td>
-                                            <td style={tdStyle}>{formatTime(row.clockIn)}</td>
-                                            <td style={tdStyle}>{formatTime(row.clockOut)}</td>
-                                            <td style={tdStyle}>
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); handleSendNotification(row.workerId, row.workerName); }}
-                                                    disabled={sendingNotification === row.workerId}
-                                                    style={{
-                                                        padding: "0.375rem 0.875rem",
-                                                        background: sendingNotification === row.workerId ? "#d1d5db" : "#ef4444",
-                                                        color: "white",
-                                                        border: "none",
-                                                        borderRadius: "8px",
-                                                        fontSize: "0.75rem",
-                                                        fontWeight: 700,
-                                                        cursor: sendingNotification === row.workerId ? "not-allowed" : "pointer",
-                                                        whiteSpace: "nowrap",
-                                                        transition: "all 0.2s"
-                                                    }}
-                                                >
-                                                    {sendingNotification === row.workerId ? "Sending..." : "Send Notification"}
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
                                 </tbody>
                             </table>
+                            )}
                         </div>
                     )}
                 </div>

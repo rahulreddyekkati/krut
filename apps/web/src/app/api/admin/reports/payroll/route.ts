@@ -1,31 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getSession } from "@/lib/auth";
+import { requireAuth } from "@/lib/auth";
+import { handleApiError, AppError } from "@/lib/apiError";
 import { resolveTimezone, localTimeToUTC } from "@/lib/timezone";
 
 export async function GET(request: NextRequest) {
     try {
-        const session = await getSession();
-        if (!session || (session.user.role !== "ADMIN" && session.user.role !== "MARKET_MANAGER")) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
+        const user = await requireAuth(request, ["ADMIN", "MARKET_MANAGER"]);
 
         const { searchParams } = new URL(request.url);
         const startDateStr = searchParams.get("startDate");
         const endDateStr = searchParams.get("endDate");
 
         if (!startDateStr || !endDateStr) {
-            return NextResponse.json({ error: "Missing date range" }, { status: 400 });
+            throw new AppError("Missing date range", 400);
         }
 
         const tz = resolveTimezone(request);
         const startDate = localTimeToUTC(startDateStr, "00:00", tz);
         const endDate = localTimeToUTC(endDateStr, "23:59", tz);
 
-        // Scoping logic (similar to /api/users)
+        if (endDate <= startDate) {
+            throw new AppError("endDate must be after startDate", 400);
+        }
+
+        // MAJ-15: Market Managers can only see their own market — override any query param
         const where: any = {};
-        if (session.user.role === "MARKET_MANAGER") {
-            where.marketId = (session.user as any).managedMarketId;
+        if (user.role === "MARKET_MANAGER") {
+            where.marketId = user.managedMarketId;
             where.role = { not: "ADMIN" };
         }
 
@@ -124,8 +126,7 @@ export async function GET(request: NextRequest) {
         });
 
         return NextResponse.json(payrollData);
-    } catch (error: any) {
-        console.error("Payroll API error:", error);
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    } catch (error) {
+        return handleApiError(error);
     }
 }

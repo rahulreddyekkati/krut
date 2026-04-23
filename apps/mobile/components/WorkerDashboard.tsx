@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Dimensions, ScrollView } from 'react-native';
-import { useAuth } from '../../providers/AuthProvider';
-import { fetchWithAuth } from '../../utils/apiClient';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Dimensions, ScrollView, Alert } from 'react-native';
+import { useAuth } from '../providers/AuthProvider';
+import { fetchWithAuth } from '../utils/apiClient';
 import { router } from 'expo-router';
+import * as Location from 'expo-location';
+import { useNotificationCount } from '../hooks/useNotificationCount';
 
 const CIRCLE_SIZE = Dimensions.get('window').width * 0.44;
 
@@ -26,6 +28,7 @@ const formatTimeStr = (timeStr?: string) => {
 
 export default function HomeTab() {
   const { token, signOut, user } = useAuth();
+  const { count } = useNotificationCount();
   const [activeAssignment, setActiveAssignment] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [clockLoading, setClockLoading] = useState(false);
@@ -68,30 +71,79 @@ export default function HomeTab() {
   const handleClock = async () => {
     if (!activeAssignment) return;
     const action = activeAssignment.clockIn ? "CLOCK_OUT" : "CLOCK_IN";
-    setClockLoading(true);
-    try {
-      const res = await fetchWithAuth('/timeclock', {
-        method: "POST",
-        body: JSON.stringify({ action, assignmentId: activeAssignment.id })
-      });
-      if (res.ok) {
-        if (action === 'CLOCK_OUT') {
-          // Navigate to recap form after clocking out
+    
+    if (action === "CLOCK_IN") {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Location Required', 'Please enable location access to clock in.');
+        return;
+      }
+
+      setClockLoading(true);
+      let location;
+      try {
+         location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      } catch (e) {
+         setClockLoading(false);
+         Alert.alert('Location Error', 'Unable to determine your current location.');
+         return;
+      }
+
+      try {
+        const res = await fetchWithAuth('/timeclock', {
+          method: "POST",
+          body: JSON.stringify({ 
+            action, 
+            assignmentId: activeAssignment.id,
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude,
+            lat: location.coords.latitude,
+            lng: location.coords.longitude
+          })
+        });
+
+        if (res.ok) {
+          await loadTodayShift();
+        } else if (res.status === 403) {
+          const data = await res.json();
+          Alert.alert('Outside Store Location', `You must be physically at ${activeAssignment.job?.store?.name || 'the store'} to clock in.\n\n${data.error || ''}`);
+        } else if (res.status === 400) {
+          const data = await res.json();
+          if (data.error?.toLowerCase().includes('early')) {
+            Alert.alert('Too Early', `You cannot clock in more than 15 minutes before your shift starts.\n\n${data.error}`);
+          } else {
+            Alert.alert('Clock In Failed', data.error);
+          }
+        } else {
+          Alert.alert('Error', 'Failed to clock in');
+        }
+      } catch (e) {
+        Alert.alert('Network Error', 'Please check your internet connection.');
+      } finally {
+        setClockLoading(false);
+      }
+    } else {
+      // CLOCK_OUT
+      setClockLoading(true);
+      try {
+        const res = await fetchWithAuth('/timeclock', {
+          method: "POST",
+          body: JSON.stringify({ action, assignmentId: activeAssignment.id })
+        });
+        if (res.ok) {
           const shiftDate = activeAssignment.date
             ? new Date(activeAssignment.date).toISOString().split('T')[0]
             : new Date().toISOString().split('T')[0];
           router.push(`/recap/${activeAssignment.jobId}?date=${shiftDate}&assignmentId=${activeAssignment.id}`);
         } else {
-          await loadTodayShift();
+          const data = await res.json();
+          Alert.alert("Clock out failed", data.error || "Failed to clock out.");
         }
-      } else {
-        const data = await res.json();
-        console.log("Clock action failed:", data.error);
+      } catch (e) {
+        Alert.alert("Network error", "Please check your internet connection.");
+      } finally {
+        setClockLoading(false);
       }
-    } catch (e) {
-      console.log("Network error during clock action", e);
-    } finally {
-      setClockLoading(false);
     }
   };
 
@@ -112,6 +164,11 @@ export default function HomeTab() {
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconBtn} onPress={() => router.push('/notifications')}>
             <Text style={styles.iconEmoji}>🔔</Text>
+            {count > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{count}</Text>
+              </View>
+            )}
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconBtn} onPress={signOut}>
             <Text style={styles.logoutIcon}>↗</Text>
@@ -237,6 +294,8 @@ const styles = StyleSheet.create({
   },
   iconEmoji: { fontSize: 18 },
   logoutIcon: { fontSize: 18, color: '#EF4444', fontWeight: '700' },
+  badge: { position: 'absolute', top: -4, right: -4, backgroundColor: '#EF4444', borderRadius: 10, minWidth: 18, height: 18, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4 },
+  badgeText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
 
   /* ── Circle ── */
   circleContainer: { alignItems: 'center', marginTop: 32, marginBottom: 16 },

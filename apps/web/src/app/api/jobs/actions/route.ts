@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getSession } from "@/lib/auth";
+import { requireAuth } from "@/lib/auth";
+import { handleApiError, AppError } from "@/lib/apiError";
 import { resolveTimezone, localTimeToUTC, toLocalDateStr } from "@/lib/timezone";
 
 export async function POST(request: NextRequest) {
     try {
-        const session = await getSession();
-        if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        const user = await requireAuth(request);
 
         const body = await request.json();
         const { action, jobId, assignmentId, reason, date } = body;
@@ -43,22 +43,17 @@ export async function POST(request: NextRequest) {
 
             // Check if there's already a pending request for this user and job
             const existingRequest = await prisma.shiftRequest.findFirst({
-                where: {
-                    jobId,
-                    workerId: session.user.id,
-                    status: "PENDING"
-                }
+                where: { jobId, workerId: user.id, status: "PENDING" }
             });
 
             if (existingRequest) {
-                return NextResponse.json({ error: "You already have a pending request for this shift" }, { status: 400 });
+                throw new AppError("You already have a pending request for this shift", 400);
             }
 
-            // Create shift request
             const shiftRequest = await prisma.shiftRequest.create({
                 data: {
                     jobId,
-                    workerId: session.user.id,
+                    workerId: user.id,
                     status: "PENDING",
                     date: job?.date ? new Date(job.date) : null
                 }
@@ -69,6 +64,14 @@ export async function POST(request: NextRequest) {
 
         if (action === "RELEASE") {
             if (!jobId) return NextResponse.json({ error: "Missing Job ID" }, { status: 400 });
+
+            // MAJ-09: Cannot release a shift that is currently IN_PROGRESS (worker is clocked in)
+            const activeAssignment = await prisma.jobAssignment.findFirst({
+                where: { jobId, workerId: user.id, clockIn: { not: null }, clockOut: null }
+            });
+            if (activeAssignment) {
+                throw new AppError("Cannot release a shift you are currently clocked into", 400);
+            }
 
             // Enforce 2-hour minimum window before shift starts
             if (date) {
@@ -88,27 +91,23 @@ export async function POST(request: NextRequest) {
             }
             // Check for existing pending release request for same job+date
             if (date) {
-                const existingRelease = await prisma.releaseRequest.findFirst({
-                    where: {
-                        jobId,
-                        workerId: session.user.id,
-                        status: "PENDING",
-                        date: new Date(date)
-                    }
-                });
-                if (existingRelease) {
-                    return NextResponse.json(
-                        { error: "A release request for this shift is already pending" },
-                        { status: 400 }
-                    );
+            const existingRelease = await prisma.releaseRequest.findFirst({
+                where: {
+                    jobId,
+                    workerId: user.id,
+                    status: "PENDING",
+                    date: new Date(date)
                 }
+            });
+            if (existingRelease) {
+                throw new AppError("A release request for this shift is already pending", 400);
+            }
             }
 
-            // Create a release request
             const releaseRequest = await prisma.releaseRequest.create({
                 data: {
                     jobId,
-                    workerId: session.user.id,
+                    workerId: user.id,
                     reason: reason || "No reason provided",
                     status: "PENDING",
                     ...(date && { date: new Date(date) })
@@ -118,9 +117,8 @@ export async function POST(request: NextRequest) {
             return NextResponse.json(releaseRequest);
         }
 
-        return NextResponse.json({ error: "Invalid action" }, { status: 400 });
-    } catch (error: any) {
-        console.error("Job action POST error:", error);
-        return NextResponse.json({ error: error.message || "Internal server error", details: error }, { status: 500 });
+        throw new AppError("Invalid action", 400);
+    } catch (error) {
+        return handleApiError(error);
     }
 }

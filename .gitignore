@@ -41,3 +41,16 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# debug & test files
+verify_e2e.ts
+debug.ts
+backfill-assignment-status.ts
+verify_multi_worker.ts
+dev.db
+*.db
+task.md
+walkthrough.md
+prisma/dev.db
+prisma/*.db
+debug_endpoint.ts

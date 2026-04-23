@@ -1,20 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getSession } from "@/lib/auth";
+import { requireAuth } from "@/lib/auth";
+import { handleApiError } from "@/lib/apiError";
 
 // GET /api/jobs - List all jobs with filters
 export async function GET(request: NextRequest) {
     try {
-        const session = await getSession();
-        if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-        const requester = await prisma.user.findUnique({
-            where: { id: session.user.id }
-        });
-
-        if (!requester || (requester.role !== "ADMIN" && requester.role !== "MARKET_MANAGER")) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
+        const user = await requireAuth(request, ["ADMIN", "MARKET_MANAGER"]);
 
         const { searchParams } = new URL(request.url);
         const storeId = searchParams.get("storeId");
@@ -26,8 +18,8 @@ export async function GET(request: NextRequest) {
         if (marketId) where.marketId = marketId;
         if (status) where.status = status;
 
-        if (requester.role === "MARKET_MANAGER") {
-            where.marketId = requester.managedMarketId;
+        if (user.role === "MARKET_MANAGER") {
+            where.marketId = user.managedMarketId;
         }
 
         const jobs = await prisma.job.findMany({
@@ -47,24 +39,14 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json(jobs);
     } catch (error) {
-        console.error("GET Jobs error:", error);
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+        return handleApiError(error);
     }
 }
 
 // POST /api/jobs - Create a new job (time-only, no date)
 export async function POST(request: NextRequest) {
     try {
-        const session = await getSession();
-        if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-        const requester = await prisma.user.findUnique({
-            where: { id: session.user.id }
-        });
-
-        if (!requester || (requester.role !== "ADMIN" && requester.role !== "MARKET_MANAGER")) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
+        const user = await requireAuth(request, ["ADMIN", "MARKET_MANAGER"]);
 
         const body = await request.json();
         const { title, storeId, startTime, endTime, bonus, date } = body;
@@ -84,7 +66,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Scope check for Market Manager
-        if (requester.role === "MARKET_MANAGER" && store.marketId !== requester.managedMarketId) {
+        if (user.role === "MARKET_MANAGER" && store.marketId !== user.managedMarketId) {
             return NextResponse.json({ error: "Unauthorized: Store outside your market" }, { status: 403 });
         }
 
@@ -96,7 +78,7 @@ export async function POST(request: NextRequest) {
                 startTimeStr: startTime,
                 endTimeStr: endTime,
                 bonus: parseFloat(bonus || 0),
-                creatorId: session.user.id,
+                creatorId: user.id,
                 status: "OPEN",
                 date: date ? new Date(date) : null
             }
@@ -105,10 +87,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(job);
 
     } catch (error) {
-        console.error("POST Job error:", error);
-        if ((error as any).code === "P2002") {
-            return NextResponse.json({ error: "A job with this name already exists. Job names must be unique." }, { status: 400 });
-        }
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+        return handleApiError(error);
     }
 }

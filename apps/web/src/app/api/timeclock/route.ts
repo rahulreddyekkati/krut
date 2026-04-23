@@ -98,8 +98,11 @@ export async function GET(request: NextRequest) {
                 }
             }
 
-            const shiftDate = activeAssignment.date ? new Date(activeAssignment.date) : startOfTodayUTC;
-            const isPastDay = shiftDate < startOfTodayUTC;
+            const todayStr = toLocalDateStr(now, tz);
+            const shiftDateStr = activeAssignment.date 
+                ? new Date(activeAssignment.date).toISOString().split('T')[0]
+                : toLocalDateStr(new Date(activeAssignment.clockIn), tz);
+            const isPastDay = shiftDateStr < todayStr;
 
             // 2. Auto clock-out if past end time OR if it's a shift from a previous day
             if (activeAssignment.clockIn && !activeAssignment.clockOut && (isPastDay || nowTimeMins > endTimeMins)) {

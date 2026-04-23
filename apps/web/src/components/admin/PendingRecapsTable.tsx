@@ -82,6 +82,7 @@ export default function PendingRecapsTable({ recaps }: { recaps: any[] }) {
                         <th style={thStyle}>Worker Name</th>
                         <th style={thStyle}>Store Name</th>
                         <th style={thStyle}>Market</th>
+                        <th style={thStyle}>Shift Date</th>
                         <th style={thStyle}>Clock In</th>
                         <th style={thStyle}>Clock Out</th>
                         {hasHoursOverdue && <th style={thStyle}>Hours Overdue</th>}
@@ -104,12 +105,14 @@ export default function PendingRecapsTable({ recaps }: { recaps: any[] }) {
 
                         // Use same assignment ID or worker ID as key if assignment ID isn't directly exposed
                         const rowKey = row.id || row.workerId;
+                        const shiftDateStr = row.shiftDate ? new Date(row.shiftDate).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) : '—';
 
                         return (
                             <tr key={rowKey}>
                                 <td style={tdStyle}>{row.workerName}</td>
                                 <td style={tdStyle}>{row.storeName}</td>
                                 <td style={tdStyle}>{row.marketName || row.market}</td>
+                                <td style={tdStyle}>{shiftDateStr}</td>
                                 <td style={tdStyle}>{formatTime(row.clockIn)}</td>
                                 <td style={tdStyle}>{formatTime(row.clockOut)}</td>
                                 {hasHoursOverdue && (

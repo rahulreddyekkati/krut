@@ -81,6 +81,7 @@ export async function GET(request: NextRequest) {
                 managerReview: r.managerReview,
                 skus: r.skus || [],
                 createdAt: r.createdAt,
+                shiftDate: assignmentWithTimes?.date,
                 startTime: r.job.startTimeStr,
                 endTime: r.job.endTimeStr,
                 clockIn: assignmentWithTimes?.clockIn,

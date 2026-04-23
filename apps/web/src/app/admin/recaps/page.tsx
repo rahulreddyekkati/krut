@@ -214,7 +214,7 @@ export default function RecapsPage() {
                                             <td style={tdStyle}><div style={{ fontWeight: 600 }}>{r.workerName}</div></td>
                                             <td style={tdStyle}>{r.storeName}</td>
                                             <td style={tdStyle}>{r.marketName}</td>
-                                            <td style={tdStyle}>{r.startTime ? new Date(r.startTime).toLocaleDateString() : '—'}</td>
+                                            <td style={tdStyle}>{r.shiftDate ? new Date(r.shiftDate).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) : '—'}</td>
                                             <td style={tdStyle}>{getRelativeTime(r.createdAt)}</td>
                                             <td style={tdStyle}>${(r.reimbursement || 0).toFixed(2)}</td>
                                             <td style={tdStyle}>
@@ -309,7 +309,7 @@ export default function RecapsPage() {
                                                 <td style={tdStyle}><div style={{ fontWeight: 600 }}>{r.workerName}</div></td>
                                                 <td style={tdStyle}>{r.storeName}</td>
                                                 <td style={tdStyle}>{r.marketName}</td>
-                                                <td style={tdStyle}>{r.startTime ? new Date(r.startTime).toLocaleDateString() : '—'}</td>
+                                                <td style={tdStyle}>{r.shiftDate ? new Date(r.shiftDate).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) : '—'}</td>
                                                 <td style={tdStyle}>{statusBadge(r.status)}</td>
                                                 <td style={tdStyle}>${(r.reimbursement || 0).toFixed(2)}</td>
                                                 <td style={tdStyle}>

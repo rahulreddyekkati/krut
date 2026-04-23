@@ -53,7 +53,8 @@ export function resolveTimezone(request: NextRequest): string {
         }
     }
 
-    return "UTC";
+    console.warn("⚠️ Missing or invalid timezone pulse, defaulting to America/Chicago");
+    return "America/Chicago";
 }
 
 /**

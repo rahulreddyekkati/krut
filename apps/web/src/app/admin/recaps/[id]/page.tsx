@@ -11,18 +11,24 @@ export default function RecapDetailPage() {
     const [loading, setLoading] = useState(true);
     const [managerReview, setManagerReview] = useState("");
     const [submitting, setSubmitting] = useState(false);
+    const [consumersSampled, setConsumersSampled] = useState<number>(0);
+    const [receiptTotal, setReceiptTotal] = useState<number>(0);
+    const [reimbursement, setReimbursement] = useState<number>(0);
+    const [rushLevel, setRushLevel] = useState<string>("");
 
     useEffect(() => {
         async function fetchRecap() {
             try {
-                const res = await fetch(`/api/admin/recaps`);
+                // Fetch directly from the detail endpoint
+                const res = await fetch(`/api/admin/recaps/${recapId}`);
                 if (res.ok) {
                     const data = await res.json();
-                    const found = data.recaps.find((r: any) => r.id === recapId);
-                    if (found) {
-                        setRecap(found);
-                        setManagerReview(found.managerReview || "");
-                    }
+                    setRecap(data);
+                    setManagerReview(data.managerReview || "");
+                    setConsumersSampled(data.consumersSampled || 0);
+                    setReceiptTotal(data.receiptTotal || 0);
+                    setReimbursement(data.reimbursement || 0);
+                    setRushLevel(data.rushLevel || "");
                 }
             } catch (e) {
                 console.error("Failed to fetch recap", e);
@@ -34,23 +40,39 @@ export default function RecapDetailPage() {
 
     const handleAction = async (action: "APPROVE" | "REJECT") => {
         setSubmitting(true);
+        const endpoint = action === "APPROVE" 
+            ? `/api/admin/recaps/${recapId}/approve` 
+            : `/api/admin/recaps/${recapId}/reject`;
+
         try {
-            const res = await fetch("/api/admin/recaps", {
-                method: "PATCH",
+            const res = await fetch(endpoint, {
+                method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ recapId, action, managerReview })
+                body: JSON.stringify({ 
+                    recapId, 
+                    managerNotes: managerReview,
+                    // Only send edits on approval
+                    ...(action === "APPROVE" ? {
+                        consumersSampled,
+                        rushLevel,
+                        receiptTotal,
+                        reimbursement
+                    } : {})
+                })
             });
+            
             if (res.ok) {
                 const data = await res.json();
-                alert(data.message);
-                // Refresh
+                alert(data.message || `Successfully ${action.toLowerCase()}d`);
+                // Refresh local state
                 setRecap((prev: any) => ({
                     ...prev,
                     status: action === "APPROVE" ? "APPROVED" : "REJECTED",
                     managerReview
                 }));
             } else {
-                alert("Failed to update recap");
+                const err = await res.json();
+                alert(err.error || "Failed to update recap");
             }
         } catch (e) {
             alert("Error updating recap");
@@ -89,8 +111,21 @@ export default function RecapDetailPage() {
     const rowStyle: React.CSSProperties = {
         display: "flex",
         justifyContent: "space-between",
+        alignItems: "center",
         padding: "0.5rem 0",
         borderBottom: "1px solid #f3f4f6"
+    };
+
+    const inputStyle: React.CSSProperties = {
+        padding: "0.4rem 0.75rem",
+        borderRadius: "8px",
+        border: "1px solid #d1d5db",
+        fontSize: "0.9rem",
+        fontWeight: 600,
+        textAlign: "right",
+        width: "120px",
+        background: "white",
+        outline: "none"
     };
 
     if (loading) {
@@ -154,7 +189,7 @@ export default function RecapDetailPage() {
                 </div>
                 <div style={rowStyle}>
                     <span style={labelStyle}>Date</span>
-                    <span style={valueStyle}>{new Date(recap.createdAt).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                    <span style={valueStyle}>{recap.shiftDate ? new Date(recap.shiftDate).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : "--"}</span>
                 </div>
                 <div style={rowStyle}>
                     <span style={labelStyle}>Clock In</span>
@@ -169,16 +204,28 @@ export default function RecapDetailPage() {
             {/* ── Rush Level ── */}
             <div style={sectionStyle}>
                 <h3 style={{ ...labelStyle, fontSize: "0.8rem", marginBottom: "0.5rem" }}>Rush Level</h3>
-                <span style={{
-                    padding: "0.3rem 1rem",
-                    borderRadius: "8px",
-                    background: recap.rushLevel === "Very Busy" ? "#fce4ec" : recap.rushLevel === "Medium" ? "#fff3e0" : "#e8f5e9",
-                    color: recap.rushLevel === "Very Busy" ? "#b71c1c" : recap.rushLevel === "Medium" ? "#e65100" : "#1b5e20",
-                    fontWeight: 600,
-                    fontSize: "0.85rem"
-                }}>
-                    {recap.rushLevel || "Not specified"}
-                </span>
+                {recap.status === "PENDING" ? (
+                    <select
+                        value={rushLevel}
+                        onChange={(e) => setRushLevel(e.target.value)}
+                        style={{ ...inputStyle, width: "100%", textAlign: "left" }}
+                    >
+                        <option value="Slow">Slow</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Very Busy">Very Busy</option>
+                    </select>
+                ) : (
+                    <span style={{
+                        padding: "0.3rem 1rem",
+                        borderRadius: "8px",
+                        background: recap.rushLevel === "Very Busy" ? "#fce4ec" : recap.rushLevel === "Medium" ? "#fff3e0" : "#e8f5e9",
+                        color: recap.rushLevel === "Very Busy" ? "#b71c1c" : recap.rushLevel === "Medium" ? "#e65100" : "#1b5e20",
+                        fontWeight: 600,
+                        fontSize: "0.85rem"
+                    }}>
+                        {recap.rushLevel || "Not specified"}
+                    </span>
+                )}
             </div>
 
             {/* ── Sales Summary ── */}
@@ -186,15 +233,44 @@ export default function RecapDetailPage() {
                 <h3 style={{ ...labelStyle, fontSize: "0.8rem", marginBottom: "0.75rem" }}>Sales Summary</h3>
                 <div style={rowStyle}>
                     <span style={labelStyle}>Customers Sampled</span>
-                    <span style={valueStyle}>{recap.consumersSampled || 0}</span>
+                    {recap.status === "PENDING" ? (
+                        <input
+                            type="number"
+                            value={consumersSampled}
+                            onChange={(e) => setConsumersSampled(parseInt(e.target.value) || 0)}
+                            style={inputStyle}
+                        />
+                    ) : (
+                        <span style={valueStyle}>{recap.consumersSampled || 0}</span>
+                    )}
                 </div>
                 <div style={rowStyle}>
-                    <span style={labelStyle}>Receipt Total</span>
-                    <span style={valueStyle}>${(recap.receiptTotal || 0).toFixed(2)}</span>
+                    <span style={labelStyle}>Receipt Total ($)</span>
+                    {recap.status === "PENDING" ? (
+                        <input
+                            type="number"
+                            step="0.01"
+                            value={receiptTotal}
+                            onChange={(e) => setReceiptTotal(parseFloat(e.target.value) || 0)}
+                            style={inputStyle}
+                        />
+                    ) : (
+                        <span style={valueStyle}>${(recap.receiptTotal || 0).toFixed(2)}</span>
+                    )}
                 </div>
                 <div style={{ ...rowStyle, borderBottom: "none" }}>
-                    <span style={labelStyle}>Reimbursement Total</span>
-                    <span style={{ ...valueStyle, color: "#059669" }}>${(recap.reimbursement || 0).toFixed(2)}</span>
+                    <span style={labelStyle}>Reimbursement ($)</span>
+                    {recap.status === "PENDING" ? (
+                        <input
+                            type="number"
+                            step="0.01"
+                            value={reimbursement}
+                            onChange={(e) => setReimbursement(parseFloat(e.target.value) || 0)}
+                            style={{ ...inputStyle, color: "#059669" }}
+                        />
+                    ) : (
+                        <span style={{ ...valueStyle, color: "#059669" }}>${(recap.reimbursement || 0).toFixed(2)}</span>
+                    )}
                 </div>
             </div>
 
@@ -298,7 +374,7 @@ export default function RecapDetailPage() {
             {/* ── Action Buttons ── */}
             <div style={{ display: "flex", gap: "1rem", justifyContent: "flex-end", marginTop: "1.5rem" }}>
                 <button
-                    onClick={() => window.close()}
+                    onClick={() => router.back()}
                     style={{
                         padding: "0.625rem 1.5rem",
                         background: "#f3f4f6",
@@ -313,23 +389,41 @@ export default function RecapDetailPage() {
                     Back
                 </button>
                 {recap.status === "PENDING" && (
-                    <button
-                        onClick={() => handleAction("APPROVE")}
-                        disabled={submitting}
-                        style={{
-                            padding: "0.625rem 2rem",
-                            background: submitting ? "#9ca3af" : "#10b981",
-                            color: "white",
-                            border: "none",
-                            borderRadius: "10px",
-                            fontSize: "0.875rem",
-                            fontWeight: 700,
-                            cursor: submitting ? "not-allowed" : "pointer",
-                            transition: "all 0.2s"
-                        }}
-                    >
-                        {submitting ? "Approving..." : "Approve"}
-                    </button>
+                    <>
+                        <button
+                            onClick={() => handleAction("REJECT")}
+                            disabled={submitting}
+                            style={{
+                                padding: "0.625rem 1.5rem",
+                                background: "white",
+                                color: "#b71c1c",
+                                border: "1px solid #ef5350",
+                                borderRadius: "10px",
+                                fontSize: "0.875rem",
+                                fontWeight: 700,
+                                cursor: submitting ? "not-allowed" : "pointer"
+                            }}
+                        >
+                            Reject
+                        </button>
+                        <button
+                            onClick={() => handleAction("APPROVE")}
+                            disabled={submitting}
+                            style={{
+                                padding: "0.625rem 2rem",
+                                background: submitting ? "#9ca3af" : "#10b981",
+                                color: "white",
+                                border: "none",
+                                borderRadius: "10px",
+                                fontSize: "0.875rem",
+                                fontWeight: 700,
+                                cursor: submitting ? "not-allowed" : "pointer",
+                                transition: "all 0.2s"
+                            }}
+                        >
+                            {submitting ? "Approving..." : "Approve"}
+                        </button>
+                    </>
                 )}
             </div>
         </div>

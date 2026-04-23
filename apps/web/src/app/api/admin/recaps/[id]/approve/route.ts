@@ -10,7 +10,13 @@ export async function POST(
     try {
         const user = await requireAuth(request, ["ADMIN", "MARKET_MANAGER"]);
         const { id: recapId } = await context.params;
-        const { managerNotes } = await request.json();
+        const { 
+            managerNotes,
+            consumersSampled,
+            rushLevel,
+            receiptTotal,
+            reimbursement
+        } = await request.json();
 
         const recap = await (prisma.recap as any).findUnique({
             where: { id: recapId },
@@ -42,12 +48,17 @@ export async function POST(
             : "your recent shift";
 
         await prisma.$transaction(async (tx: any) => {
-            // 1. Approve recap
+            // 1. Update and Approve recap
             await tx.recap.update({
                 where: { id: recapId },
                 data: { 
                     status: "APPROVED", 
-                    managerReview: managerNotes || null 
+                    managerReview: managerNotes || null,
+                    // Apply manager edits if provided
+                    consumersSampled: consumersSampled !== undefined ? Number(consumersSampled) : undefined,
+                    rushLevel: rushLevel || undefined,
+                    receiptTotal: receiptTotal !== undefined ? Number(receiptTotal) : undefined,
+                    reimbursement: reimbursement !== undefined ? Number(reimbursement) : undefined
                 }
             });
 

@@ -1,0 +1,88 @@
+/* [project]/Desktop/clock in:out/apps/web/src/app/admin/jobs/jobs.module.css [app-client] (css) */
+.jobs-module__i4-aJW__container {
+  flex-direction: column;
+  gap: 1.5rem;
+  display: flex;
+}
+
+.jobs-module__i4-aJW__header {
+  flex-direction: column;
+  gap: .5rem;
+  display: flex;
+}
+
+.jobs-module__i4-aJW__actions {
+  justify-content: flex-end;
+  display: flex;
+}
+
+.jobs-module__i4-aJW__formGrid {
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-top: 1rem;
+  display: grid;
+}
+
+.jobs-module__i4-aJW__inputGroup {
+  flex-direction: column;
+  gap: .5rem;
+  display: flex;
+}
+
+.jobs-module__i4-aJW__inputGroup label {
+  color: var(--secondary);
+  font-size: .875rem;
+  font-weight: 600;
+}
+
+.jobs-module__i4-aJW__formActions {
+  justify-content: flex-end;
+  padding-top: 1rem;
+  display: flex;
+}
+
+.jobs-module__i4-aJW__tableWrapper {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.jobs-module__i4-aJW__table {
+  border-collapse: collapse;
+  text-align: left;
+  width: 100%;
+}
+
+.jobs-module__i4-aJW__table th, .jobs-module__i4-aJW__table td {
+  border-bottom: 1px solid var(--card-border);
+  padding: 1.25rem 1.5rem;
+}
+
+.jobs-module__i4-aJW__table th {
+  color: var(--secondary);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  background: #00000005;
+  font-size: .75rem;
+  font-weight: 600;
+}
+
+.jobs-module__i4-aJW__dateTime, .jobs-module__i4-aJW__location, .jobs-module__i4-aJW__worker {
+  flex-direction: column;
+  gap: .25rem;
+  display: flex;
+}
+
+.jobs-module__i4-aJW__dateTime span, .jobs-module__i4-aJW__location span, .jobs-module__i4-aJW__worker span {
+  color: var(--secondary);
+  font-size: .75rem;
+}
+
+@media (max-width: 768px) {
+  .jobs-module__i4-aJW__formGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/*# sourceMappingURL=Desktop_clock%20in%3Aout_apps_web_src_app_admin_jobs_jobs_module_0a92f344.css.map*/

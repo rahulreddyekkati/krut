@@ -94,6 +94,17 @@ export async function POST(
                     read: false
                 }
             });
+
+            // N5: Audit log — record every recap approval with actor and any edits made
+            await tx.auditLog.create({
+                data: {
+                    actorId: user.id,
+                    action: "RECAP_APPROVED",
+                    entityType: "Recap",
+                    entityId: recapId,
+                    newValue: JSON.stringify({ managerNotes, consumersSampled, rushLevel, receiptTotal, reimbursement }),
+                }
+            });
         });
 
         return NextResponse.json({ success: true, message: "Recap approved" });

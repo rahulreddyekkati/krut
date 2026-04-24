@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator,
 import { useAuth } from '../providers/AuthProvider';
 import { router } from 'expo-router';
 
-const API_BASE_URL = "https://krut-6zbd.vercel.app/api";
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? "https://krut-6zbd.vercel.app/api";
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -20,30 +20,22 @@ export default function Login() {
 
     setLoading(true);
     setError('');
-    console.log("[LOGIN] Attempting login with:", email);
     try {
-      const url = `${API_BASE_URL}/auth/login`;
-      console.log("[LOGIN] Fetching:", url);
-      const res = await fetch(url, {
+      const res = await fetch(`${API_BASE_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password })
       });
-      
-      console.log("[LOGIN] Response status:", res.status);
+
       const data = await res.json();
-      console.log("[LOGIN] Response data:", JSON.stringify(data));
-      
+
       if (res.ok && data.success && data.token) {
-        console.log("[LOGIN] Success! Storing token...");
         await signIn(data.token);
         router.replace('/(tabs)');
       } else {
-        console.log("[LOGIN] Failed:", data.error);
         setError(data.error || "Failed to log in.");
       }
-    } catch (e: any) {
-      console.log("[LOGIN] CATCH ERROR:", e.message || e);
+    } catch {
       setError("Network error. Please try again.");
     } finally {
       setLoading(false);
@@ -51,8 +43,8 @@ export default function Login() {
   };
 
   return (
-    <KeyboardAvoidingView 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
       <View style={styles.card}>
@@ -70,7 +62,7 @@ export default function Login() {
           value={email}
           onChangeText={setEmail}
         />
-        
+
         <TextInput
           style={styles.input}
           placeholder="Password"
@@ -80,8 +72,8 @@ export default function Login() {
           onChangeText={setPassword}
         />
 
-        <TouchableOpacity 
-          style={[styles.button, loading && styles.buttonDisabled]} 
+        <TouchableOpacity
+          style={[styles.button, loading && styles.buttonDisabled]}
           onPress={handleLogin}
           disabled={loading}
         >

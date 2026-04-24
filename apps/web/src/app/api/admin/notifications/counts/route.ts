@@ -23,34 +23,10 @@ export async function GET() {
         });
         const shiftApprovalsCount = pendingReleasesCount + pendingAssignsCount;
 
-        // 3. Unassigned Released Shifts
-        const approvedReleases = await prisma.releaseRequest.findMany({
-            where: { status: "APPROVED" },
-            include: { job: { select: { storeId: true, startTimeStr: true } } }
+        // 3. Unassigned Released Shifts — match via sourceReleaseId (not fragile title suffix)
+        const releasedShiftsCount = await prisma.job.count({
+            where: { status: "OPEN", sourceReleaseId: { not: null } }
         });
-
-        const openJobs = await prisma.job.findMany({
-            where: { status: "OPEN" },
-            select: { id: true, storeId: true, startTimeStr: true, date: true, title: true }
-        });
-
-        let releasedShiftsCount = 0;
-        for (const release of approvedReleases) {
-            if (!release.date) {
-                if (openJobs.some(job => job.title.includes(release.id.slice(-4)))) {
-                    releasedShiftsCount++;
-                }
-            } else {
-                const releaseDateStr = new Date(release.date).toISOString().split('T')[0];
-                const isStillOpen = openJobs.some(job => 
-                    job.storeId === release.job.storeId &&
-                    job.startTimeStr === release.job.startTimeStr &&
-                    job.date && new Date(job.date).toISOString().split('T')[0] === releaseDateStr &&
-                    job.title.includes(release.id.slice(-4))
-                );
-                if (isStillOpen) releasedShiftsCount++;
-            }
-        }
 
         // 4. Messages (assuming we just return 0 for now since messages aren't fully tracked yet)
         const messagesCount = 0; 

@@ -1,0 +1,169 @@
+/* [project]/Desktop/clock in:out/apps/web/src/app/admin/inventory/inventory.module.css [app-client] (css) */
+.inventory-module__lF6S4W__modalOverlay {
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  z-index: 2000;
+  background-color: #00000080;
+  justify-content: center;
+  align-items: center;
+  animation: .2s ease-out inventory-module__lF6S4W__fadeIn;
+  display: flex;
+  position: fixed;
+  inset: 0;
+}
+
+.inventory-module__lF6S4W__modal {
+  background: var(--card-bg);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 500px;
+  padding: 2rem;
+  animation: .3s cubic-bezier(.16, 1, .3, 1) inventory-module__lF6S4W__scaleIn;
+  position: relative;
+  box-shadow: 0 20px 25px -5px #0000001a, 0 10px 10px -5px #0000000a;
+}
+
+@keyframes inventory-module__lF6S4W__fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes inventory-module__lF6S4W__scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.inventory-module__lF6S4W__modalHeader {
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  display: flex;
+}
+
+.inventory-module__lF6S4W__modalBody {
+  min-height: 200px;
+}
+
+.inventory-module__lF6S4W__modalFooter {
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 2rem;
+  display: flex;
+}
+
+.inventory-module__lF6S4W__formGroup {
+  flex-direction: column;
+  gap: .5rem;
+  margin-bottom: 1.25rem;
+  display: flex;
+}
+
+.inventory-module__lF6S4W__inputLabel {
+  text-transform: uppercase;
+  color: var(--secondary);
+  letter-spacing: .05em;
+  font-size: .75rem;
+  font-weight: 700;
+}
+
+.inventory-module__lF6S4W__toggleGroup {
+  align-items: center;
+  gap: 1.5rem;
+  margin-top: .5rem;
+  display: flex;
+}
+
+.inventory-module__lF6S4W__checkboxLabel {
+  cursor: pointer;
+  color: var(--foreground);
+  align-items: center;
+  gap: .5rem;
+  font-size: .875rem;
+  display: flex;
+}
+
+.inventory-module__lF6S4W__checkboxLabel input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary);
+}
+
+.inventory-module__lF6S4W__tableWrapper {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  margin-top: 2rem;
+  animation: .4s ease-out inventory-module__lF6S4W__fadeIn;
+  overflow: hidden;
+}
+
+.inventory-module__lF6S4W__table {
+  border-collapse: collapse;
+  text-align: left;
+  width: 100%;
+}
+
+.inventory-module__lF6S4W__table th {
+  text-transform: uppercase;
+  color: var(--secondary);
+  letter-spacing: .05em;
+  border-bottom: 1px solid var(--card-border);
+  background: #00000005;
+  padding: 1rem 1.5rem;
+  font-size: .75rem;
+  font-weight: 700;
+}
+
+.inventory-module__lF6S4W__table td {
+  border-bottom: 1px solid var(--card-border);
+  vertical-align: middle;
+  padding: 1rem 1.5rem;
+}
+
+.inventory-module__lF6S4W__table tr:last-child td {
+  border-bottom: none;
+}
+
+.inventory-module__lF6S4W__itemInfo {
+  flex-direction: column;
+  display: flex;
+}
+
+.inventory-module__lF6S4W__itemName {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+.inventory-module__lF6S4W__itemColor {
+  color: var(--secondary);
+  font-size: .8125rem;
+}
+
+.inventory-module__lF6S4W__deleteBtn {
+  color: var(--danger);
+  border-radius: var(--radius-sm);
+  transition: var(--transition-fast);
+  justify-content: center;
+  align-items: center;
+  padding: .5rem;
+  display: flex;
+}
+
+.inventory-module__lF6S4W__deleteBtn:hover {
+  background: var(--danger-light);
+  transform: scale(1.1);
+}
+
+/*# sourceMappingURL=Desktop_clock%20in%3Aout_apps_web_src_app_admin_inventory_inventory_module_51ed66f5.css.map*/

@@ -1,7 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 
 const TOKEN_KEY = 'workforce_user_token';
-const API_BASE_KEY = 'workforce_api_base';
 
 export async function saveToken(value: string) {
   await SecureStore.setItemAsync(TOKEN_KEY, value);

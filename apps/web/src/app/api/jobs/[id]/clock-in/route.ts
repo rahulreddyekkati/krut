@@ -14,6 +14,12 @@ export async function POST(
     try {
         const user = await requireAuth(request, ["WORKER"]);
 
+        // N3: Clock-in is mobile-app only — web browser GPS is too inaccurate for geofencing
+        const isMobileApp = request.headers.get("x-app-client") === "mobile-app";
+        if (!isMobileApp) {
+            throw new AppError("Clock-in is only available from the mobile app", 403);
+        }
+
         const { id: jobId } = await context.params;
         const body = await request.json();
         const { latitude, longitude } = body;

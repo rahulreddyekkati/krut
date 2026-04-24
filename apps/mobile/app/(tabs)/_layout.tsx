@@ -77,7 +77,7 @@ export default function TabLayout() {
         name="messages"
         options={{
           title: 'Messages',
-          href: isAdmin ? '/messages' : null, // Only for ADMIN
+          href: isAdmin ? '/(tabs)/messages' : null, // Only for ADMIN
           tabBarIcon: ({ color }) => <Text style={{ fontSize: 22 }}>💬</Text>,
         }}
       />

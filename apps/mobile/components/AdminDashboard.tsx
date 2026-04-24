@@ -17,17 +17,23 @@ export default function AdminDashboard() {
 
   const loadData = async () => {
     try {
-      const statsRes = await fetchWithAuth('/admin/dashboard-stats');
+      const [statsRes, activeRes, recapsRes] = await Promise.all([
+        fetchWithAuth('/admin/dashboard-stats'),
+        fetchWithAuth('/admin/dashboard-details?type=active'),
+        fetchWithAuth('/admin/dashboard-details?type=recaps'),
+      ]);
+
       if (statsRes.ok) {
         const statsData = await statsRes.json();
         setStats(statsData);
       }
-
-      const detailsRes = await fetchWithAuth('/admin/dashboard-details');
-      if (detailsRes.ok) {
-        const detailsData = await detailsRes.json();
-        setActiveWorkersDetails(detailsData.activeWorkers || []);
-        setPendingRecapsDetails(detailsData.pendingRecaps || []);
+      if (activeRes.ok) {
+        const d = await activeRes.json();
+        setActiveWorkersDetails(d.data || []);
+      }
+      if (recapsRes.ok) {
+        const d = await recapsRes.json();
+        setPendingRecapsDetails(d.data || []);
       }
     } catch (e) {
       console.log('Error loading admin dashboard data', e);

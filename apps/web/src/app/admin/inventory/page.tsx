@@ -273,10 +273,10 @@ export default function AdminInventoryPage() {
                                 </div>
                                 
                                 <div className={invStyles.formGroup}>
-                                    <label className={invStyles.inputLabel}>Color</label>
-                                    <input 
-                                        className="input" 
-                                        placeholder="Enter color"
+                                    <label className={invStyles.inputLabel}>Category</label>
+                                    <input
+                                        className="input"
+                                        placeholder="Enter category"
                                         value={newItem.color}
                                         onChange={(e) => setNewItem({...newItem, color: e.target.value})}
                                     />

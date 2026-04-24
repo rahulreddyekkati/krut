@@ -143,6 +143,24 @@ async function main() {
         });
     }
 
+    // Kruto Vodka product lineup — used in recap inventory tracking
+    console.log("Seeding Inventory Items...");
+    const skus = [
+        { name: 'Original (Red) 375ml', volume: '375', unit: 'ml', category: 'Original' },
+        { name: 'Original (Red) 750ml', volume: '750', unit: 'ml', category: 'Original' },
+        { name: 'Original (Red) 1 Liter', volume: '1000', unit: 'ml', category: 'Original' },
+        { name: 'Original (Red) 1.75L', volume: '1750', unit: 'ml', category: 'Original' },
+        { name: 'Flawless (Blue) 750ml', volume: '750', unit: 'ml', category: 'Flawless' },
+        { name: 'Flawless (Blue) 1.75L', volume: '1750', unit: 'ml', category: 'Flawless' },
+    ];
+    for (const sku of skus) {
+        await prisma.inventoryItem.upsert({
+            where: { id: `sku-${sku.name.replace(/\s+/g, '-').toLowerCase()}` },
+            update: { name: sku.name, volume: sku.volume, unit: sku.unit, category: sku.category },
+            create: { id: `sku-${sku.name.replace(/\s+/g, '-').toLowerCase()}`, ...sku },
+        });
+    }
+
     console.log("Seed successful!");
 }
 

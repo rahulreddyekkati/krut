@@ -105,39 +105,54 @@ export async function GET(request: NextRequest) {
             const isPastDay = shiftDateStr < todayStr;
 
             // 2. Auto clock-out if past end time OR if it's a shift from a previous day
-            if (activeAssignment.clockIn && !activeAssignment.clockOut && (isPastDay || nowTimeMins > endTimeMins)) {
-                // Use localShiftEndToUTC for DST-aware, overnight-aware clock-out
-                const shiftDateStr = toLocalDateStr(
+            // Use customEndTimeStr if admin set an override, else fall back to job's endTimeStr (N4)
+            const effectiveEndTimeStr = (activeAssignment as any).customEndTimeStr ?? endTimeStr;
+            const [effEndH, effEndM] = effectiveEndTimeStr.split(':').map(Number);
+            const effEndTimeMins = effEndH * 60 + effEndM;
+
+            if (activeAssignment.clockIn && !activeAssignment.clockOut && (isPastDay || nowTimeMins > effEndTimeMins)) {
+                const autoClockOutDateStr = toLocalDateStr(
                     activeAssignment.date ? new Date(activeAssignment.date) : new Date(activeAssignment.clockIn),
                     tz
                 );
-                const autoClockOut = localShiftEndToUTC(shiftDateStr, startTimeStr, endTimeStr, tz);
+                const autoClockOut = localShiftEndToUTC(autoClockOutDateStr, startTimeStr, effectiveEndTimeStr, tz);
 
-                // Safety: if clockOut is still before clockIn (shouldn't happen now, but guard anyway)
                 let finalClockOut = autoClockOut;
                 if (autoClockOut.getTime() <= activeAssignment.clockIn.getTime()) {
                     const [sH, sM] = startTimeStr.split(':').map(Number);
-                    const shiftDurationMins = ((endH * 60 + endM) - (sH * 60 + sM) + 1440) % 1440;
+                    const shiftDurationMins = ((effEndH * 60 + effEndM) - (sH * 60 + sM) + 1440) % 1440;
                     finalClockOut = new Date(activeAssignment.clockIn.getTime() + shiftDurationMins * 60 * 1000);
                 }
 
+                // Close any in-progress break before computing worked hours
+                const activeBreak = await prisma.break.findFirst({
+                    where: { assignmentId: activeAssignment.id, endTime: null }
+                });
+                let extraBreakMins = 0;
+                if (activeBreak) {
+                    extraBreakMins = (finalClockOut.getTime() - activeBreak.startTime.getTime()) / 60000;
+                    await prisma.break.update({
+                        where: { id: activeBreak.id },
+                        data: { endTime: finalClockOut, durationMins: extraBreakMins }
+                    });
+                    await prisma.jobAssignment.update({
+                        where: { id: activeAssignment.id },
+                        data: { breakTimeMinutes: { increment: extraBreakMins } }
+                    });
+                }
+
                 const diffMinutes = (finalClockOut.getTime() - activeAssignment.clockIn.getTime()) / (1000 * 60);
-                const breakTimeMinutes = activeAssignment.breakTimeMinutes || 0;
-                const workedHours = parseFloat(Math.max(0, (diffMinutes - breakTimeMinutes) / 60).toFixed(2));
+                const totalBreakMins = (activeAssignment.breakTimeMinutes || 0) + extraBreakMins;
+                const workedHours = parseFloat(Math.max(0, (diffMinutes - totalBreakMins) / 60).toFixed(2));
 
                 activeAssignment = await prisma.jobAssignment.update({
                     where: { id: activeAssignment.id },
                     data: { clockOut: finalClockOut, workedHours, status: "RECAP_PENDING" } as any,
                     include: {
-                        job: {
-                            include: {
-                                store: { select: { name: true, address: true } }
-                            }
-                        }
+                        job: { include: { store: { select: { name: true, address: true } } } }
                     }
                 }) as any;
 
-                // Also update job status
                 await prisma.job.update({
                     where: { id: activeAssignment!.jobId },
                     data: { status: "RECAP_PENDING" }
@@ -176,6 +191,12 @@ export async function POST(request: NextRequest) {
         const now = new Date();
 
         if (action === "CLOCK_IN") {
+            // N3: Clock-in is mobile-app only — web browser GPS is too inaccurate for geofencing
+            const isMobileApp = request.headers.get("x-app-client") === "mobile-app";
+            if (!isMobileApp) {
+                throw new AppError("Clock-in is only available from the mobile app", 403);
+            }
+
             let targetAssignmentId = assignmentId;
 
             // If it's a recurring template, materialize it into a specific date instance
@@ -229,21 +250,45 @@ export async function POST(request: NextRequest) {
             }
 
             const now = new Date();
-            const diffMinutes = (now.getTime() - assignment.clockIn.getTime()) / (1000 * 60);
-            const breakTimeMinutes = assignment.breakTimeMinutes || 0;
-            const workedHours = parseFloat(Math.max(0, (diffMinutes - breakTimeMinutes) / 60).toFixed(2));
 
             // CRIT-09 + MAJ-07: Atomic $transaction with clockOut null guard
             const result = await prisma.$transaction(async (tx: any) => {
                 // Atomic guard — only proceed if clockOut is still null
                 const guard = await tx.jobAssignment.updateMany({
                     where: { id: assignmentId, clockOut: null },
-                    data: { clockOut: now, workedHours, status: "RECAP_PENDING" }
+                    data: { clockOut: now, status: "RECAP_PENDING" }
                 });
 
                 if (guard.count === 0) {
                     throw new AppError("Already clocked out", 409);
                 }
+
+                // Close any in-progress break so break time is fully counted
+                const activeBreak = await tx.break.findFirst({
+                    where: { assignmentId, endTime: null }
+                });
+                if (activeBreak) {
+                    const breakMins = (now.getTime() - activeBreak.startTime.getTime()) / 60000;
+                    await tx.break.update({
+                        where: { id: activeBreak.id },
+                        data: { endTime: now, durationMins: breakMins }
+                    });
+                    await tx.jobAssignment.update({
+                        where: { id: assignmentId },
+                        data: { breakTimeMinutes: { increment: breakMins } }
+                    });
+                }
+
+                // Re-fetch to get accurate breakTimeMinutes (including any just-closed break)
+                const fresh = await tx.jobAssignment.findUnique({ where: { id: assignmentId } });
+                const grossMinutes = (now.getTime() - assignment.clockIn!.getTime()) / 60000;
+                const breakMinutes = fresh?.breakTimeMinutes ?? 0;
+                const workedHours = parseFloat(Math.max(0, (grossMinutes - breakMinutes) / 60).toFixed(2));
+
+                await tx.jobAssignment.update({
+                    where: { id: assignmentId },
+                    data: { workedHours }
+                });
 
                 await tx.job.update({
                     where: { id: assignment.jobId },
@@ -262,6 +307,44 @@ export async function POST(request: NextRequest) {
             });
 
             return NextResponse.json(result);
+        }
+
+        // N2: Auto-break via geofence exit — BREAK_START and BREAK_END actions
+        if (action === "BREAK_START") {
+            if (!assignment.clockIn || assignment.clockOut) {
+                throw new AppError("Must be clocked in to start a break", 400);
+            }
+            const existingBreak = await prisma.break.findFirst({
+                where: { assignmentId, endTime: null }
+            });
+            if (existingBreak) {
+                return NextResponse.json({ error: "Break already active" }, { status: 409 });
+            }
+            await prisma.break.create({
+                data: { assignmentId, startTime: now }
+            });
+            return NextResponse.json({ success: true });
+        }
+
+        if (action === "BREAK_END") {
+            const activeBreak = await prisma.break.findFirst({
+                where: { assignmentId, endTime: null }
+            });
+            if (!activeBreak) {
+                return NextResponse.json({ error: "No active break" }, { status: 409 });
+            }
+            const durationMins = (now.getTime() - activeBreak.startTime.getTime()) / 60000;
+            await prisma.$transaction([
+                prisma.break.update({
+                    where: { id: activeBreak.id },
+                    data: { endTime: now, durationMins }
+                }),
+                prisma.jobAssignment.update({
+                    where: { id: assignmentId },
+                    data: { breakTimeMinutes: { increment: durationMins } }
+                })
+            ]);
+            return NextResponse.json({ success: true, durationMins });
         }
 
         throw new AppError("Invalid action", 400);

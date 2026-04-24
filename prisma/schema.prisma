@@ -17,17 +17,17 @@ model User {
   status        String    @default("INVITED") // INVITED, ACTIVE, SUSPENDED, DEACTIVATED
   hourlyWage    Float?
   manualWorkedHours Float?
-  
+
   // Market membership (non-admin users belong to one market)
   // onDelete: SetNull — user stays in DB if market is deleted; requires manual reassignment
   market        Market?   @relation("UserMarket", fields: [marketId], references: [id], onDelete: SetNull)
   marketId      String?
-  
+
   // Market Manager scope
   // onDelete: SetNull — manager stays if their market is deleted
   managedMarket   Market?   @relation("ManagedMarket", fields: [managedMarketId], references: [id], onDelete: SetNull)
   managedMarketId String?
-  
+
   // onDelete: Restrict — do not silently delete work history; require explicit cleanup first
   jobs          JobAssignment[]
   createdJobs   Job[]     @relation("JobCreator")
@@ -35,12 +35,15 @@ model User {
   // onDelete: Restrict — preserve request audit trail
   releaseRequests ReleaseRequest[]
   shiftRequests   ShiftRequest[]
-  
+
   // onDelete: Cascade — messages/notifications are owned by the user
   sentMessages     Message[]      @relation("SentMessages")
   notifications    Notification[]
   sentInvites      Invite[]       @relation("InviteSender")
   chatThreads      ChatThread[]
+
+  // Audit trail of admin actions affecting payroll
+  auditLogs     AuditLog[]
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -64,11 +67,11 @@ model Store {
   latitude  Float
   longitude Float
   radius    Float    @default(100)
-  
+
   // onDelete: Restrict — don't silently delete a store that belongs to a market with active jobs
   market    Market   @relation(fields: [marketId], references: [id], onDelete: Restrict)
   marketId  String
-  
+
   // onDelete: Restrict — jobs must be explicitly cleaned up before store deletion
   jobs      Job[]
   createdAt DateTime @default(now())
@@ -82,6 +85,10 @@ model Job {
   date         DateTime?
   bonus        Float    @default(0)
   status       String   @default("OPEN") // OPEN, ASSIGNED, ACCEPTED, IN_PROGRESS, RECAP_PENDING, COMPLETED, NO_SHOW
+
+  // Links a released-shift open job back to its source ReleaseRequest
+  // Replaces fragile title-suffix matching used previously
+  sourceReleaseId String?
 
   // onDelete: Restrict — job must not be deleted if it has active assignments (preserve work history)
   store     Store    @relation(fields: [storeId], references: [id], onDelete: Restrict)
@@ -112,7 +119,7 @@ model JobAssignment {
   // onDelete: Restrict — don't silently delete work history if worker is deleted
   worker    User     @relation(fields: [workerId], references: [id], onDelete: Restrict)
   workerId  String
-  
+
   date        DateTime?
   dayOfWeek   Int?         // 0: Sunday, 1: Monday, etc.
   isRecurring Boolean      @default(false)
@@ -123,10 +130,29 @@ model JobAssignment {
   workedHours      Float?
   status    String   @default("ASSIGNED") // ASSIGNED, IN_PROGRESS, RECAP_PENDING, COMPLETED
 
+  // Admin-overridable time bounds for this specific assignment
+  // When set, these override job.startTimeStr / job.endTimeStr for this worker only
+  customStartTimeStr String?
+  customEndTimeStr   String?
+
+  // Break records for this assignment (multiple breaks per shift supported)
+  breaks    Break[]
+
   // onDelete: Cascade — recap is tied to assignment; if assignment deleted, recap is moot
   recap     Recap?
 
   createdAt DateTime @default(now())
+}
+
+// Records each break interval within a shift.
+// breakTimeMinutes on JobAssignment is the denormalized sum of all completed Break.durationMins.
+model Break {
+  id           String        @id @default(cuid())
+  assignment   JobAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  assignmentId String
+  startTime    DateTime
+  endTime      DateTime?     // null = break is currently active
+  durationMins Float?        // computed when endTime is set
 }
 
 model ReleaseRequest {
@@ -174,7 +200,7 @@ model Recap {
   // onDelete: Cascade — recap is entirely owned by the assignment
   assignment        JobAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
   assignmentId      String   @unique
-  
+
   consumersAttended Int
   consumersSampled  Int
   reimbursement     Float    @default(0)
@@ -183,16 +209,17 @@ model Recap {
   comments          String?
   rushLevel         String?
   customerFeedback  String?
-  managerSignature  String?  // Base64 signature
-  managerReview     String?
+  managerSignature  String?  // Base64 drawn signature from store manager at the event
+  storeManagerName  String?  // Typed name of the store manager who signed off at the event
+  managerReview     String?  // Back-office admin notes written during recap approval
   status            String   @default("PENDING") // PENDING, APPROVED, REJECTED
-  
+
   // onDelete: Cascade — overtime request tied to recap
   overtimeRequest   OvertimeRequest?
 
   // onDelete: Cascade — SKU rows tied to recap
   skus              RecapSKU[]
-  
+
   createdAt         DateTime @default(now())
 }
 
@@ -283,4 +310,18 @@ model InventoryItem {
   unit      String?  // e.g. "ml"
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Immutable log of admin actions that affect payroll calculations.
+// Written inside the same $transaction as the mutation — never outside.
+model AuditLog {
+  id         String   @id @default(cuid())
+  actor      User     @relation(fields: [actorId], references: [id])
+  actorId    String
+  action     String   // SHIFT_TIME_EDIT, BREAK_MINUTES_OVERRIDE, RECAP_APPROVED, RECAP_REJECTED
+  entityType String   // JobAssignment, Recap, Break
+  entityId   String
+  oldValue   String?  // JSON serialized (SQLite has no Json type)
+  newValue   String?  // JSON serialized
+  createdAt  DateTime @default(now())
 }

@@ -1,0 +1,106 @@
+/* [project]/Desktop/clock in:out/apps/web/src/app/admin/stores/stores.module.css [app-client] (css) */
+.stores-module__1_ddiq__container {
+  flex-direction: column;
+  gap: 1.5rem;
+  display: flex;
+}
+
+.stores-module__1_ddiq__header {
+  flex-wrap: wrap-reverse;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  display: flex;
+}
+
+.stores-module__1_ddiq__actions {
+  gap: .75rem;
+  display: flex;
+}
+
+.stores-module__1_ddiq__formGrid {
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-top: 1rem;
+  display: grid;
+}
+
+.stores-module__1_ddiq__row {
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  display: grid;
+}
+
+.stores-module__1_ddiq__formActions {
+  grid-column: span 2;
+  gap: .5rem;
+  margin-top: .5rem;
+  display: flex;
+}
+
+.stores-module__1_ddiq__fileInput {
+  border: 1px dashed var(--card-border);
+  border-radius: var(--radius-md);
+  width: 100%;
+  margin-top: 1rem;
+  padding: .5rem;
+}
+
+.stores-module__1_ddiq__tableWrapper {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.stores-module__1_ddiq__table {
+  border-collapse: collapse;
+  text-align: left;
+  width: 100%;
+}
+
+.stores-module__1_ddiq__table th, .stores-module__1_ddiq__table td {
+  border-bottom: 1px solid var(--card-border);
+  padding: 1rem 1.5rem;
+}
+
+.stores-module__1_ddiq__table th {
+  color: var(--secondary);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  background: #00000005;
+  font-size: .75rem;
+  font-weight: 600;
+}
+
+.stores-module__1_ddiq__addressCell {
+  color: var(--secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 250px;
+  font-size: .875rem;
+  overflow: hidden;
+}
+
+.stores-module__1_ddiq__coordCell {
+  color: var(--secondary);
+  font-family: monospace;
+  font-size: .75rem;
+}
+
+.stores-module__1_ddiq__actionsCell {
+  gap: .5rem;
+  display: flex;
+}
+
+@media (max-width: 768px) {
+  .stores-module__1_ddiq__formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .stores-module__1_ddiq__formActions, .stores-module__1_ddiq__row {
+    grid-column: span 1;
+  }
+}
+
+/*# sourceMappingURL=Desktop_clock%20in%3Aout_apps_web_src_app_admin_stores_stores_module_fc672bf9.css.map*/

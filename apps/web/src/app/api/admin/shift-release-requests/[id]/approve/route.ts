@@ -35,11 +35,11 @@ export async function POST(
         });
 
         // 2. Create an "Open Shift" for that specific date
-        // Create a duplicated Job entry indicating it's an OPEN shift on that specific Date
+        // sourceReleaseId links this job back to its origin — replaces fragile title-suffix matching
         if (releaseRequest.date) {
             await prisma.job.create({
                 data: {
-                    title: `${releaseRequest.job.title} - Open (${new Date(releaseRequest.date).toLocaleDateString()}) - ${releaseRequest.id.slice(-4)}`,
+                    title: `${releaseRequest.job.title} - Open (${new Date(releaseRequest.date).toLocaleDateString()})`,
                     startTimeStr: releaseRequest.job.startTimeStr,
                     endTimeStr: releaseRequest.job.endTimeStr,
                     date: releaseRequest.date,
@@ -47,7 +47,8 @@ export async function POST(
                     status: "OPEN",
                     storeId: releaseRequest.job.storeId,
                     marketId: releaseRequest.job.marketId,
-                    creatorId: session.user.id
+                    creatorId: session.user.id,
+                    sourceReleaseId: requestId,
                 }
             });
         }

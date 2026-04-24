@@ -1,0 +1,69 @@
+/* [project]/Desktop/clock in:out/apps/web/src/app/admin/markets/markets.module.css [app-client] (css) */
+.markets-module__UJziKa__container {
+  flex-direction: column;
+  gap: 2rem;
+  display: flex;
+}
+
+.markets-module__UJziKa__header {
+  margin-bottom: .5rem;
+}
+
+.markets-module__UJziKa__createSection {
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem;
+  display: flex;
+}
+
+.markets-module__UJziKa__form {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  display: flex;
+}
+
+.markets-module__UJziKa__form input {
+  flex: 1;
+  min-width: 250px;
+}
+
+.markets-module__UJziKa__formActions {
+  gap: .5rem;
+  display: flex;
+}
+
+.markets-module__UJziKa__grid {
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+  display: grid;
+}
+
+.markets-module__UJziKa__marketInfo {
+  margin-bottom: 1.5rem;
+}
+
+.markets-module__UJziKa__stats {
+  color: var(--secondary);
+  gap: 1rem;
+  margin-top: .5rem;
+  font-size: .875rem;
+  display: flex;
+}
+
+.markets-module__UJziKa__cardActions {
+  border-top: 1px solid var(--card-border);
+  justify-content: flex-end;
+  gap: .5rem;
+  padding-top: 1rem;
+  display: flex;
+}
+
+@media (max-width: 600px) {
+  .markets-module__UJziKa__form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+/*# sourceMappingURL=Desktop_clock%20in%3Aout_apps_web_src_app_admin_markets_markets_module_84f7bca2.css.map*/

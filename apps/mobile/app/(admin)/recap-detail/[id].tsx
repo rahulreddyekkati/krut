@@ -3,6 +3,16 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator,
 import { useLocalSearchParams, router } from 'expo-router';
 import { fetchWithAuth } from '../../../utils/apiClient';
 
+function parseReceiptUrls(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [String(parsed)];
+  } catch {
+    return raw.startsWith('data:') || raw.startsWith('http') ? [raw] : [];
+  }
+}
+
 export default function AdminRecapDetail() {
   const { id } = useLocalSearchParams();
   const [recap, setRecap] = useState<any>(null);
@@ -108,10 +118,7 @@ export default function AdminRecapDetail() {
   const isPending = recap.status === 'PENDING';
   const rushBadge = getRushBadge(recap.rushLevel);
 
-  let receiptUris: string[] = [];
-  try {
-    if (recap.receiptUrl) receiptUris = JSON.parse(recap.receiptUrl);
-  } catch(e) {}
+  const receiptUris = parseReceiptUrls(recap.receiptUrl);
 
   return (
     <View style={styles.container}>

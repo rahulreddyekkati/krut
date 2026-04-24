@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getSession } from "@/lib/auth";
+import { requireAuth } from "@/lib/auth";
+import { handleApiError } from "@/lib/apiError";
 
 export async function POST(
     request: NextRequest,
     context: { params: Promise<{ id: string }> }
 ) {
     try {
-        const session = await getSession();
-        if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        const user = await requireAuth(request, ["ADMIN", "MARKET_MANAGER"]);
 
         const resolvedParams = await context.params;
         const requestId = resolvedParams.id;
@@ -90,7 +90,6 @@ export async function POST(
 
         return NextResponse.json({ success: true });
     } catch (error) {
-        console.error("Shift assign approve error:", error);
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+        return handleApiError(error);
     }
 }

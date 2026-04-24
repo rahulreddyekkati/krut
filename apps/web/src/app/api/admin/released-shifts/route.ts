@@ -19,30 +19,16 @@ export async function GET() {
             orderBy: { createdAt: "desc" }
         });
 
-        // Fetch all OPEN jobs to see which releases are still unfulfilled
+        // Fetch all OPEN jobs that have a sourceReleaseId (released shifts awaiting reassignment)
         const openJobs = await prisma.job.findMany({
-            where: { status: "OPEN" }
+            where: { status: "OPEN", sourceReleaseId: { not: null } }
         });
 
-        // We only want released shifts that have "not been assigned to any others".
-        // A release is considered unassigned if the cloned Open Job is STILL "OPEN".
+        // Match each approved release to its still-open job via sourceReleaseId
         const unassignedReleases = approvedReleases.map(release => {
-            if (!release.date) {
-                // If recurring (no specific date), it's unassigned if an open job exists containing its ID
-                const matchedJob = openJobs.find(job => job.title.includes(release.id.slice(-4)));
-                return { ...release, openJobId: matchedJob?.id };
-            }
-            
-            // Check if there's an OPEN job that matches this release exactly
-            const matchedJob = openJobs.find(job => 
-                job.storeId === release.job.storeId &&
-                job.startTimeStr === release.job.startTimeStr &&
-                job.date && release.date &&
-                new Date(job.date).toISOString().split('T')[0] === new Date(release.date).toISOString().split('T')[0] &&
-                job.title.includes(release.id.slice(-4))
-            );
+            const matchedJob = openJobs.find(job => job.sourceReleaseId === release.id);
             return { ...release, openJobId: matchedJob?.id };
-        }).filter(r => r.openJobId); // keeping only those where the active open job exists
+        }).filter(r => r.openJobId);
 
         return NextResponse.json(unassignedReleases);
     } catch (error) {

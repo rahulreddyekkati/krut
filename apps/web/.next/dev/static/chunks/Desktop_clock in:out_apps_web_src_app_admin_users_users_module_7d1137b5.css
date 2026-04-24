@@ -1,0 +1,93 @@
+/* [project]/Desktop/clock in:out/apps/web/src/app/admin/users/users.module.css [app-client] (css) */
+.users-module__WMdz1W__container {
+  flex-direction: column;
+  gap: 2rem;
+  display: flex;
+}
+
+.users-module__WMdz1W__header {
+  margin-bottom: .5rem;
+}
+
+.users-module__WMdz1W__inputGroup {
+  flex-direction: column;
+  gap: .5rem;
+  display: flex;
+}
+
+.users-module__WMdz1W__formRow {
+  grid-template-columns: 2fr 1fr auto;
+  align-items: flex-end;
+  gap: 1.5rem;
+  display: grid;
+}
+
+@media (max-width: 768px) {
+  .users-module__WMdz1W__formRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+.users-module__WMdz1W__inputGroup label {
+  text-transform: uppercase;
+  color: var(--secondary);
+  letter-spacing: .05em;
+  font-size: .75rem;
+  font-weight: 700;
+}
+
+.users-module__WMdz1W__tableWrapper {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  height: fit-content;
+  overflow: hidden;
+}
+
+.users-module__WMdz1W__table {
+  border-collapse: collapse;
+  text-align: left;
+  width: 100%;
+}
+
+.users-module__WMdz1W__table th, .users-module__WMdz1W__table td {
+  border-bottom: 1px solid var(--card-border);
+  padding: .75rem .5rem;
+}
+
+.users-module__WMdz1W__table th {
+  color: var(--secondary);
+  text-transform: uppercase;
+  letter-spacing: .02em;
+  white-space: nowrap;
+  background: #00000005;
+  font-size: .7rem;
+  font-weight: 600;
+}
+
+.users-module__WMdz1W__userInfo {
+  flex-direction: column;
+  gap: .125rem;
+  display: flex;
+}
+
+.users-module__WMdz1W__userInfo span {
+  color: var(--secondary);
+  font-size: .75rem;
+}
+
+.users-module__WMdz1W__statusDot {
+  border-radius: 50%;
+  width: 8px;
+  height: 8px;
+  margin-right: .5rem;
+  display: inline-block;
+}
+
+@media (max-width: 1024px) {
+  .users-module__WMdz1W__grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/*# sourceMappingURL=Desktop_clock%20in%3Aout_apps_web_src_app_admin_users_users_module_7d1137b5.css.map*/

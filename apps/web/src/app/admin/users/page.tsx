@@ -67,28 +67,10 @@ export default function AdminUsersPage() {
         if (res.ok) {
             const data = await res.json();
             const user = data.user;
-
-            // Fetch full user record to get managedMarketId
-            const fullRes = await fetch(`/api/users/${user.id}`); // This might not work if not Admin, let's use /api/auth/me as truth
-            // Wait, /api/auth/me usually skips relations. 
-            // Better: fetch from /api/users listing or a dedicated endpoint.
-            // Actually, I just updated /api/auth/me logic? No.
-
-            // Let's assume we need to fetch the full record for scoping
-            const profileRes = await fetch("/api/auth/profile"); // Assuming I might need a profile endpoint or trust session
             setCurrentUser(user);
-
-            // If MM, we need their market ID for invitations
-            if (user.role === "MARKET_MANAGER") {
-                // Fetch the user list to find themselves (it's scoped now!)
-                const usersRes = await fetch("/api/users");
-                if (usersRes.ok) {
-                    const usersList = await usersRes.json();
-                    const me = usersList.find((u: any) => u.id === user.id);
-                    if (me && me.managedMarketId) {
-                        setInviteMarketId(me.managedMarketId);
-                    }
-                }
+            // /api/auth/me now returns managedMarketId directly from DB
+            if (user.role === "MARKET_MANAGER" && user.managedMarketId) {
+                setInviteMarketId(user.managedMarketId);
             }
         }
     };

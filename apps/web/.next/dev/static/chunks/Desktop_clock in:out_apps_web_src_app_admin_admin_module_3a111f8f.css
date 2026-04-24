@@ -1,0 +1,323 @@
+/* [project]/Desktop/clock in:out/apps/web/src/app/admin/admin.module.css [app-client] (css) */
+.admin-module__qUpZGW__layout {
+  background-color: var(--background);
+  min-height: 100vh;
+  display: flex;
+}
+
+.admin-module__qUpZGW__sidebar {
+  background: var(--card-bg);
+  border-right: 1px solid var(--card-border);
+  z-index: 1001;
+  flex-direction: column;
+  width: 260px;
+  height: 100vh;
+  display: flex;
+  position: fixed;
+  top: 0;
+  left: 0;
+}
+
+.admin-module__qUpZGW__logo {
+  border-bottom: 1px solid var(--card-border);
+  color: var(--primary);
+  padding: 2rem;
+}
+
+.admin-module__qUpZGW__nav {
+  flex-direction: column;
+  flex: 1;
+  gap: .5rem;
+  padding: 1.5rem 1rem;
+  display: flex;
+}
+
+.admin-module__qUpZGW__navLink {
+  border-radius: var(--radius-md);
+  color: var(--secondary);
+  transition: var(--transition-fast);
+  padding: .75rem 1rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.admin-module__qUpZGW__navLink:hover, .admin-module__qUpZGW__active {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+.admin-module__qUpZGW__iconContainer {
+  display: inline-flex;
+  position: relative;
+}
+
+.admin-module__qUpZGW__badge {
+  background: var(--danger);
+  color: #fff;
+  border: 2px solid var(--card-bg);
+  border-radius: 8px;
+  justify-content: center;
+  align-items: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  position: absolute;
+  top: -4px;
+  right: -4px;
+}
+
+.admin-module__qUpZGW__sidebarFooter {
+  border-top: 1px solid var(--card-border);
+  padding: 1.5rem;
+}
+
+.admin-module__qUpZGW__backLink {
+  color: var(--secondary);
+  font-size: .875rem;
+  text-decoration: none;
+}
+
+.admin-module__qUpZGW__main {
+  flex: 1;
+  margin-left: 260px;
+  padding: 2.5rem;
+}
+
+.admin-module__qUpZGW__mobileHeader {
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--card-border);
+  z-index: 1002;
+  justify-content: space-between;
+  align-items: center;
+  height: 60px;
+  padding: 0 1.25rem;
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+
+.admin-module__qUpZGW__mobileTitle {
+  color: var(--primary);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.admin-module__qUpZGW__mobileActions {
+  align-items: center;
+  gap: .25rem;
+  display: flex;
+}
+
+.admin-module__qUpZGW__iconBtn {
+  color: var(--secondary);
+  cursor: pointer;
+  width: 40px;
+  height: 40px;
+  transition: var(--transition-fast);
+  background: none;
+  border: none;
+  border-radius: 50%;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+
+.admin-module__qUpZGW__iconBtn:hover {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+.admin-module__qUpZGW__hamburger {
+  color: var(--secondary);
+}
+
+.admin-module__qUpZGW__closeMenu {
+  color: var(--secondary);
+  display: none;
+}
+
+.admin-module__qUpZGW__desktopOnlyBtn {
+  display: flex;
+}
+
+@media (max-width: 1024px) {
+  .admin-module__qUpZGW__sidebar {
+    width: 240px;
+  }
+
+  .admin-module__qUpZGW__main {
+    margin-left: 240px;
+  }
+}
+
+.admin-module__qUpZGW__messageContainer {
+  background: var(--card-bg);
+  flex: 1;
+  height: calc(100vh - 60px);
+  display: flex;
+  overflow: hidden;
+}
+
+.admin-module__qUpZGW__messageSidebar {
+  border-right: 1px solid var(--card-border);
+  background: var(--background);
+  z-index: 10;
+  flex-direction: column;
+  width: 320px;
+  display: flex;
+}
+
+.admin-module__qUpZGW__messageChat {
+  background: var(--card-bg);
+  flex-direction: column;
+  flex: 1;
+  display: flex;
+  position: relative;
+}
+
+.admin-module__qUpZGW__threadItem {
+  cursor: pointer;
+  border-bottom: 1px solid var(--card-border);
+  transition: var(--transition-fast);
+  border-left: 4px solid #0000;
+  padding: 1rem;
+}
+
+.admin-module__qUpZGW__threadItemActive {
+  background: var(--primary-light);
+  border-left-color: var(--primary);
+}
+
+.admin-module__qUpZGW__backButton {
+  color: var(--primary);
+  cursor: pointer;
+  align-items: center;
+  gap: .5rem;
+  font-weight: 600;
+  display: none;
+}
+
+.admin-module__qUpZGW__floatingBtn {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .admin-module__qUpZGW__mobileHeader {
+    display: flex;
+  }
+
+  .admin-module__qUpZGW__sidebar {
+    width: 85%;
+    max-width: 320px;
+    transition: transform .3s cubic-bezier(.4, 0, .2, 1);
+    transform: translateX(-100%);
+    box-shadow: 20px 0 50px #0003;
+  }
+
+  .admin-module__qUpZGW__sidebarActive {
+    transform: translateX(0);
+  }
+
+  .admin-module__qUpZGW__closeMenu {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    position: static;
+  }
+
+  .admin-module__qUpZGW__logo {
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.25rem 1.5rem;
+    display: flex;
+  }
+
+  .admin-module__qUpZGW__overlay {
+    z-index: 1000;
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
+    background: #0006;
+    position: fixed;
+    inset: 0;
+  }
+
+  .admin-module__qUpZGW__messageContainer {
+    height: calc(100vh - 60px);
+  }
+
+  .admin-module__qUpZGW__messageSidebar {
+    z-index: 11;
+    background: var(--card-bg);
+    width: 100%;
+    margin-top: 0;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+  }
+
+  .admin-module__qUpZGW__messageSidebarHidden {
+    display: none;
+  }
+
+  .admin-module__qUpZGW__messageChat {
+    z-index: 12;
+    background: var(--card-bg);
+    width: 100%;
+    margin-top: 0;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+  }
+
+  .admin-module__qUpZGW__messageChatHidden {
+    display: none;
+  }
+
+  .admin-module__qUpZGW__backButton {
+    display: flex;
+  }
+
+  .admin-module__qUpZGW__main {
+    -webkit-overflow-scrolling: touch;
+    margin-left: 0;
+    padding: 80px 1rem 1rem;
+    position: relative;
+    overflow-x: auto;
+  }
+
+  .admin-module__qUpZGW__desktopOnlyBtn {
+    display: none !important;
+  }
+
+  .admin-module__qUpZGW__floatingBtn {
+    background: var(--primary);
+    color: #fff;
+    cursor: pointer;
+    z-index: 100;
+    border: none;
+    border-radius: 28px;
+    justify-content: center;
+    align-items: center;
+    width: 56px;
+    height: 56px;
+    transition: transform .2s;
+    display: flex;
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    box-shadow: 0 4px 12px #6366f166;
+  }
+
+  .admin-module__qUpZGW__floatingBtn:active {
+    transform: scale(.9);
+  }
+}
+
+/*# sourceMappingURL=Desktop_clock%20in%3Aout_apps_web_src_app_admin_admin_module_3a111f8f.css.map*/

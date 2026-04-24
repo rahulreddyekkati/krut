@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
+import prisma from "@/lib/prisma";
 
 export async function GET() {
     const session = await getSession();
@@ -8,5 +9,23 @@ export async function GET() {
         return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    return NextResponse.json({ user: session.user });
+    const user = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: {
+            id: true,
+            email: true,
+            name: true,
+            role: true,
+            status: true,
+            marketId: true,
+            managedMarketId: true,
+            hourlyWage: true,
+        }
+    });
+
+    if (!user || user.status === "SUSPENDED" || user.status === "DEACTIVATED") {
+        return NextResponse.json({ error: "Account inactive" }, { status: 403 });
+    }
+
+    return NextResponse.json({ user });
 }

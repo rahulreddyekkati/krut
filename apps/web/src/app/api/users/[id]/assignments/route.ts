@@ -13,6 +13,14 @@ export async function GET(
 
         const { id } = await context.params;
 
+        if (
+            session.user.role !== "ADMIN" &&
+            session.user.role !== "MARKET_MANAGER" &&
+            session.user.id !== id
+        ) {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+
         const assignments = await prisma.jobAssignment.findMany({
             where: { workerId: id },
             include: {
@@ -87,6 +95,53 @@ export async function POST(
     }
 }
 
+// PATCH /api/users/[id]/assignments - Override start/end time for a specific assignment (N4)
+export async function PATCH(
+    request: NextRequest,
+    context: { params: Promise<{ id: string }> }
+) {
+    try {
+        const session = await getSession();
+        if (!session || (session.user.role !== "ADMIN" && session.user.role !== "MARKET_MANAGER")) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const body = await request.json();
+        const { assignmentId, customStartTimeStr, customEndTimeStr } = body;
+
+        if (!assignmentId) {
+            return NextResponse.json({ error: "Missing assignmentId" }, { status: 400 });
+        }
+
+        const old = await prisma.jobAssignment.findUnique({
+            where: { id: assignmentId },
+            select: { customStartTimeStr: true, customEndTimeStr: true }
+        });
+
+        const [updated] = await prisma.$transaction([
+            prisma.jobAssignment.update({
+                where: { id: assignmentId },
+                data: { customStartTimeStr: customStartTimeStr ?? null, customEndTimeStr: customEndTimeStr ?? null }
+            }),
+            prisma.auditLog.create({
+                data: {
+                    actorId: session.user.id,
+                    action: "SHIFT_TIME_EDIT",
+                    entityType: "JobAssignment",
+                    entityId: assignmentId,
+                    oldValue: JSON.stringify({ customStartTimeStr: old?.customStartTimeStr, customEndTimeStr: old?.customEndTimeStr }),
+                    newValue: JSON.stringify({ customStartTimeStr, customEndTimeStr }),
+                }
+            })
+        ]);
+
+        return NextResponse.json({ success: true, assignment: updated });
+    } catch (error: any) {
+        console.error("Patch assignment error:", error);
+        return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
+    }
+}
+
 // DELETE /api/users/[id]/assignments - Remove an assignment
 export async function DELETE(
     request: NextRequest,
@@ -102,7 +157,6 @@ export async function DELETE(
         const { searchParams } = new URL(request.url);
         const assignmentId = searchParams.get("id");
 
-        console.log(`DEBUG: Deleting assignment ${assignmentId} for user ${id}`);
 
         if (!assignmentId) {
             return NextResponse.json({ error: "Missing assignment id" }, { status: 400 });

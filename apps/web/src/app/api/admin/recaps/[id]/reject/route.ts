@@ -72,6 +72,17 @@ export async function POST(
                     read: false
                 }
             });
+
+            // N5: Audit log — record every rejection
+            await tx.auditLog.create({
+                data: {
+                    actorId: user.id,
+                    action: "RECAP_REJECTED",
+                    entityType: "Recap",
+                    entityId: recapId,
+                    newValue: JSON.stringify({ managerNotes }),
+                }
+            });
         });
 
         return NextResponse.json({ success: true, message: "Recap rejected" });

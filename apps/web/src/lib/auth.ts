@@ -1,35 +1,17 @@
-import { SignJWT, jwtVerify } from "jose";
 import { cookies, headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { AppError } from "@/lib/apiError";
+import { encrypt, decrypt } from "@/lib/session";
+
+export { encrypt, decrypt };
 
 // ─── Startup guard ────────────────────────────────────────────────────────────
-// Throw at module load time if JWT_SECRET is missing — fail fast, fail loud.
 if (!process.env.JWT_SECRET) {
     throw new Error(
         "FATAL: JWT_SECRET environment variable is not set. " +
         "Set it in .env before starting the server."
     );
-}
-
-const key = new TextEncoder().encode(process.env.JWT_SECRET);
-
-// ─── Core JWT helpers ─────────────────────────────────────────────────────────
-
-export async function encrypt(payload: any): Promise<string> {
-    return await new SignJWT(payload)
-        .setProtectedHeader({ alg: "HS256" })
-        .setIssuedAt()
-        .setExpirationTime("24h")
-        .sign(key);
-}
-
-export async function decrypt(input: string): Promise<any> {
-    const { payload } = await jwtVerify(input, key, {
-        algorithms: ["HS256"],
-    });
-    return payload;
 }
 
 // ─── Session helpers (used by middleware) ─────────────────────────────────────

@@ -41,26 +41,12 @@ export default function ProfileTab() {
 
         {/* Menu Items */}
         <View style={styles.menuSection}>
-          <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.menuIcon}>📋</Text>
-            <Text style={styles.menuText}>My Recaps</Text>
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/notifications')}>
+            <Text style={styles.menuIcon}>🔔</Text>
+            <Text style={styles.menuText}>Notifications</Text>
             <Text style={styles.menuArrow}>›</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.menuIcon}>📊</Text>
-            <Text style={styles.menuText}>Pay History</Text>
-            <Text style={styles.menuArrow}>›</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.menuIcon}>📄</Text>
-            <Text style={styles.menuText}>Training Materials</Text>
-            <Text style={styles.menuArrow}>›</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.menuIcon}>⚙️</Text>
-            <Text style={styles.menuText}>Notification Settings</Text>
-            <Text style={styles.menuArrow}>›</Text>
-          </TouchableOpacity>
+          {/* Pay History and Settings — coming soon */}
         </View>
 
         {/* Logout */}

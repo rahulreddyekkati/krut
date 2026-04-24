@@ -13,6 +13,14 @@ export async function GET(
 
         const { id } = await context.params;
 
+        if (
+            session.user.role !== "ADMIN" &&
+            session.user.role !== "MARKET_MANAGER" &&
+            session.user.id !== id
+        ) {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+
         const user = await prisma.user.findUnique({
             where: { id },
             include: {

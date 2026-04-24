@@ -35,12 +35,12 @@ export default function ReleasedShiftsPage() {
     useEffect(() => {
         if (isAssignModalOpen && selectedRelease) {
             setWorkersLoading(true);
-            fetch("/api/users")
+            // Use /users/workers — already scoped to market, returns only WORKERs
+            fetch(`/api/users/workers`)
                 .then(res => res.json())
                 .then(data => {
-                    // Filter workers by the market of the released shift
-                    const marketWorkers = data.filter((u: any) => 
-                        u.role === "WORKER" && u.marketId === selectedRelease.job.marketId
+                    const marketWorkers = (data || []).filter((u: any) =>
+                        u.marketId === selectedRelease.job.marketId
                     );
                     setWorkers(marketWorkers);
                 })

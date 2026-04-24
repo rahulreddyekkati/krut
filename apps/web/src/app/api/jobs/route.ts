@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { handleApiError } from "@/lib/apiError";
+import { jobSchema } from "@/lib/validate";
 
 // GET /api/jobs - List all jobs with filters
 export async function GET(request: NextRequest) {
@@ -49,11 +50,10 @@ export async function POST(request: NextRequest) {
         const user = await requireAuth(request, ["ADMIN", "MARKET_MANAGER"]);
 
         const body = await request.json();
-        const { title, storeId, startTime, endTime, bonus, date } = body;
-
-        if (!title || !storeId || !startTime || !endTime) {
-            return NextResponse.json({ error: "Missing required fields: title, storeId, startTime, endTime" }, { status: 400 });
-        }
+        const { title, storeId, startTime, endTime, bonus, date } = jobSchema.parse({
+            ...body,
+            bonus: body.bonus !== undefined ? Number(body.bonus) : 0,
+        });
 
         // Get marketId from store
         const store = await prisma.store.findUnique({
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
                 marketId: store.marketId,
                 startTimeStr: startTime,
                 endTimeStr: endTime,
-                bonus: parseFloat(bonus || 0),
+                bonus: bonus ?? 0,
                 creatorId: user.id,
                 status: "OPEN",
                 date: date ? new Date(date) : null

@@ -1,0 +1,102 @@
+/* [project]/Desktop/clock in:out/apps/web/src/app/login/login.module.css [app-client] (css) */
+.login-module__andYqq__container {
+  background: radial-gradient(circle at top left, var(--primary-light) 0%, transparent 40%), radial-gradient(circle at bottom right, #6366f11a 0%, transparent 40%);
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 1.5rem;
+  display: flex;
+}
+
+.login-module__andYqq__card {
+  border-radius: var(--radius-lg);
+  flex-direction: column;
+  gap: 2rem;
+  width: 100%;
+  max-width: 420px;
+  padding: 2.5rem;
+  display: flex;
+}
+
+.login-module__andYqq__header {
+  text-align: center;
+}
+
+.login-module__andYqq__header h1 {
+  color: var(--primary);
+  margin-bottom: .5rem;
+  font-size: 2rem;
+}
+
+.login-module__andYqq__header p {
+  color: var(--secondary);
+  font-size: .875rem;
+}
+
+.login-module__andYqq__form {
+  flex-direction: column;
+  gap: 1.25rem;
+  display: flex;
+}
+
+.login-module__andYqq__inputGroup {
+  flex-direction: column;
+  gap: .5rem;
+  display: flex;
+}
+
+.login-module__andYqq__inputGroup label {
+  color: var(--foreground);
+  font-size: .875rem;
+  font-weight: 500;
+}
+
+.login-module__andYqq__inputGroup input {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  color: var(--foreground);
+  transition: var(--transition-fast);
+  padding: .75rem 1rem;
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+.login-module__andYqq__inputGroup input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-light);
+  outline: none;
+}
+
+.login-module__andYqq__error {
+  color: var(--danger);
+  border-radius: var(--radius-sm);
+  text-align: center;
+  background: #ef44441a;
+  border: 1px solid #ef444433;
+  padding: .75rem;
+  font-size: .875rem;
+}
+
+.login-module__andYqq__footer {
+  text-align: center;
+  margin-top: 1rem;
+}
+
+.login-module__andYqq__footer p {
+  color: var(--secondary);
+  font-size: .875rem;
+}
+
+.login-module__andYqq__footer small {
+  color: #94a3b8;
+  margin-top: .5rem;
+}
+
+@media (max-width: 480px) {
+  .login-module__andYqq__card {
+    padding: 2rem 1.5rem;
+  }
+}
+
+/*# sourceMappingURL=Desktop_clock%20in%3Aout_apps_web_src_app_login_login_module_24d5df6f.css.map*/

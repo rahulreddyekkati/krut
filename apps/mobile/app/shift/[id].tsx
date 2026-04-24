@@ -105,10 +105,6 @@ export default function ShiftDetails() {
           <Text style={styles.timeLabel}>START TIME</Text>
         </View>
         <View style={styles.timeBlock}>
-          <Text style={styles.timeValue}>--:--</Text>
-          <Text style={styles.timeLabel}>BREAK TIME</Text>
-        </View>
-        <View style={styles.timeBlock}>
           <Text style={styles.timeValue}>{endTime}</Text>
           <Text style={styles.timeLabel}>END TIME</Text>
         </View>

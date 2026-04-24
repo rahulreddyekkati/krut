@@ -2,6 +2,36 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
+// PUT /api/inventory/[id] - Update an inventory item
+export async function PUT(
+    request: NextRequest,
+    context: { params: Promise<{ id: string }> }
+) {
+    try {
+        const session = await getSession();
+        if (!session || (session.user.role !== "ADMIN" && session.user.role !== "MARKET_MANAGER")) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const { id } = await context.params;
+        const { name, category, volume, unit } = await request.json();
+
+        const updated = await prisma.inventoryItem.update({
+            where: { id },
+            data: {
+                name: name ?? undefined,
+                category: category ?? undefined,
+                volume: volume ?? undefined,
+                unit: unit ?? undefined,
+            }
+        });
+
+        return NextResponse.json(updated);
+    } catch (error: any) {
+        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    }
+}
+
 // DELETE /api/inventory/[id] - Delete an inventory item
 export async function DELETE(
     request: NextRequest,

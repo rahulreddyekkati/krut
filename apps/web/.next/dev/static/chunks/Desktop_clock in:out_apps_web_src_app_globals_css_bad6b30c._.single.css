@@ -1,0 +1,163 @@
+/* [project]/Desktop/clock in:out/apps/web/src/app/globals.css [app-client] (css) */
+:root {
+  --primary: #6366f1;
+  --primary-hover: #4f46e5;
+  --primary-light: #e0e7ff;
+  --secondary: #64748b;
+  --secondary-hover: #475569;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --card-bg: #fff;
+  --card-border: #e2e8f0;
+  --card-shadow: 0 4px 6px -1px #0000001a, 0 2px 4px -2px #0000001a;
+  --glass-bg: #ffffffb3;
+  --glass-border: #ffffff4d;
+  --radius-sm: .5rem;
+  --radius-md: .75rem;
+  --radius-lg: 1rem;
+  --radius-full: 9999px;
+  --transition-fast: .15s cubic-bezier(.4, 0, .2, 1);
+  --transition-normal: .25s cubic-bezier(.4, 0, .2, 1);
+}
+
+[data-theme="dark"] {
+  --primary: #818cf8;
+  --primary-hover: #6366f1;
+  --primary-light: #1e1b4b;
+  --danger: #ef4444;
+  --danger-light: #fee2e2;
+  --success: #10b981;
+  --success-light: #d1fae5;
+  --warning: #f59e0b;
+  --warning-light: #fef3c7;
+  --background: #0f172a;
+  --foreground: #f8fafc;
+  --card-bg: #1e293b;
+  --card-border: #334155;
+  --card-shadow: 0 10px 15px -3px #0000004d, 0 4px 6px -4px #0000004d;
+  --glass-bg: #0f172ab3;
+  --glass-border: #ffffff1a;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  max-width: 100vw;
+  color: var(--foreground);
+  background: var(--background);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+  line-height: 1.5;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4, .heading {
+  letter-spacing: -.02em;
+  font-family: Outfit, sans-serif;
+  font-weight: 600;
+}
+
+button {
+  cursor: pointer;
+  transition: var(--transition-normal);
+  background: none;
+  border: none;
+  font-family: inherit;
+}
+
+.glass {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--card-shadow);
+}
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--card-shadow);
+  padding: 1.5rem;
+}
+
+.btn {
+  border-radius: var(--radius-md);
+  transition: var(--transition-fast);
+  justify-content: center;
+  align-items: center;
+  gap: .5rem;
+  padding: .625rem 1.25rem;
+  font-weight: 500;
+  display: inline-flex;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+}
+
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+.flex {
+  display: flex;
+}
+
+.grid {
+  display: grid;
+}
+
+.flex-column {
+  flex-direction: column;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.gap-2 {
+  gap: .5rem;
+}
+
+.gap-4 {
+  gap: 1rem;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn var(--transition-normal) forwards;
+}
+
+/*# sourceMappingURL=Desktop_clock%20in%3Aout_apps_web_src_app_globals_css_bad6b30c._.single.css.map*/

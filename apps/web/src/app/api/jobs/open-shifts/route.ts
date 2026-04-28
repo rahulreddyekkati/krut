@@ -1,94 +1,56 @@
 import { NextResponse, NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { resolveTimezone, localTimeToUTC, toLocalDateStr } from "@/lib/timezone";
 
 export async function GET(request: NextRequest) {
     try {
         const session = await getSession();
         if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-        // Get user's assigned market
         const user = await prisma.user.findUnique({
             where: { id: session.user.id },
             select: { marketId: true }
         });
 
-        if (!user || !user.marketId) {
-            return NextResponse.json([]);
-        }
+        if (!user?.marketId) return NextResponse.json({ shifts: [] });
 
-        // Find open jobs in the same market
-        const openJobs = await prisma.job.findMany({
+        // Return AVAILABLE assignments in the worker's market (exclude their own releases)
+        const available = await prisma.jobAssignment.findMany({
             where: {
-                marketId: user.marketId,
-                status: "OPEN"
-            },
-            include: {
-                store: { select: { name: true, address: true } },
-                market: { select: { name: true } },
-                _count: { select: { assignments: true } }
-            },
-            orderBy: { startTimeStr: "asc" }
-        });
-
-        // Also find pending release requests from OTHER workers in the same market
-        const pendingReleases = await prisma.releaseRequest.findMany({
-            where: {
-                status: "PENDING",
-                workerId: { not: session.user.id },
-                job: { marketId: user.marketId }
+                status: "AVAILABLE",
+                job: { marketId: user.marketId },
+                releasedByWorkerId: { not: session.user.id }
             },
             include: {
                 job: {
                     include: {
                         store: { select: { name: true, address: true } },
-                        market: { select: { name: true } },
-                        _count: { select: { assignments: true } }
+                        market: { select: { name: true } }
                     }
                 }
-            }
+            },
+            orderBy: { date: "asc" }
         });
 
-        // Map them to look like Jobs, with the specific date of the release
-        const releasedShiftJobs = pendingReleases.map(pr => ({
-            ...pr.job,
-            date: pr.date,
-            isReleasedShift: true
-        }));
-
-        const allAvailableJobs = [...openJobs, ...releasedShiftJobs];
-
-        // Get user's pending shift requests
+        // Flag which ones the worker already requested
         const pendingRequests = await prisma.shiftRequest.findMany({
             where: {
                 workerId: session.user.id,
-                status: "PENDING"
+                status: "PENDING",
+                assignmentId: { in: available.map(a => a.id) }
             },
-            select: { jobId: true }
+            select: { assignmentId: true }
         });
-        const pendingJobIds = new Set(pendingRequests.map(r => r.jobId));
+        const requestedIds = new Set(pendingRequests.map(r => r.assignmentId));
 
-        // Filter out jobs that have already started and map with requested status
-        const now = new Date();
-        const tz = resolveTimezone(request);
-        const filteredJobs = allAvailableJobs
-            .filter(job => {
-                if (!job.startTimeStr) return true;
+        const shifts = available.map(a => ({
+            ...a,
+            alreadyRequested: requestedIds.has(a.id)
+        }));
 
-                const dateStr = job.date ? toLocalDateStr(new Date(job.date), tz) : toLocalDateStr(new Date(), tz);
-                const shiftStart = localTimeToUTC(dateStr, job.startTimeStr, tz);
-
-                return now < shiftStart;
-            })
-            .map(job => ({
-                ...job,
-                isRequested: pendingJobIds.has(job.id)
-            }));
-
-        return NextResponse.json(filteredJobs);
+        return NextResponse.json({ shifts });
     } catch (error) {
-        console.error("Open shifts GET error:", error);
+        console.error("Open shifts error:", error);
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }

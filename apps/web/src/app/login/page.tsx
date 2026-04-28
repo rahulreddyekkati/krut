@@ -51,7 +51,7 @@ export default function LoginPage() {
         <div className={styles.container}>
             <div className={`${styles.card} glass animate-fade-in`}>
                 <div className={styles.header}>
-                    <h1 className="heading">Workforce OS</h1>
+                    <h1 className="heading">Kruto Tastes</h1>
                     <p>Sign in to manage your shifts and team</p>
                 </div>
 

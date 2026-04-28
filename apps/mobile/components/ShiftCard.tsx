@@ -12,56 +12,35 @@ const formatTimeStr = (timeStr?: string) => {
   } catch { return timeStr; }
 };
 
-const getNextOccurrence = (dayOfWeek: number) => {
-  const now = new Date();
-  const result = new Date();
-  const currentDay = now.getDay();
-  let distance = (dayOfWeek - currentDay + 7) % 7;
-  result.setDate(now.getDate() + distance);
-  return result;
-};
-
 interface ShiftCardProps {
   shift: any;
   onPress?: () => void;
-  onRelease?: (jobId: string, date: string) => void;
-  releaseStatus?: 'none' | 'pending' | 'released';
+  onRelease?: (assignmentId: string) => void;
+  releaseStatus?: 'none' | 'pending';
 }
 
 export default function ShiftCard({ shift, onPress, onRelease, releaseStatus = 'none' }: ShiftCardProps) {
-  // Determine the display date
-  let displayDate = "";
-  let shiftDate: Date | null = null;
+  const shiftDate = shift.date ? new Date(shift.date) : null;
+  const displayDate = shiftDate
+    ? shiftDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })
+    : '';
 
-  if (shift.date) {
-    shiftDate = new Date(shift.date);
-    displayDate = shiftDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
-  } else if (shift.isRecurring && shift.dayOfWeek !== null && shift.dayOfWeek !== undefined) {
-    shiftDate = getNextOccurrence(shift.dayOfWeek);
-    displayDate = shiftDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-  }
-
-  const storeName = shift.job?.store?.name || 'Store';
+  const storeName = shift.job?.store?.name || shift.storeName || 'Store';
   const startTime = formatTimeStr(shift.job?.startTimeStr);
   const endTime = formatTimeStr(shift.job?.endTimeStr);
   const timeRange = startTime && endTime ? `${startTime} - ${endTime}` : '';
 
-  // 2-hour release buffer check
-  const BUFFER_HOURS = 2;
   let canRelease = true;
   if (shiftDate && shift.job?.startTimeStr) {
     const [startH, startM] = shift.job.startTimeStr.split(':').map(Number);
     const shiftStartTime = new Date(shiftDate);
-    shiftStartTime.setHours(startH, startM, 0, 0);
-    const now = new Date();
-    const hoursUntilShift = (shiftStartTime.getTime() - now.getTime()) / (1000 * 60 * 60);
-    if (hoursUntilShift < BUFFER_HOURS) {
-      canRelease = false;
-    }
+    shiftStartTime.setUTCHours(startH, startM, 0, 0);
+    const hoursUntilShift = (shiftStartTime.getTime() - Date.now()) / (1000 * 60 * 60);
+    if (hoursUntilShift < 2) canRelease = false;
   }
 
   const handleRelease = () => {
-    if (!onRelease || !shiftDate) return;
+    if (!onRelease || !shift.id) return;
     if (!canRelease) {
       Alert.alert('Cannot Release', 'Shifts cannot be released within 2 hours of the start time.');
       return;
@@ -71,9 +50,7 @@ export default function ShiftCard({ shift, onPress, onRelease, releaseStatus = '
       `Are you sure you want to release this shift on ${displayDate}?`,
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Release', style: 'destructive', onPress: () => {
-          onRelease(shift.jobId, shiftDate!.toISOString().split('T')[0]);
-        }},
+        { text: 'Release', style: 'destructive', onPress: () => onRelease(shift.id) },
       ]
     );
   };
@@ -87,10 +64,9 @@ export default function ShiftCard({ shift, onPress, onRelease, releaseStatus = '
           {timeRange ? <Text style={styles.time}>{timeRange}</Text> : null}
         </View>
 
-        {/* Release button area */}
         {releaseStatus === 'pending' ? (
           <View style={styles.requestedBadge}>
-            <Text style={styles.requestedText}>Requested</Text>
+            <Text style={styles.requestedText}>Pending Approval</Text>
           </View>
         ) : !canRelease && onRelease ? (
           <View style={[styles.releaseBtn, { opacity: 0.4 }]}>
@@ -108,64 +84,21 @@ export default function ShiftCard({ shift, onPress, onRelease, releaseStatus = '
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 18,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
+    backgroundColor: '#fff', borderRadius: 14, padding: 18, marginBottom: 12,
+    borderWidth: 1, borderColor: '#E5E7EB',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 2,
   },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  info: {
-    flex: 1,
-  },
-  date: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  store: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 4,
-  },
-  time: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6366F1',
-  },
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  info: { flex: 1 },
+  date: { fontSize: 17, fontWeight: '700', color: '#111827', marginBottom: 4 },
+  store: { fontSize: 14, color: '#6B7280', marginBottom: 4 },
+  time: { fontSize: 14, fontWeight: '600', color: '#6366F1' },
   releaseBtn: {
-    backgroundColor: '#FEE2E2',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    marginLeft: 12,
+    backgroundColor: '#FEE2E2', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8, marginLeft: 12,
   },
-  releaseBtnText: {
-    color: '#EF4444',
-    fontSize: 14,
-    fontWeight: '600',
-  },
+  releaseBtnText: { color: '#EF4444', fontSize: 14, fontWeight: '600' },
   requestedBadge: {
-    backgroundColor: '#FEF3C7',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    marginLeft: 12,
+    backgroundColor: '#FEF3C7', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, marginLeft: 12,
   },
-  requestedText: {
-    color: '#D97706',
-    fontSize: 13,
-    fontWeight: '600',
-  },
+  requestedText: { color: '#D97706', fontSize: 13, fontWeight: '600' },
 });

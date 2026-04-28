@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Workforce OS",
+  title: "Kruto Tastes",
   description: "Multi-role workforce scheduling and event execution platform",
 };
 

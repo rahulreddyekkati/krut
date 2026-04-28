@@ -189,9 +189,9 @@ export default function AdminUsersPage() {
                 setInviteLink(data.inviteLink);
                 
                 // Trigger mail client
-                const subject = encodeURIComponent("You've been invited to Workforce OS!");
+                const subject = encodeURIComponent("You've been invited to Kruto Tastes!");
                 const body = encodeURIComponent(
-                    `Hello,\n\nYou have been invited to join the Workforce OS team.\n\nClick the link below to accept your invitation and set up your account:\n${data.inviteLink}\n\nWelcome to the team!`
+                    `Hello,\n\nYou have been invited to join the Kruto Tastes team.\n\nClick the link below to accept your invitation and set up your account:\n${data.inviteLink}\n\nWelcome to the team!`
                 );
                 window.location.href = `mailto:${inviteEmail}?subject=${subject}&body=${body}`;
 

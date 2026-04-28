@@ -63,3 +63,22 @@ export function getCycleDisplayName(dates: CycleDates): string {
   const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
   return `${dates.start.toLocaleDateString(undefined, options)} - ${dates.end.toLocaleDateString(undefined, options)}`;
 }
+
+/**
+ * Returns every date in [start, end] whose getDay() is in weekdays.
+ * weekdays: 0=Sun, 1=Mon, ... 6=Sat
+ */
+export function getDatesForWeekdays(weekdays: number[], start: Date, end: Date): Date[] {
+  const results: Date[] = [];
+  const cursor = new Date(start);
+  cursor.setHours(0, 0, 0, 0);
+  const finish = new Date(end);
+  finish.setHours(23, 59, 59, 999);
+  while (cursor <= finish) {
+    if (weekdays.includes(cursor.getDay())) {
+      results.push(new Date(cursor));
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return results;
+}

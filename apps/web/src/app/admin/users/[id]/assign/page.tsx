@@ -77,7 +77,7 @@ export default function AssignJobPage() {
             };
 
             if (shiftType === "recurring") {
-                payload.selectedDays = selectedDays;
+                payload.weekdays = selectedDays;
             } else {
                 payload.date = selectedDate;
             }
@@ -235,72 +235,64 @@ export default function AssignJobPage() {
                             </button>
                         </div>
 
-                        {assignments.length === 0 ? (
-                            <div style={{ textAlign: "center", padding: "5rem 1rem", background: "white", borderRadius: "16px", border: "1px dashed #d1d5db" }}>
-                                <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>📅</div>
-                                <h3 style={{ fontSize: "1.125rem", fontWeight: 600, color: "#111827", marginBottom: "0.5rem" }}>No shifts assigned yet</h3>
-                                <p style={{ color: "#6b7280", margin: 0 }}>Get started by assigning a job template to this worker.</p>
-                            </div>
-                        ) : (
-                            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                                {daysOfWeek.map(day => {
-                                    const dayAssignments = assignments.filter(a => a.dayOfWeek === day.id);
-                                    if (dayAssignments.length === 0) return null;
-                                    return (
-                                        <div key={day.id} style={{ background: "white", padding: "1.25rem", borderRadius: "16px", border: "1px solid #e5e7eb" }}>
-                                            <h3 style={{ fontSize: "0.875rem", fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.025em", marginBottom: "1rem" }}>
-                                                {day.full}
-                                            </h3>
-                                            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-                                                {dayAssignments.map(a => (
-                                                    <div key={a.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "#f9fafb", borderRadius: "10px" }}>
-                                                        <div>
-                                                            <div style={{ fontWeight: 600, color: "#111827" }}>{a.job.title}</div>
-                                                            <div style={{ fontSize: "0.8125rem", color: "#6b7280" }}>{a.job.startTimeStr} – {a.job.endTimeStr}</div>
-                                                        </div>
-                                                        <button
-                                                            style={{ color: "#ef4444", fontSize: "0.75rem", fontWeight: 600, background: "none", border: "none", cursor: "pointer" }}
-                                                            onClick={async () => {
-                                                                if (!confirm("Are you sure you want to remove this recurring shift?")) return;
-                                                                await fetch(`/api/users/${userId}/assignments?id=${a.id}`, { method: "DELETE" });
-                                                                fetchAssignments();
-                                                            }}
-                                                        >
-                                                            Remove
-                                                        </button>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
+                        {(() => {
+                            const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+                            // Group isRecurring assignments by (jobId, weekday derived from date)
+                            const groups = new Map<string, { jobId: string; weekday: number; job: any; count: number }>();
+                            for (const a of assignments) {
+                                if (!a.date) continue;
+                                const weekday = new Date(a.date).getUTCDay();
+                                const key = `${a.jobId}-${weekday}`;
+                                if (!groups.has(key)) {
+                                    groups.set(key, { jobId: a.jobId, weekday, job: a.job, count: 0 });
+                                }
+                                groups.get(key)!.count++;
+                            }
+                            const groupList = Array.from(groups.values())
+                                .sort((a, b) => a.weekday - b.weekday);
 
-                                {/* Malformed Shifts (Recurring but no day assigned) */}
-                                {assignments.filter(a => a.isRecurring && a.dayOfWeek === null && !a.date).map(a => (
-                                    <div key={a.id} style={{ background: "#fff5f5", padding: "1.25rem", borderRadius: "16px", border: "1px solid #feb2b2" }}>
-                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            if (groupList.length === 0) {
+                                return (
+                                    <div style={{ textAlign: "center", padding: "5rem 1rem", background: "white", borderRadius: "16px", border: "1px dashed #d1d5db" }}>
+                                        <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>📅</div>
+                                        <h3 style={{ fontSize: "1.125rem", fontWeight: 600, color: "#111827", marginBottom: "0.5rem" }}>No recurring shifts assigned yet</h3>
+                                        <p style={{ color: "#6b7280", margin: 0 }}>Get started by assigning a job to this worker.</p>
+                                    </div>
+                                );
+                            }
+
+                            return (
+                                <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                                    {groupList.map(group => (
+                                        <div key={`${group.jobId}-${group.weekday}`} style={{ background: "white", padding: "1.25rem", borderRadius: "16px", border: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                                             <div>
-                                                <h3 style={{ fontSize: "0.875rem", fontWeight: 700, color: "#c53030", textTransform: "uppercase", letterSpacing: "0.025em", marginBottom: "0.5rem" }}>
-                                                    ⚠️ Invalid Recurring Shift
-                                                </h3>
-                                                <div style={{ fontWeight: 600, color: "#111827" }}>{a.job.title}</div>
-                                                <div style={{ fontSize: "0.8125rem", color: "#6b7280" }}>Malformed: missing day of week</div>
+                                                <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#6366f1", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.35rem" }}>
+                                                    Every {DAY_NAMES[group.weekday]}
+                                                </div>
+                                                <div style={{ fontWeight: 600, color: "#111827" }}>{group.job?.title}</div>
+                                                <div style={{ fontSize: "0.8125rem", color: "#6b7280" }}>
+                                                    {group.job?.startTimeStr} – {group.job?.endTimeStr}
+                                                    {group.job?.store?.name ? ` · ${group.job.store.name}` : ""}
+                                                </div>
+                                                <div style={{ fontSize: "0.75rem", color: "#9ca3af", marginTop: "0.25rem" }}>
+                                                    {group.count} shift{group.count !== 1 ? "s" : ""} this cycle
+                                                </div>
                                             </div>
                                             <button
-                                                style={{ color: "#ef4444", fontSize: "0.75rem", fontWeight: 600, background: "none", border: "none", cursor: "pointer" }}
+                                                style={{ color: "#ef4444", fontSize: "0.75rem", fontWeight: 600, background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: "8px", padding: "0.4rem 0.9rem", cursor: "pointer" }}
                                                 onClick={async () => {
-                                                    if (!confirm("Delete malformed shift?")) return;
-                                                    await fetch(`/api/users/${userId}/assignments?id=${a.id}`, { method: "DELETE" });
-                                                    fetchAssignments();
+                                                    if (!confirm(`Remove all future ${DAY_NAMES[group.weekday]} shifts for this worker?\n\nCompleted past shifts will NOT be deleted.`)) return;
+                                                    const res = await fetch(`/api/users/${userId}/assignments?jobId=${group.jobId}&weekday=${group.weekday}`, { method: "DELETE" });
+                                                    if (res.ok) fetchAssignments();
                                                 }}
                                             >
-                                                Repair (Delete)
+                                                Remove Pattern
                                             </button>
                                         </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
+                                    ))}
+                                </div>
+                            );
+                        })()}
                     </div>
                 )}
                 {activeTab === "special" && (
@@ -309,7 +301,7 @@ export default function AssignJobPage() {
                             <h2 style={{ fontSize: "1.25rem", fontWeight: 700, color: "#111827", margin: 0 }}>Special (Dated) Shifts</h2>
                         </div>
 
-                        {assignments.filter(a => a.date).length === 0 ? (
+                        {assignments.filter(a => a.date && !a.isRecurring).length === 0 ? (
                             <div style={{ textAlign: "center", padding: "5rem 1rem", background: "white", borderRadius: "16px", border: "1px dashed #d1d5db" }}>
                                 <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>📅</div>
                                 <h3 style={{ fontSize: "1.125rem", fontWeight: 600, color: "#111827", marginBottom: "0.5rem" }}>No special shifts</h3>
@@ -317,7 +309,7 @@ export default function AssignJobPage() {
                             </div>
                         ) : (
                             <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                                {assignments.filter(a => a.date).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(a => (
+                                {assignments.filter(a => a.date && !a.isRecurring).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(a => (
                                     <div key={a.id} style={{ background: "white", padding: "1.25rem", borderRadius: "16px", border: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                                         <div>
                                             <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#6366f1", textTransform: "uppercase", marginBottom: "0.25rem" }}>

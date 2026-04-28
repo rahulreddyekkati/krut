@@ -104,18 +104,16 @@ export default function HomeTab() {
 
         if (res.ok) {
           await loadTodayShift();
-        } else if (res.status === 403) {
-          const data = await res.json();
-          Alert.alert('Outside Store Location', `You must be physically at ${activeAssignment.job?.store?.name || 'the store'} to clock in.\n\n${data.error || ''}`);
-        } else if (res.status === 400) {
-          const data = await res.json();
-          if (data.error?.toLowerCase().includes('early')) {
-            Alert.alert('Too Early', `You cannot clock in more than 15 minutes before your shift starts.\n\n${data.error}`);
-          } else {
-            Alert.alert('Clock In Failed', data.error);
-          }
         } else {
-          Alert.alert('Error', 'Failed to clock in');
+          const data = await res.json().catch(() => ({}));
+          const msg = data.error || `Server error (${res.status})`;
+          if (res.status === 403) {
+            Alert.alert('Outside Store Location', `You must be physically at ${activeAssignment.job?.store?.name || 'the store'} to clock in.\n\n${msg}`);
+          } else if (res.status === 400 && msg.toLowerCase().includes('early')) {
+            Alert.alert('Too Early', `You cannot clock in more than 15 minutes before your shift starts.\n\n${msg}`);
+          } else {
+            Alert.alert('Clock In Failed', msg);
+          }
         }
       } catch (e) {
         Alert.alert('Network Error', 'Please check your internet connection.');
@@ -155,7 +153,7 @@ export default function HomeTab() {
       {/* ─── Top Navbar ─── */}
       <View style={styles.navbar}>
         <View>
-          <Text style={styles.brand}>Workforce OS</Text>
+          <Text style={styles.brand}>Kruto Tastes</Text>
           <Text style={styles.userName}>{user?.name || 'Worker'}</Text>
         </View>
         <View style={styles.navIcons}>

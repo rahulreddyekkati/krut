@@ -128,7 +128,10 @@ model JobAssignment {
   clockOut  DateTime?
   breakTimeMinutes Int @default(0)
   workedHours      Float?
-  status    String   @default("ASSIGNED") // ASSIGNED, IN_PROGRESS, RECAP_PENDING, COMPLETED
+  status    String   @default("ASSIGNED") // ASSIGNED, IN_PROGRESS, RECAP_PENDING, COMPLETED, AVAILABLE
+
+  // When status=AVAILABLE, this records who released it (original worker)
+  releasedByWorkerId String?
 
   // Admin-overridable time bounds for this specific assignment
   // When set, these override job.startTimeStr / job.endTimeStr for this worker only
@@ -164,6 +167,9 @@ model ReleaseRequest {
   worker    User     @relation(fields: [workerId], references: [id], onDelete: Restrict)
   workerId  String
 
+  // Direct reference to the specific assignment being released
+  assignmentId String?
+
   date        DateTime?
   dayOfWeek   Int?
   isRecurring Boolean      @default(false)
@@ -182,6 +188,9 @@ model ShiftRequest {
   // onDelete: Restrict — preserve audit trail
   worker    User     @relation(fields: [workerId], references: [id], onDelete: Restrict)
   workerId  String
+
+  // Direct reference to the AVAILABLE assignment being requested (new flow)
+  assignmentId String?
 
   date        DateTime?
   dayOfWeek   Int?

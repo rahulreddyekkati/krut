@@ -365,18 +365,24 @@ export default function WorkerDashboard({
             body = { action, assignmentId: id };
         }
 
+        if (action === "RELEASE") {
+            body = { action, assignmentId: id };
+        }
+
         try {
             console.log(`Executing ${action} on ${endpoint} with`, body);
             const res = await fetch(endpoint, {
                 method: "POST",
-                headers: { 
+                headers: {
                     "Content-Type": "application/json",
                     "x-timezone": Intl.DateTimeFormat().resolvedOptions().timeZone,
                     "x-timezone-offset": new Date().getTimezoneOffset().toString()
                 },
                 body: JSON.stringify(body)
             });
-            const data = await res.json();
+            const rawText = await res.text();
+            console.log(`${action} raw response [${res.status}]:`, rawText);
+            const data = rawText ? JSON.parse(rawText) : {};
             if (res.ok) {
                 console.log(`${action} success:`, data);
                 await onRefresh();
@@ -558,7 +564,7 @@ export default function WorkerDashboard({
                                         <span style={{ color: '#9ca3af', fontSize: '0.75rem' }}>{isPast ? "Closed" : "Too close to release"}</span>
                                     ) : (
                                         <button
-                                            onClick={() => handleAction("RELEASE", a.job.id, shiftDate.toISOString())}
+                                            onClick={() => handleAction("RELEASE", a.id)}
                                             className={styles.releaseBtn}
                                         >
                                             Release
@@ -793,7 +799,7 @@ export default function WorkerDashboard({
         <div className={styles.container}>
             <nav className={styles.navbar}>
                 <div className={styles.navLeft}>
-                    <div className={styles.navBrand}>Workforce OS</div>
+                    <div className={styles.navBrand}>Kruto Tastes</div>
                     <div className={styles.userName}>{user.name}</div>
                 </div>
                 <div className={styles.navRight}>

@@ -64,7 +64,7 @@ export default function AdminLayout({
         <div className={styles.layout}>
             {/* Mobile Header */}
             <div className={styles.mobileHeader}>
-                <div className={styles.mobileTitle}>Workforce OS</div>
+                <div className={styles.mobileTitle}>Kruto Tastes</div>
                 <div className={styles.mobileActions}>
                     <Link href="/admin/messages" className={styles.iconBtn}>
                         <div className={styles.iconContainer}>

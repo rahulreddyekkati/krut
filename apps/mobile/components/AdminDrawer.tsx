@@ -108,7 +108,12 @@ export default function AdminDrawer({ onClose }: { onClose: () => void }) {
           <NavItem label="Reports" onPress={() => navigateTo('/(admin)/reports')} />
           <NavItem label="Messages" onPress={() => navigateTo('/(tabs)/messages')} />
           <NavItem label="Recaps" showBadge={pendingRecapCount > 0} onPress={() => navigateTo('/(admin)/recaps')} />
-          {/* Markets, Stores, Jobs, Inventory, Shift-Releases, Released-Shifts — mobile screens coming soon */}
+          <NavItem label="Jobs" onPress={() => navigateTo('/(admin)/jobs')} />
+          <NavItem label="Markets" onPress={() => navigateTo('/(admin)/markets')} />
+          <NavItem label="Stores" onPress={() => navigateTo('/(admin)/stores')} />
+          <NavItem label="Inventory" onPress={() => navigateTo('/(admin)/inventory')} />
+          <NavItem label="Shift Release Approvals" onPress={() => navigateTo('/(admin)/shift-releases')} />
+          <NavItem label="Released Shifts" onPress={() => navigateTo('/(admin)/released-shifts')} />
           
           <View style={styles.divider} />
 

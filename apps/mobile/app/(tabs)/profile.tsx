@@ -11,7 +11,7 @@ export default function ProfileTab() {
       {/* ─── Navbar ─── */}
       <View style={styles.navbar}>
         <View>
-          <Text style={styles.brand}>Workforce OS</Text>
+          <Text style={styles.brand}>Kruto Tastes</Text>
           <Text style={styles.navSubtitle}>Profile</Text>
         </View>
         <View style={styles.navIcons}>
@@ -54,7 +54,7 @@ export default function ProfileTab() {
           <Text style={styles.logoutText}>Log Out</Text>
         </TouchableOpacity>
 
-        <Text style={styles.version}>Workforce OS v1.0.0</Text>
+        <Text style={styles.version}>Kruto Tastes v1.0.0</Text>
       </ScrollView>
     </View>
   );

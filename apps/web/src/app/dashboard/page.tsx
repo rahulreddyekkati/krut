@@ -117,7 +117,7 @@ export default function DashboardPage() {
         <div className="container" style={{ padding: "2rem" }}>
             <header className="flex justify-between items-center glass card animate-fade-in" style={{ marginBottom: "2rem" }}>
                 <div>
-                    <h1 className="heading">Workforce OS</h1>
+                    <h1 className="heading">Kruto Tastes</h1>
                     <p style={{ color: "var(--secondary)" }}>Welcome back, {user.name} ({user.role})</p>
                 </div>
                 <button onClick={handleLogout} className="btn btn-primary" style={{ background: "var(--danger)" }}>

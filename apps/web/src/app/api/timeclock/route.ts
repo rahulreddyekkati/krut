@@ -181,7 +181,7 @@ export async function POST(request: NextRequest) {
 
         const assignment = await prisma.jobAssignment.findUnique({
             where: { id: assignmentId },
-            include: { job: { include: { store: true } } }
+            include: { job: { include: { store: { select: { name: true, address: true, latitude: true, longitude: true, radius: true } } } } }
         });
 
         if (!assignment || assignment.workerId !== user.id) {
@@ -197,10 +197,34 @@ export async function POST(request: NextRequest) {
                 throw new AppError("Clock-in is only available from the mobile app", 403);
             }
 
+            // Geofence check: worker must be within store radius
+            const { latitude, longitude } = body;
+            if (latitude != null && longitude != null) {
+                const store = assignment.job.store as any;
+                if (store?.latitude != null && store?.longitude != null && store?.radius != null) {
+                    const R = 6371000; // Earth radius in meters
+                    const toRad = (deg: number) => (deg * Math.PI) / 180;
+                    const dLat = toRad(latitude - store.latitude);
+                    const dLng = toRad(longitude - store.longitude);
+                    const a =
+                        Math.sin(dLat / 2) ** 2 +
+                        Math.cos(toRad(store.latitude)) * Math.cos(toRad(latitude)) *
+                        Math.sin(dLng / 2) ** 2;
+                    const distance = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                    if (distance > store.radius) {
+                        throw new AppError(
+                            `You are ${Math.round(distance)}m away from ${store.name}. Must be within ${store.radius}m to clock in.`,
+                            403
+                        );
+                    }
+                }
+            }
+
             let targetAssignmentId = assignmentId;
 
-            // If it's a recurring template, materialize it into a specific date instance
-            if (assignment.isRecurring) {
+            // Only materialize if this is a true recurring template (isRecurring=true AND no date).
+            // Dated recurring instances (isRecurring=true WITH a date) are clocked in directly.
+            if (assignment.isRecurring && !assignment.date) {
                 const { start: dbTodayStart, end: dbTodayEnd } = getLocalDayBoundsUTC(tz);
 
                 const existingInstance = await prisma.jobAssignment.findFirst({
@@ -230,6 +254,7 @@ export async function POST(request: NextRequest) {
                     targetAssignmentId = newInstance.id;
                 }
             } else {
+                // Specific date assignment (or dated recurring instance) — clock in directly
                 if (assignment.clockIn) {
                     return NextResponse.json({ error: "Already clocked in" }, { status: 400 });
                 }

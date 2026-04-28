@@ -48,7 +48,7 @@ export default function Login() {
       style={styles.container}
     >
       <View style={styles.card}>
-        <Text style={styles.title}>Workforce OS</Text>
+        <Text style={styles.title}>Kruto Tastes</Text>
         <Text style={styles.subtitle}>Sign in to your account</Text>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}

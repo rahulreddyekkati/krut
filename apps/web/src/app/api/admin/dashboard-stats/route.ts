@@ -52,13 +52,11 @@ export async function GET(request: NextRequest) {
 
         const totalJobs = await prisma.job.count({ where: { ...whereJob, ...dateFilter } });
 
-        // Active Workers: Workers with active clock-ins in the scoped jobs
+        // Active Workers: anyone currently clocked in (no clock-out yet), regardless of date
         const activeWorkers = await prisma.jobAssignment.count({
             where: {
                 job: whereJob,
-                clockIn: { not: null },
-                clockOut: null,
-                ...(dateParam ? { clockIn: { gte: new Date(dateParam + "T00:00:00"), not: null } } : {})
+                status: "IN_PROGRESS"
             }
         });
 

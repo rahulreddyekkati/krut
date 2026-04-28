@@ -9,28 +9,31 @@ export async function GET() {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        // Fetch all approved ReleaseRequests
-        const approvedReleases = await prisma.releaseRequest.findMany({
-            where: { status: "APPROVED" },
-            include: {
-                worker: { select: { name: true } },
-                job: { include: { store: true, market: true } }
+        const isMM = session.user.role === "MARKET_MANAGER";
+        const requester = isMM
+            ? await prisma.user.findUnique({ where: { id: session.user.id }, select: { managedMarketId: true } })
+            : null;
+
+        const assignments = await prisma.jobAssignment.findMany({
+            where: {
+                status: "AVAILABLE",
+                ...(isMM && requester?.managedMarketId
+                    ? { job: { marketId: requester.managedMarketId } }
+                    : {})
             },
-            orderBy: { createdAt: "desc" }
+            include: {
+                worker: { select: { id: true, name: true } },
+                job: {
+                    include: {
+                        store: { select: { name: true } },
+                        market: { select: { name: true, id: true } }
+                    }
+                }
+            },
+            orderBy: { date: "asc" }
         });
 
-        // Fetch all OPEN jobs that have a sourceReleaseId (released shifts awaiting reassignment)
-        const openJobs = await prisma.job.findMany({
-            where: { status: "OPEN", sourceReleaseId: { not: null } }
-        });
-
-        // Match each approved release to its still-open job via sourceReleaseId
-        const unassignedReleases = approvedReleases.map(release => {
-            const matchedJob = openJobs.find(job => job.sourceReleaseId === release.id);
-            return { ...release, openJobId: matchedJob?.id };
-        }).filter(r => r.openJobId);
-
-        return NextResponse.json(unassignedReleases);
+        return NextResponse.json(assignments);
     } catch (error) {
         console.error("Get released shifts error:", error);
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });

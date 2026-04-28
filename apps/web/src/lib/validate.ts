@@ -58,7 +58,7 @@ export const jobSchema = z.object({
     endTime: z
         .string()
         .regex(/^\d{2}:\d{2}$/, "endTime must be HH:MM format"),
-    date: z.string().optional(),
+    date: z.string().nullable().optional(),
     bonus: z.number().min(0).default(0),
 });
 

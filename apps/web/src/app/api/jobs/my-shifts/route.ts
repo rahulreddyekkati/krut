@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
             include: {
                 job: {
                     include: {
-                        store: { select: { name: true, address: true } },
+                        store: { select: { name: true, address: true, latitude: true, longitude: true, radius: true } },
                         market: { select: { name: true } }
                     }
                 }
@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
             include: {
                 job: {
                     include: {
-                        store: { select: { name: true, address: true } },
+                        store: { select: { name: true, address: true, latitude: true, longitude: true, radius: true } },
                         market: { select: { name: true } }
                     }
                 }

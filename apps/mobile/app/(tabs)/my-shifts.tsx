@@ -51,6 +51,20 @@ export default function MyShiftsTab() {
     }
   };
 
+  const handleClockIn = async (assignmentId: string, lat: number, lng: number) => {
+    const res = await fetchWithAuth('/timeclock', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'CLOCK_IN', assignmentId, latitude: lat, longitude: lng }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      Alert.alert('Clocked In', 'You have successfully clocked in.');
+      loadShifts();
+    } else {
+      Alert.alert('Clock In Failed', data.error || `Error ${res.status}`);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.navbar}>
@@ -94,6 +108,7 @@ export default function MyShiftsTab() {
               shift={item}
               releaseStatus={pendingReleaseIds.includes(item.id) ? 'pending' : 'none'}
               onRelease={handleRelease}
+              onClockIn={handleClockIn}
               onPress={() => router.push({ pathname: "/shift/[id]", params: { id: item.jobId, assignmentId: item.id } })}
             />
           )}

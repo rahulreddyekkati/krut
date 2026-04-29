@@ -130,15 +130,18 @@ export default function SubmitRecap() {
 
     setLoading(true);
     try {
-      const inventoryData = skuData
+      const inventoryData: Record<string, any> = {};
+      skuData
         .filter(s => !s.notCarried)
-        .map(s => ({
-          name: s.name,
-          beginning: parseInt(s.beginning) || 0,
-          purchased: parseInt(s.purchased) || 0,
-          sold: parseInt(s.sold) || 0,
-          storePrice: parseFloat(s.storePrice) || 0,
-        }));
+        .forEach((s, i) => {
+          inventoryData[String(i)] = {
+            name: s.name,
+            beginning: parseInt(s.beginning) || 0,
+            purchased: parseInt(s.purchased) || 0,
+            sold: parseInt(s.sold) || 0,
+            storePrice: parseFloat(s.storePrice) || 0,
+          };
+        });
 
       const body: any = {
         jobId: id,
@@ -165,7 +168,8 @@ export default function SubmitRecap() {
           { text: 'OK', onPress: () => router.replace('/(tabs)') }
         ]);
       } else {
-        Alert.alert('Error', data.error || 'Failed to submit recap');
+        const detail = data.issues?.[0]?.message || data.error || 'Failed to submit recap';
+        Alert.alert('Error', detail);
       }
     } catch {
       Alert.alert('Network Error', 'Please check your connection and try again.');

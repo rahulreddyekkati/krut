@@ -197,6 +197,20 @@ export async function POST(request: NextRequest) {
                 throw new AppError("Clock-in is only available from the mobile app", 403);
             }
 
+            // Reject clock-in if current time is past the shift end time
+            const { toZonedTime } = await import("date-fns-tz");
+            const zonedNow = toZonedTime(now, tz);
+            const nowMins = zonedNow.getHours() * 60 + zonedNow.getMinutes();
+            const endTimeStr = (assignment as any).customEndTimeStr ?? assignment.job.endTimeStr;
+            const [endH, endM] = endTimeStr.split(":").map(Number);
+            const endMins = endH * 60 + endM;
+            if (nowMins > endMins) {
+                throw new AppError(
+                    `Your shift ended at ${endH % 12 || 12}:${String(endM).padStart(2, "0")} ${endH >= 12 ? "PM" : "AM"}. Clock-in is no longer available.`,
+                    400
+                );
+            }
+
             // Geofence check: worker must be within store radius
             const { latitude, longitude } = body;
             if (latitude != null && longitude != null) {

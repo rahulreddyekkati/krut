@@ -58,6 +58,8 @@ export async function GET(
             consumersSampled: recap.consumersSampled,
             customerFeedback: recap.customerFeedback,
             receiptUrl: recap.receiptUrl,
+            managerSignature: recap.managerSignature,
+            storeManagerName: recap.storeManagerName,
             managerReview: recap.managerReview,
             skus: recap.skus || [],
             createdAt: recap.createdAt,

@@ -344,6 +344,52 @@ export default function RecapDetailPage() {
                 </div>
             )}
 
+            {/* ── Fraud / Quality Flags ── */}
+            {(() => {
+                const flags: { label: string; level: "warn" | "danger" }[] = [];
+                const hasReceipt = recap.receiptUrl && recap.receiptUrl !== "[]" && recap.receiptUrl !== "null" && recap.receiptUrl !== "";
+                const hasSig = !!recap.managerSignature;
+                const reimb = recap.reimbursement ?? 0;
+                const sales = recap.receiptTotal ?? 0;
+
+                if (!hasReceipt) flags.push({ label: "No receipt photo uploaded", level: "warn" });
+                if (!hasSig) flags.push({ label: recap.storeManagerName ? `Manager "${recap.storeManagerName}" did not sign` : "Store manager sign-off missing", level: "warn" });
+                if (reimb > 0 && sales === 0) flags.push({ label: `Claims $${reimb.toFixed(2)} reimbursement with $0.00 in sales`, level: "danger" });
+                if (reimb > sales && sales > 0) flags.push({ label: `Reimbursement ($${reimb.toFixed(2)}) exceeds sales ($${sales.toFixed(2)})`, level: "warn" });
+
+                (recap.skus ?? []).forEach((sku: any) => {
+                    const max = (sku.beginningInventory ?? 0) + (sku.purchased ?? 0);
+                    if (sku.bottlesSold > max) {
+                        flags.push({ label: `${sku.skuName}: sold ${sku.bottlesSold} but only had ${max} in stock — impossible`, level: "danger" });
+                    }
+                });
+
+                if (flags.length === 0) return (
+                    <div style={{ ...sectionStyle, background: "#f0fdf4", border: "1px solid #bbf7d0", marginBottom: "1rem" }}>
+                        <span style={{ color: "#15803d", fontWeight: 700, fontSize: "0.85rem" }}>✓ No fraud or quality flags detected</span>
+                    </div>
+                );
+
+                return (
+                    <div style={{ ...sectionStyle, background: "#fff7ed", border: "2px solid #fed7aa", marginBottom: "1rem" }}>
+                        <h3 style={{ ...labelStyle, fontSize: "0.8rem", color: "#c2410c", marginBottom: "0.75rem" }}>⚠ Flags ({flags.length})</h3>
+                        {flags.map((f, i) => (
+                            <div key={i} style={{
+                                display: "flex", alignItems: "center", gap: "0.5rem",
+                                padding: "0.4rem 0",
+                                borderBottom: i < flags.length - 1 ? "1px solid #fed7aa" : "none",
+                                fontSize: "0.875rem",
+                                color: f.level === "danger" ? "#b91c1c" : "#92400e",
+                                fontWeight: f.level === "danger" ? 700 : 500
+                            }}>
+                                <span>{f.level === "danger" ? "🔴" : "🟡"}</span>
+                                <span>{f.label}</span>
+                            </div>
+                        ))}
+                    </div>
+                );
+            })()}
+
             {/* ── Manager Review ── */}
             <div style={{
                 ...sectionStyle,

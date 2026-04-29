@@ -277,7 +277,7 @@ export async function POST(request: NextRequest) {
             // MAJ-06: Atomic clock-in — only update if clockIn is still null
             const updated = await prisma.jobAssignment.updateMany({
                 where: { id: targetAssignmentId, clockIn: null },
-                data: { clockIn: now, clockOut: null }
+                data: { clockIn: now, clockOut: null, status: "IN_PROGRESS" }
             });
             if (updated.count === 0) {
                 throw new AppError("Already clocked in", 409);

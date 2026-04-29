@@ -15,6 +15,7 @@ interface User {
     assignedHours: number;
     workedHours: number;
     totalReimbursement: number;
+    totalBonus: number;
     hourlyWage?: number;
     market?: { name: string };
     managedMarket?: { name: string };
@@ -506,7 +507,7 @@ export default function AdminUsersPage() {
                                         </td>
 <td style={{ textAlign: 'right', color: "var(--success)", fontWeight: 700 }}>
     {user.role === "WORKER"
-        ? `$${((user.workedHours * (user.hourlyWage || 0)) + (user.totalReimbursement || 0)).toFixed(2)}`
+        ? `$${((user.workedHours * (user.hourlyWage || 0)) + (user.totalReimbursement || 0) + (user.totalBonus || 0)).toFixed(2)}`
         : 'N/A'}
 </td>
                                         <td>

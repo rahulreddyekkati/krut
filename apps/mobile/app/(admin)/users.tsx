@@ -205,8 +205,7 @@ export default function UsersScreen() {
     try {
       const payload: any = { jobId: selectedJobId };
       if (assignMode === 'recurring') {
-        payload.selectedDays = selectedWeekdays;
-        payload.isRecurring = true;
+        payload.weekdays = selectedWeekdays;
       } else {
         payload.date = specificDate;
       }

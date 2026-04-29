@@ -66,8 +66,8 @@ export async function GET() {
             let assignedHours = 0;
             let workedHours = 0;
             let totalReimbursement = 0;
+            let totalBonus = 0;
 
-            const seenJobRecaps = new Set<string>();
             user.jobs.forEach((assignment: any) => {
                 const job = assignment.job;
                 if (job && job.startTimeStr && job.endTimeStr) {
@@ -75,8 +75,7 @@ export async function GET() {
                     const [eh, em] = job.endTimeStr.split(":").map(Number);
                     let durationMins = (eh * 60 + em) - (sh * 60 + sm);
                     if (durationMins < 0) durationMins += 24 * 60;
-                    const duration = durationMins / 60;
-                    assignedHours += duration;
+                    assignedHours += durationMins / 60;
 
                     if (typeof assignment.workedHours === 'number') {
                         workedHours += assignment.workedHours;
@@ -90,13 +89,15 @@ export async function GET() {
                         }
                     }
 
-                    if (assignment.recap?.reimbursement && assignment.recap?.status === "APPROVED") {
-                        totalReimbursement += assignment.recap.reimbursement;
+                    // Only count bonus and reimbursement for completed/approved shifts
+                    if (assignment.recap?.status === "APPROVED") {
+                        if (assignment.recap.reimbursement) totalReimbursement += assignment.recap.reimbursement;
+                        if (job.bonus) totalBonus += job.bonus;
                     }
                 }
             });
 
-            return { assignedHours, workedHours, totalReimbursement };
+            return { assignedHours, workedHours, totalReimbursement, totalBonus };
         };
 
         // Fetch approved releases this week to subtract from assignedHours
@@ -117,7 +118,7 @@ export async function GET() {
         }
 
         const usersWithHours = users.map((user: any) => {
-            let { assignedHours, workedHours, totalReimbursement } = calcHours(user);
+            let { assignedHours, workedHours, totalReimbursement, totalBonus } = calcHours(user);
 
             // Subtract released shift hours
             const userReleases = releasesByWorker[user.id] || [];
@@ -141,13 +142,14 @@ export async function GET() {
                 ...userData,
                 assignedHours: parseFloat(assignedHours.toFixed(2)),
                 workedHours: finalWorkedHours,
-                totalReimbursement: parseFloat(totalReimbursement.toFixed(2))
+                totalReimbursement: parseFloat(totalReimbursement.toFixed(2)),
+                totalBonus: parseFloat(totalBonus.toFixed(2))
             };
         });
 
         return NextResponse.json(usersWithHours);
     } catch (error) {
-        console.error("DEBUG: GET Users error full details:", JSON.stringify(error, Object.getOwnPropertyNames(error)));
+        console.error("GET Users error:", error);
         return NextResponse.json({ error: "Internal server error", details: (error as any).message }, { status: 500 });
     }
 }

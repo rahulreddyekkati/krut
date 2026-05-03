@@ -1,5 +1,7 @@
 # Privacy Policy for Kruto Tastes
 
+<!-- Trigger Build -->
+
 **Effective Date:** May 3, 2026
 
 Kruto Tastes ("we", "our", or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and share information when you use our mobile application (the "App") and related services.

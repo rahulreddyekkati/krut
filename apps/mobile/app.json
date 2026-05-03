@@ -17,6 +17,8 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.krutotastes.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -30,6 +32,12 @@
     "plugins": [
       "expo-router",
       "expo-secure-store"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "74b77b94-ceb2-4183-8b7e-245c768aeee3"
+      }
+    },
+    "owner": "krutotastes"
   }
 }

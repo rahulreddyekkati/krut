@@ -6,12 +6,63 @@ import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import LogoutButton from "./LogoutButton";
 
+function ChangePasswordModal({ onClose }: { onClose: () => void }) {
+    const [current, setCurrent] = useState("");
+    const [next, setNext] = useState("");
+    const [confirm, setConfirm] = useState("");
+    const [error, setError] = useState("");
+    const [saving, setSaving] = useState(false);
+
+    const handleSave = async () => {
+        setError("");
+        if (!current || !next || !confirm) { setError("All fields are required."); return; }
+        if (next.length < 8) { setError("New password must be at least 8 characters."); return; }
+        if (next !== confirm) { setError("New passwords do not match."); return; }
+        setSaving(true);
+        try {
+            const res = await fetch("/api/auth/profile", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ currentPassword: current, newPassword: next }),
+            });
+            const data = await res.json();
+            if (res.ok) { onClose(); }
+            else { setError(data.error || "Failed to update password."); }
+        } catch { setError("Network error. Please try again."); }
+        finally { setSaving(false); }
+    };
+
+    return (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000, padding: "1rem" }}>
+            <div style={{ background: "#fff", borderRadius: 20, padding: "2rem", width: "100%", maxWidth: 420, boxShadow: "0 20px 40px rgba(0,0,0,0.15)" }}>
+                <h2 style={{ fontSize: "1.25rem", fontWeight: 700, color: "#111827", marginBottom: "1.5rem" }}>Change Password</h2>
+                {error && <p style={{ color: "#EF4444", fontSize: "0.875rem", marginBottom: "1rem", background: "#FEF2F2", padding: "0.75rem", borderRadius: 8 }}>{error}</p>}
+                {([["Current Password", current, setCurrent], ["New Password", next, setNext], ["Confirm New Password", confirm, setConfirm]] as [string, string, (v: string) => void][]).map(([label, val, setter]) => (
+                    <div key={label} style={{ marginBottom: "1rem" }}>
+                        <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: "#374151", marginBottom: 6 }}>{label}</label>
+                        <input type="password" value={val} onChange={e => setter(e.target.value)}
+                            placeholder={label === "New Password" ? "Min. 8 characters" : ""}
+                            style={{ width: "100%", padding: "0.75rem", border: "1px solid #E5E7EB", borderRadius: 10, fontSize: "0.9375rem", color: "#111827", background: "#F9FAFB", boxSizing: "border-box" }} />
+                    </div>
+                ))}
+                <div style={{ display: "flex", gap: "0.75rem", marginTop: "1.25rem" }}>
+                    <button onClick={onClose} style={{ flex: 1, padding: "0.75rem", border: "1px solid #E5E7EB", borderRadius: 10, background: "#fff", color: "#374151", fontWeight: 600, cursor: "pointer" }}>Cancel</button>
+                    <button onClick={handleSave} disabled={saving} style={{ flex: 1, padding: "0.75rem", border: "none", borderRadius: 10, background: saving ? "#A5B4FC" : "#6366F1", color: "#fff", fontWeight: 700, cursor: saving ? "not-allowed" : "pointer" }}>
+                        {saving ? "Saving…" : "Update Password"}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export default function AdminLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [showPasswordModal, setShowPasswordModal] = useState(false);
     const [stats, setStats] = useState({ role: "" });
     const [badges, setBadges] = useState({ recaps: 0, shiftApprovals: 0, releasedShifts: 0, messages: 0 });
     const pathname = usePathname();
@@ -132,12 +183,24 @@ export default function AdminLayout({
                     </Link>
                 </nav>
                 <div className={styles.sidebarFooter}>
+                    <button
+                        onClick={() => setShowPasswordModal(true)}
+                        style={{
+                            width: "100%", padding: "0.75rem 1rem", marginBottom: "0.5rem",
+                            background: "rgba(99,102,241,0.1)", color: "#6366f1",
+                            border: "1px solid rgba(99,102,241,0.3)", borderRadius: 8,
+                            cursor: "pointer", fontWeight: 600, fontSize: "0.875rem"
+                        }}
+                    >
+                        Change Password
+                    </button>
                     <LogoutButton />
                 </div>
             </aside>
             <main className={styles.main}>
                 {children}
             </main>
+            {showPasswordModal && <ChangePasswordModal onClose={() => setShowPasswordModal(false)} />}
         </div>
     );
 }

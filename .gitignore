@@ -42,6 +42,12 @@ next-env.d.ts
 
 /src/generated/prisma
 
+# Google Play / App Store credentials — never commit these
+*-submission-*.json
+google-key.json
+*.jks
+*.keystore
+
 # debug & test files
 verify_e2e.ts
 debug.ts

@@ -14,9 +14,22 @@ export async function GET(request: NextRequest) {
     try {
         const user = await requireAuth(request);
 
+        const blocks = await prisma.block.findMany({
+            where: {
+                OR: [{ blockerId: user.id }, { blockedId: user.id }]
+            }
+        });
+
+        const blockedUserIds = blocks.map(b => b.blockerId === user.id ? b.blockedId : b.blockerId);
+
         const threads = await prisma.chatThread.findMany({
             where: {
-                participants: { some: { id: user.id } }
+                participants: { some: { id: user.id } },
+                NOT: {
+                    participants: {
+                        some: { id: { in: blockedUserIds } }
+                    }
+                }
             },
             include: {
                 participants: { select: { id: true, name: true, role: true } },
@@ -111,6 +124,28 @@ export async function POST(request: NextRequest) {
 
         if (!finalThreadId) {
             throw new AppError("Could not find or create thread", 400);
+        }
+
+        // Check for blocks
+        const threadParticipants = await prisma.chatThread.findUnique({
+            where: { id: finalThreadId },
+            select: { participants: { select: { id: true } } }
+        });
+
+        if (threadParticipants) {
+            const participantIds = threadParticipants.participants.map(p => p.id);
+            const isBlocked = await prisma.block.findFirst({
+                where: {
+                    OR: [
+                        { blockerId: user.id, blockedId: { in: participantIds } },
+                        { blockerId: { in: participantIds }, blockedId: user.id }
+                    ]
+                }
+            });
+
+            if (isBlocked) {
+                throw new AppError("Message blocked", 403);
+            }
         }
 
         // ── CRIT-06: Verify user is a participant of the target thread ────────

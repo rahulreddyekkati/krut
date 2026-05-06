@@ -43,10 +43,20 @@ export default function PrivacyPolicy() {
       <h2>4. Security</h2>
       <p>We use industry-standard security measures (including encryption and secure storage) to protect your data from unauthorized access or disclosure.</p>
 
-      <h2>5. Your Choices</h2>
+      <h2>5. Your Choices & Data Deletion</h2>
+      <p>We provide you with the ability to manage and delete your data:</p>
       <ul>
-        <li><strong>Location Access</strong>: You can enable or disable location services in your device settings at any time, though this may limit your ability to clock in/out.</li>
-        <li><strong>Account Deletion</strong>: You may request account deletion by contacting us at support@krutovodka.com.</li>
+        <li><strong>Location Access</strong>: You can enable or disable location services in your device settings at any time.</li>
+        <li id="deletion"><strong>Account & Data Deletion Request</strong>:
+          <p>Users can request the deletion of their account and all associated personal data by following these steps:</p>
+          <ol>
+            <li>Send an email to <strong>support@krutovodka.com</strong> from the email address associated with your account.</li>
+            <li>Use the subject line "Data Deletion Request - [Your Name]".</li>
+            <li>Our support team will process your request within 30 days.</li>
+          </ol>
+          <p><strong>What is deleted:</strong> All personal identity data (name, email, profile picture) and precise location history will be permanently deleted from our active databases.</p>
+          <p><strong>What is kept:</strong> We may retain certain employment-related records (such as shift completion logs and payroll data) for a period required by law or for legitimate business purposes (e.g., tax and labor compliance).</p>
+        </li>
       </ul>
 
       <h2>6. Changes to This Policy</h2>

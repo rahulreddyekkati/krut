@@ -237,16 +237,30 @@ export default function AssignJobPage() {
 
                         {(() => {
                             const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-                            // Group isRecurring assignments by (jobId, weekday derived from date)
+                            const now = new Date();
+                            const day = now.getDate();
+                            const year = now.getFullYear();
+                            const month = now.getMonth();
+                            const cycleStart = day <= 15
+                                ? new Date(year, month, 1, 0, 0, 0, 0)
+                                : new Date(year, month, 16, 0, 0, 0, 0);
+                            const cycleEnd = day <= 15
+                                ? new Date(year, month, 15, 23, 59, 59, 999)
+                                : new Date(year, month + 1, 0, 23, 59, 59, 999);
+
+                            // Group only isRecurring assignments by (jobId, weekday derived from date)
                             const groups = new Map<string, { jobId: string; weekday: number; job: any; count: number }>();
                             for (const a of assignments) {
-                                if (!a.date) continue;
+                                if (!a.date || !a.isRecurring) continue;
                                 const weekday = new Date(a.date).getUTCDay();
                                 const key = `${a.jobId}-${weekday}`;
                                 if (!groups.has(key)) {
                                     groups.set(key, { jobId: a.jobId, weekday, job: a.job, count: 0 });
                                 }
-                                groups.get(key)!.count++;
+                                const d = new Date(a.date);
+                                if (d >= cycleStart && d <= cycleEnd) {
+                                    groups.get(key)!.count++;
+                                }
                             }
                             const groupList = Array.from(groups.values())
                                 .sort((a, b) => a.weekday - b.weekday);

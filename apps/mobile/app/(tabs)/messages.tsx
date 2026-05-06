@@ -119,6 +119,61 @@ export default function MessagesScreen() {
     }
   };
 
+  const handleBlock = async (userId: string) => {
+    Alert.alert(
+      "Block User",
+      "Are you sure you want to block this user? You will no longer receive messages from them.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Block",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const res = await fetchWithAuth('/messages/actions', {
+                method: 'POST',
+                body: JSON.stringify({ action: 'BLOCK', userId }),
+              });
+              if (res.ok) {
+                Alert.alert("Success", "User blocked.");
+                setCurrentThread(null);
+                loadThreads();
+              }
+            } catch (e) {
+              Alert.alert("Error", "Failed to block user.");
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleReport = async (userId: string) => {
+    Alert.alert(
+      "Report User",
+      "Are you sure you want to report this user for inappropriate behavior?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Report",
+          onPress: async () => {
+            try {
+              const res = await fetchWithAuth('/messages/actions', {
+                method: 'POST',
+                body: JSON.stringify({ action: 'REPORT', userId, reason: 'Reported via Mobile App' }),
+              });
+              if (res.ok) {
+                Alert.alert("Report Sent", "Thank you for your report. We will investigate.");
+              }
+            } catch (e) {
+              Alert.alert("Error", "Failed to send report.");
+            }
+          }
+        }
+      ]
+    );
+  };
+
   // Filter threads by search
   const filteredThreads = threads.filter((t: any) => {
     if (!searchQuery.trim()) return true;
@@ -141,10 +196,25 @@ export default function MessagesScreen() {
           <TouchableOpacity onPress={() => setCurrentThread(null)} style={styles.backBtn}>
             <Text style={styles.backText}>‹ Back</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>{recipientName}</Text>
-          <View style={styles.avatarSmall}>
-            <Text style={styles.avatarSmallText}>{(recipientName)[0]?.toUpperCase()}</Text>
+          <View style={{ flex: 1, alignItems: 'center' }}>
+            <Text style={styles.headerTitle} numberOfLines={1}>{recipientName}</Text>
           </View>
+          <TouchableOpacity 
+            onPress={() => {
+              Alert.alert(
+                "Safety Options",
+                "Choose an action",
+                [
+                  { text: "Cancel", style: "cancel" },
+                  { text: "Report User", onPress: () => handleReport(recipient.id) },
+                  { text: "Block User", style: "destructive", onPress: () => handleBlock(recipient.id) },
+                ]
+              );
+            }} 
+            style={{ padding: 8 }}
+          >
+            <Text style={{ fontSize: 20, color: '#6366F1' }}>⋮</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Messages */}

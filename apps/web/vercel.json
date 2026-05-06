@@ -2,7 +2,11 @@
   "crons": [
     {
       "path": "/api/cron/auto-clockout",
-      "schedule": "0 0 * * *"
+      "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/cycle-rollover",
+      "schedule": "0 6 1,16 * *"
     }
   ]
 }

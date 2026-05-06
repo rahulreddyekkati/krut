@@ -40,22 +40,43 @@ export function getPreviousCycleDates(baseDate: Date = new Date()): CycleDates {
 
 export function getClosedCycles(count: number = 6): (CycleDates & { label: string })[] {
   const cycles = [];
-  let currentBase = new Date();
-  
-  // Start from the most recent closed cycle
-  // If today is 16th+, the 1-15 cycle is closed.
-  // If today is 1-15, the 16-31 of prev month is closed.
-  
-  for (let i = 0; i < count; i++) {
-    const prev = getPreviousCycleDates(currentBase);
-    cycles.push({
-      ...prev,
-      label: getCycleDisplayName(prev) + ` (${prev.start.getFullYear()})`
-    });
-    // Move currentBase back to before the start of this cycle to get the next previous
-    currentBase = new Date(prev.start.getTime() - 1000);
+  const now = new Date();
+  let year = now.getFullYear();
+  let month = now.getMonth();
+  // true = first half (1-15), false = second half (16-end)
+  let firstHalf: boolean;
+
+  if (now.getDate() <= 15) {
+    // Current cycle is first half → most recent closed is second half of previous month
+    if (month === 0) { month = 11; year--; } else { month--; }
+    firstHalf = false;
+  } else {
+    // Current cycle is second half → most recent closed is first half of current month
+    firstHalf = true;
   }
-  
+
+  for (let i = 0; i < count; i++) {
+    let start: Date, end: Date;
+    if (firstHalf) {
+      start = new Date(year, month, 1, 0, 0, 0, 0);
+      end = new Date(year, month, 15, 23, 59, 59, 999);
+    } else {
+      start = new Date(year, month, 16, 0, 0, 0, 0);
+      end = new Date(year, month + 1, 0, 23, 59, 59, 999);
+    }
+    cycles.push({ start, end, label: getCycleDisplayName({ start, end }) + ` (${year})` });
+
+    // Step back one half-cycle
+    if (firstHalf) {
+      // First half → previous is second half of prior month
+      if (month === 0) { month = 11; year--; } else { month--; }
+      firstHalf = false;
+    } else {
+      // Second half → previous is first half of same month
+      firstHalf = true;
+    }
+  }
+
   return cycles;
 }
 

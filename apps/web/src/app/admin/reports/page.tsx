@@ -15,7 +15,7 @@ export default function AdminReportsPage() {
     const [isLoading, setIsLoading] = useState(false);
 
     // Memoize cycles to avoid unnecessary recalculations
-    const closedCycles = useMemo(() => getClosedCycles(12), []);
+    const closedCycles = useMemo(() => getClosedCycles(24), []);
 
     // Set initial cycle on mount
     useEffect(() => {

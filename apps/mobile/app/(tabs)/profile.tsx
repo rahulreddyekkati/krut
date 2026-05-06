@@ -1,10 +1,52 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { useAuth } from '../../providers/AuthProvider';
 import { router } from 'expo-router';
+import { fetchWithAuth } from '../../utils/apiClient';
 
 export default function ProfileTab() {
   const { signOut, user } = useAuth();
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      Alert.alert('Error', 'Please fill in all fields.');
+      return;
+    }
+    if (newPassword.length < 8) {
+      Alert.alert('Error', 'New password must be at least 8 characters.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      Alert.alert('Error', 'New passwords do not match.');
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetchWithAuth('/auth/profile', {
+        method: 'PATCH',
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        Alert.alert('Success', 'Password changed successfully.');
+        setShowPasswordModal(false);
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+      } else {
+        Alert.alert('Error', data.error || 'Failed to change password.');
+      }
+    } catch {
+      Alert.alert('Error', 'Network error. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -46,7 +88,11 @@ export default function ProfileTab() {
             <Text style={styles.menuText}>Notifications</Text>
             <Text style={styles.menuArrow}>›</Text>
           </TouchableOpacity>
-          {/* Pay History and Settings — coming soon */}
+          <TouchableOpacity style={styles.menuItem} onPress={() => setShowPasswordModal(true)}>
+            <Text style={styles.menuIcon}>🔑</Text>
+            <Text style={styles.menuText}>Change Password</Text>
+            <Text style={styles.menuArrow}>›</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Logout */}
@@ -56,6 +102,63 @@ export default function ProfileTab() {
 
         <Text style={styles.version}>Kruto Tastes v1.0.0</Text>
       </ScrollView>
+
+      {/* Change Password Modal */}
+      <Modal visible={showPasswordModal} animationType="slide" transparent onRequestClose={() => setShowPasswordModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Change Password</Text>
+
+            <Text style={styles.inputLabel}>Current Password</Text>
+            <TextInput
+              style={styles.input}
+              secureTextEntry
+              placeholder="Enter current password"
+              placeholderTextColor="#9CA3AF"
+              value={currentPassword}
+              onChangeText={setCurrentPassword}
+              autoCapitalize="none"
+            />
+
+            <Text style={styles.inputLabel}>New Password</Text>
+            <TextInput
+              style={styles.input}
+              secureTextEntry
+              placeholder="Min. 8 characters"
+              placeholderTextColor="#9CA3AF"
+              value={newPassword}
+              onChangeText={setNewPassword}
+              autoCapitalize="none"
+            />
+
+            <Text style={styles.inputLabel}>Confirm New Password</Text>
+            <TextInput
+              style={styles.input}
+              secureTextEntry
+              placeholder="Re-enter new password"
+              placeholderTextColor="#9CA3AF"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              autoCapitalize="none"
+            />
+
+            <TouchableOpacity
+              style={[styles.saveBtn, saving && { opacity: 0.6 }]}
+              onPress={handleChangePassword}
+              disabled={saving}
+            >
+              {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Update Password</Text>}
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.cancelBtn} onPress={() => {
+              setShowPasswordModal(false);
+              setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
+            }}>
+              <Text style={styles.cancelBtnText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -64,12 +167,10 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F3F4F6' },
   scrollContent: { paddingBottom: 60 },
 
-  /* ── Navbar ── */
   navbar: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingTop: 56, paddingBottom: 14, paddingHorizontal: 20,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1, borderColor: '#F3F4F6',
+    backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#F3F4F6',
   },
   brand: { fontSize: 20, fontWeight: '800', color: '#6366F1' },
   navSubtitle: { fontSize: 13, color: '#9CA3AF', marginTop: 2 },
@@ -82,7 +183,6 @@ const styles = StyleSheet.create({
   iconEmoji: { fontSize: 18 },
   logoutIcon: { fontSize: 18, color: '#EF4444', fontWeight: '700' },
 
-  /* ── Avatar ── */
   avatarSection: { alignItems: 'center', paddingTop: 32, paddingBottom: 24, backgroundColor: '#fff', marginBottom: 12 },
   avatar: {
     width: 72, height: 72, borderRadius: 36,
@@ -94,7 +194,6 @@ const styles = StyleSheet.create({
   roleBadge: { backgroundColor: '#EEF2FF', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20 },
   roleText: { fontSize: 11, fontWeight: '700', color: '#6366F1', letterSpacing: 1 },
 
-  /* ── Menu ── */
   menuSection: { marginTop: 8, marginHorizontal: 16 },
   menuItem: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff',
@@ -110,6 +209,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEE2E2', alignItems: 'center',
   },
   logoutText: { color: '#EF4444', fontSize: 16, fontWeight: '700' },
-
   version: { textAlign: 'center', color: '#D1D5DB', fontSize: 12, marginTop: 24 },
+
+  /* Modal */
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  modalCard: {
+    backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    padding: 28, paddingBottom: 40,
+  },
+  modalTitle: { fontSize: 20, fontWeight: '800', color: '#111827', marginBottom: 24 },
+  inputLabel: { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6 },
+  input: {
+    borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 10,
+    padding: 14, fontSize: 15, color: '#111827', marginBottom: 16, backgroundColor: '#F9FAFB',
+  },
+  saveBtn: {
+    backgroundColor: '#6366F1', borderRadius: 12, padding: 16,
+    alignItems: 'center', marginTop: 4, marginBottom: 10,
+  },
+  saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  cancelBtn: { alignItems: 'center', padding: 12 },
+  cancelBtnText: { color: '#6B7280', fontSize: 15, fontWeight: '500' },
 });

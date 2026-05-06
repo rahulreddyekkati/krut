@@ -37,14 +37,25 @@ export async function PATCH(request: NextRequest) {
     }
 
     try {
-        const { name, password } = await request.json();
+        const { name, currentPassword, newPassword } = await request.json();
         const updateData: Record<string, string> = {};
 
         if (name && typeof name === "string" && name.trim()) {
             updateData.name = name.trim();
         }
-        if (password && typeof password === "string" && password.length >= 8) {
-            updateData.password = await bcrypt.hash(password, 10);
+
+        if (newPassword) {
+            if (typeof newPassword !== "string" || newPassword.length < 8) {
+                return NextResponse.json({ error: "New password must be at least 8 characters" }, { status: 400 });
+            }
+            if (!currentPassword) {
+                return NextResponse.json({ error: "Current password is required" }, { status: 400 });
+            }
+            const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { password: true } });
+            if (!user || !(await bcrypt.compare(currentPassword, user.password))) {
+                return NextResponse.json({ error: "Current password is incorrect" }, { status: 400 });
+            }
+            updateData.password = await bcrypt.hash(newPassword, 10);
         }
 
         if (Object.keys(updateData).length === 0) {

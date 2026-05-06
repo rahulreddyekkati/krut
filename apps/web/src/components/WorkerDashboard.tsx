@@ -91,6 +91,12 @@ export default function WorkerDashboard({
     const [isSelectingContact, setIsSelectingContact] = useState(false);
     const [contacts, setContacts] = useState<any[]>([]);
     const [contactSearch, setContactSearch] = useState("");
+    const [showPasswordModal, setShowPasswordModal] = useState(false);
+    const [pwCurrent, setPwCurrent] = useState("");
+    const [pwNew, setPwNew] = useState("");
+    const [pwConfirm, setPwConfirm] = useState("");
+    const [pwError, setPwError] = useState("");
+    const [pwSaving, setPwSaving] = useState(false);
     const [showRecapPopup, setShowRecapPopup] = useState(false);
     const [inventoryItems, setInventoryItems] = useState<any[]>([]);
     const [pendingRecaps, setPendingRecaps] = useState<any[]>([]);
@@ -795,6 +801,32 @@ export default function WorkerDashboard({
         </div>
     );
 
+    const handleChangePassword = async () => {
+        setPwError("");
+        if (!pwCurrent || !pwNew || !pwConfirm) { setPwError("All fields are required."); return; }
+        if (pwNew.length < 8) { setPwError("New password must be at least 8 characters."); return; }
+        if (pwNew !== pwConfirm) { setPwError("New passwords do not match."); return; }
+        setPwSaving(true);
+        try {
+            const res = await fetch("/api/auth/profile", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ currentPassword: pwCurrent, newPassword: pwNew }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setShowPasswordModal(false);
+                setPwCurrent(""); setPwNew(""); setPwConfirm("");
+            } else {
+                setPwError(data.error || "Failed to update password.");
+            }
+        } catch {
+            setPwError("Network error. Please try again.");
+        } finally {
+            setPwSaving(false);
+        }
+    };
+
     return (
         <div className={styles.container}>
             <nav className={styles.navbar}>
@@ -883,6 +915,18 @@ export default function WorkerDashboard({
                             </div>
                         )}
                     </div>
+                    <button
+                        className={styles.logoutBtn}
+                        aria-label="Change password"
+                        title="Change password"
+                        onClick={() => setShowPasswordModal(true)}
+                        style={{ marginRight: 6 }}
+                    >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                        </svg>
+                    </button>
                     <button
                         className={styles.logoutBtn}
                         aria-label="Logout"
@@ -1179,6 +1223,36 @@ export default function WorkerDashboard({
                         </div>
                         <div className={styles.recapPopupFooter}>
                             <button className={styles.recapSubmitBtn} onClick={handleSubmitRecap}>Submit Recap</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Change Password Modal ── */}
+            {showPasswordModal && (
+                <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000, padding: "1rem" }}>
+                    <div style={{ background: "#fff", borderRadius: 20, padding: "2rem", width: "100%", maxWidth: 420, boxShadow: "0 20px 40px rgba(0,0,0,0.15)" }}>
+                        <h2 style={{ fontSize: "1.25rem", fontWeight: 700, color: "#111827", marginBottom: "1.5rem" }}>Change Password</h2>
+                        {pwError && <p style={{ color: "#EF4444", fontSize: "0.875rem", marginBottom: "1rem", background: "#FEF2F2", padding: "0.75rem", borderRadius: 8 }}>{pwError}</p>}
+                        {(["Current Password", "New Password", "Confirm New Password"] as const).map((label, i) => (
+                            <div key={label} style={{ marginBottom: "1rem" }}>
+                                <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: "#374151", marginBottom: 6 }}>{label}</label>
+                                <input
+                                    type="password"
+                                    placeholder={i === 1 ? "Min. 8 characters" : ""}
+                                    value={i === 0 ? pwCurrent : i === 1 ? pwNew : pwConfirm}
+                                    onChange={e => { if (i === 0) setPwCurrent(e.target.value); else if (i === 1) setPwNew(e.target.value); else setPwConfirm(e.target.value); }}
+                                    style={{ width: "100%", padding: "0.75rem", border: "1px solid #E5E7EB", borderRadius: 10, fontSize: "0.9375rem", color: "#111827", background: "#F9FAFB", boxSizing: "border-box" }}
+                                />
+                            </div>
+                        ))}
+                        <div style={{ display: "flex", gap: "0.75rem", marginTop: "1.25rem" }}>
+                            <button onClick={() => { setShowPasswordModal(false); setPwCurrent(""); setPwNew(""); setPwConfirm(""); setPwError(""); }} style={{ flex: 1, padding: "0.75rem", border: "1px solid #E5E7EB", borderRadius: 10, background: "#fff", color: "#374151", fontWeight: 600, cursor: "pointer" }}>
+                                Cancel
+                            </button>
+                            <button onClick={handleChangePassword} disabled={pwSaving} style={{ flex: 1, padding: "0.75rem", border: "none", borderRadius: 10, background: pwSaving ? "#A5B4FC" : "#6366F1", color: "#fff", fontWeight: 700, cursor: pwSaving ? "not-allowed" : "pointer" }}>
+                                {pwSaving ? "Saving…" : "Update Password"}
+                            </button>
                         </div>
                     </div>
                 </div>

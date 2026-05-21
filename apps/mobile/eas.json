@@ -24,8 +24,8 @@
     "production": {
       "android": {
         "serviceAccountKeyPath": "./google-key.json",
-        "track": "production",
-        "releaseStatus": "draft"
+        "track": "internal",
+        "releaseStatus": "completed"
       }
     }
   }

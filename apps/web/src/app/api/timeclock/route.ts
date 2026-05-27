@@ -204,13 +204,22 @@ export async function POST(request: NextRequest) {
                 throw new AppError("Clock-in is only available from the mobile app", 403);
             }
 
-            // Reject clock-in if current time is past the shift end time
+            // Reject clock-in if outside shift window
             const { toZonedTime } = await import("date-fns-tz");
             const zonedNow = toZonedTime(now, tz);
             const nowMins = zonedNow.getHours() * 60 + zonedNow.getMinutes();
+            const startTimeStr = (assignment as any).customStartTimeStr ?? assignment.job.startTimeStr;
             const endTimeStr = (assignment as any).customEndTimeStr ?? assignment.job.endTimeStr;
+            const [startH, startM] = startTimeStr.split(":").map(Number);
             const [endH, endM] = endTimeStr.split(":").map(Number);
+            const startMins = startH * 60 + startM;
             const endMins = endH * 60 + endM;
+            if (nowMins < startMins) {
+                throw new AppError(
+                    `Your shift doesn't start until ${startH % 12 || 12}:${String(startM).padStart(2, "0")} ${startH >= 12 ? "PM" : "AM"}. You cannot clock in early.`,
+                    400
+                );
+            }
             if (nowMins > endMins) {
                 throw new AppError(
                     `Your shift ended at ${endH % 12 || 12}:${String(endM).padStart(2, "0")} ${endH >= 12 ? "PM" : "AM"}. Clock-in is no longer available.`,

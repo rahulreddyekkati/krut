@@ -108,6 +108,18 @@ export default function InvitePage() {
                             placeholder="••••••••"
                             required
                         />
+                        <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            {[
+                                { label: 'At least 8 characters', met: password.length >= 8 },
+                                { label: 'At least one uppercase letter (A-Z)', met: /[A-Z]/.test(password) },
+                                { label: 'At least one number (0-9)', met: /[0-9]/.test(password) },
+                            ].map(({ label, met }) => (
+                                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: met ? '#16a34a' : '#6b7280', transition: 'color 0.2s' }}>
+                                    <span style={{ fontSize: '15px' }}>{met ? '✅' : '○'}</span>
+                                    {label}
+                                </div>
+                            ))}
+                        </div>
                     </div>
 
                     <div className={styles.inputGroup}>

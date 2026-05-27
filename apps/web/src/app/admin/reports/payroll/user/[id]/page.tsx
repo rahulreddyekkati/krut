@@ -5,20 +5,17 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import PrintButton from "./PrintButton";
 
-export default async function UserPayrollDetailsPage({
-    params,
-    searchParams
-}: {
-    params: { id: string },
-    searchParams: { startDate?: string, endDate?: string }
+export default async function UserPayrollDetailsPage(props: {
+    params: Promise<{ id: string }>,
+    searchParams: Promise<{ startDate?: string, endDate?: string }>
 }) {
     const session = await getSession();
     if (!session || !["ADMIN", "MARKET_MANAGER", "STORE_MANAGER"].includes(session.user.role)) {
         redirect("/login");
     }
 
-    const { id } = await params;
-    const { startDate, endDate } = await searchParams;
+    const { id } = await props.params;
+    const { startDate, endDate } = await props.searchParams;
 
     if (!startDate || !endDate) {
         return <div className="p-8">Please provide a valid start and end date.</div>;
@@ -31,11 +28,13 @@ export default async function UserPayrollDetailsPage({
         where: { id },
         include: {
             market: true,
-            homeStore: true,
             jobs: {
                 where: {
                     clockIn: { not: null },
-                    date: { gte: start, lte: end }
+                    OR: [
+                        { date: { gte: start, lte: end } },
+                        { job: { date: { gte: start, lte: end } } }
+                    ]
                 },
                 include: {
                     job: {

@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
                     where: {
                         workerId: user.id,
                         jobId: activeAssignment.jobId,
-                        date: { gte: startOfTodayUTC, lte: endOfTodayUTC },
+                        date: { gte: todayUTCMidnight, lt: tomorrowUTCMidnight },
                         isRecurring: false
                     },
                     include: {
@@ -255,13 +255,16 @@ export async function POST(request: NextRequest) {
             // Only materialize if this is a true recurring template (isRecurring=true AND no date).
             // Dated recurring instances (isRecurring=true WITH a date) are clocked in directly.
             if (assignment.isRecurring && !assignment.date) {
-                const { start: dbTodayStart, end: dbTodayEnd } = getLocalDayBoundsUTC(tz);
+                const todayLocalStr = toLocalDateStr(new Date(), tz);
+                const todayUTCMidnight = new Date(todayLocalStr + "T00:00:00.000Z");
+                const tomorrowUTCMidnight = new Date(todayLocalStr + "T00:00:00.000Z");
+                tomorrowUTCMidnight.setUTCDate(tomorrowUTCMidnight.getUTCDate() + 1);
 
                 const existingInstance = await prisma.jobAssignment.findFirst({
                     where: {
                         workerId: user.id,
                         jobId: assignment.jobId,
-                        date: { gte: dbTodayStart, lte: dbTodayEnd },
+                        date: { gte: todayUTCMidnight, lt: tomorrowUTCMidnight },
                         isRecurring: false
                     }
                 });
@@ -276,7 +279,7 @@ export async function POST(request: NextRequest) {
                         data: {
                             workerId: user.id,
                             jobId: assignment.jobId,
-                            date: dbTodayStart,
+                            date: todayUTCMidnight,
                             isRecurring: false,
                             breakTimeMinutes: assignment.breakTimeMinutes
                         }

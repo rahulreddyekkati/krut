@@ -37,12 +37,19 @@ export async function GET(request: NextRequest) {
         }) as any;
 
         // 2. If no shift is currently "Clocked In", look for today's assignment (scheduled)
+        // Dates are stored as UTC midnight (new Date("YYYY-MM-DD")), so match against UTC midnight
+        // bounds derived from today's local date string — not local timezone midnight bounds.
+        const todayLocalStr = toLocalDateStr(now, tz);
+        const todayUTCMidnight = new Date(todayLocalStr + "T00:00:00.000Z");
+        const tomorrowUTCMidnight = new Date(todayLocalStr + "T00:00:00.000Z");
+        tomorrowUTCMidnight.setUTCDate(tomorrowUTCMidnight.getUTCDate() + 1);
+
         if (!activeAssignment) {
             activeAssignment = await prisma.jobAssignment.findFirst({
                 where: {
                     workerId: user.id,
                     OR: [
-                        { date: { gte: startOfTodayUTC, lte: endOfTodayUTC } },
+                        { date: { gte: todayUTCMidnight, lt: tomorrowUTCMidnight } },
                         {
                             isRecurring: true,
                             dayOfWeek: zonedNow.getDay()

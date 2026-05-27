@@ -14,7 +14,17 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.krutotastes.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Kruto Tastes uses your location to verify you are at the assigned store before clocking in.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Kruto Tastes uses your location to verify you are at the assigned store before clocking in.",
+        "NSCameraUsageDescription": "Kruto Tastes uses your camera to take photos of receipts for shift recaps.",
+        "NSPhotoLibraryUsageDescription": "Kruto Tastes accesses your photo library to attach receipt images to shift recaps.",
+        "NSPhotoLibraryAddUsageDescription": "Kruto Tastes saves receipt photos to your photo library.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.krutotastes.app",

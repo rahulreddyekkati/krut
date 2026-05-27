@@ -22,6 +22,11 @@
   },
   "submit": {
     "production": {
+      "ios": {
+        "appleId": "media@krutovodka.com",
+        "ascAppId": "6773445779",
+        "appleTeamId": "Z5XM27NH36"
+      },
       "android": {
         "serviceAccountKeyPath": "./google-key.json",
         "track": "internal",

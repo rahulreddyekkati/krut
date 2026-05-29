@@ -26,9 +26,11 @@ export async function GET(request: NextRequest) {
         }
 
         let dateFilter: any = {};
+        let dayOfWeek: number | null = null;
         if (dateParam) {
             const startStr = `${dateParam}T00:00:00Z`;
             const endStr = `${dateParam}T23:59:59Z`;
+            dayOfWeek = new Date(startStr).getUTCDay();
             dateFilter = {
                 OR: [
                     { date: { gte: new Date(startStr), lte: new Date(endStr) } },
@@ -37,7 +39,7 @@ export async function GET(request: NextRequest) {
                             some: {
                                 OR: [
                                     { date: { gte: new Date(startStr), lte: new Date(endStr) } },
-                                    { isRecurring: true }
+                                    { isRecurring: true, dayOfWeek }
                                 ]
                             }
                         }
@@ -62,8 +64,8 @@ export async function GET(request: NextRequest) {
                         },
                         where: dateParam ? {
                             OR: [
-                                { date: { gte: new Date(dateParam + "T00:00:00"), lte: new Date(dateParam + "T23:59:59") } },
-                                { isRecurring: true }
+                                { date: { gte: new Date(dateParam + "T00:00:00Z"), lte: new Date(dateParam + "T23:59:59Z") } },
+                                { isRecurring: true, dayOfWeek }
                             ]
                         } : {}
                     }

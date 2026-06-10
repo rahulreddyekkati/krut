@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
         // MAJ-15: Market Managers can only see their own market — override any query param
         const where: any = {};
         if (user.role === "MARKET_MANAGER") {
-            where.marketId = user.managedMarketId;
+            where.marketId = user.managedMarketId || user.marketId;
             where.role = { not: "ADMIN" };
         }
 

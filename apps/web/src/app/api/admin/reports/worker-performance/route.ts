@@ -29,7 +29,8 @@ export async function GET(request: NextRequest) {
         const end = new Date(endDate);
         end.setHours(23, 59, 59, 999);
 
-        const marketFilter = user.role === "MARKET_MANAGER" ? { store: { marketId: user.managedMarketId ?? undefined } } : {};
+        const marketId = user.managedMarketId || user.marketId;
+        const marketFilter = user.role === "MARKET_MANAGER" ? { store: { marketId: marketId ?? undefined } } : {};
 
         // Fetch all approved recaps in range with full context
         const recaps = await prisma.recap.findMany({

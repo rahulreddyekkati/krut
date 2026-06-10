@@ -9,9 +9,10 @@ export async function GET(request: NextRequest) {
         const user = await requireAuth(request, ["ADMIN", "MARKET_MANAGER"]);
 
         // MAJ-04: Market Managers only see their own market
+        const marketId = user.managedMarketId || user.marketId;
         const where: any =
             user.role === "MARKET_MANAGER"
-                ? { id: user.managedMarketId }
+                ? { id: marketId || undefined }
                 : {};
 
         const markets = await prisma.market.findMany({

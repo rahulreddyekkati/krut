@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import styles from "./stores.module.css";
 import Papa from "papaparse";
 
@@ -27,6 +27,7 @@ export default function StoresPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
+    const [selectedMarket, setSelectedMarket] = useState<string>("all");
 
     // UI State
     const [showForm, setShowForm] = useState(false);
@@ -154,10 +155,28 @@ export default function StoresPage() {
         setShowForm(true);
     };
 
+    const filteredStores = useMemo(() => {
+        if (selectedMarket === "all") return stores;
+        return stores.filter(s => s.marketId === selectedMarket);
+    }, [stores, selectedMarket]);
+
     return (
         <div className={styles.container}>
             <header className={styles.header}>
-                <div className={styles.actions}>
+                <div className={styles.actions} style={{ alignItems: "center" }}>
+                    <select 
+                        value={selectedMarket} 
+                        onChange={(e) => setSelectedMarket(e.target.value)} 
+                        className="input" 
+                        style={{ width: "auto", minWidth: "160px", padding: "0.5rem 0.75rem", fontSize: "0.875rem", height: "38px" }}
+                    >
+                        <option value="all">All Markets</option>
+                        {markets.map(m => (
+                            <option key={m.id} value={m.id}>
+                                {m.name}
+                            </option>
+                        ))}
+                    </select>
                     <button onClick={() => { resetForm(); setShowForm(true); }} className="btn btn-primary">Add Store</button>
                     <button onClick={() => setShowImport(!showImport)} className="btn btn-secondary">Bulk Import (CSV)</button>
                 </div>
@@ -212,7 +231,7 @@ export default function StoresPage() {
                         </tr>
                     </thead>
                     <tbody>
-                        {(loading ? [] : stores).map(store => (
+                        {(loading ? [] : filteredStores).map(store => (
                             <tr key={store.id} className="animate-fade-in">
                                 <td><strong>{store.name}</strong></td>
                                 <td><span className="badge">{store.market.name}</span></td>
@@ -226,7 +245,7 @@ export default function StoresPage() {
                         ))}
                     </tbody>
                 </table>
-                {stores.length === 0 && !loading && (
+                {filteredStores.length === 0 && !loading && (
                     <div className="text-center" style={{ padding: "3rem" }}>No stores found.</div>
                 )}
             </div>

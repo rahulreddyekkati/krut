@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import styles from "./users.module.css";
 import { generateUserReportPDF } from "@/lib/pdf-service";
 
@@ -17,18 +17,26 @@ interface User {
     totalReimbursement: number;
     totalBonus: number;
     hourlyWage?: number;
+    marketId?: string | null;
+    managedMarketId?: string | null;
     market?: { name: string };
     managedMarket?: { name: string };
 }
 
 export default function AdminUsersPage() {
     const [users, setUsers] = useState<User[]>([]);
+    const [selectedMarket, setSelectedMarket] = useState("all");
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
     const [currentUser, setCurrentUser] = useState<any>(null);
     const [editingUserId, setEditingUserId] = useState<string | null>(null);
     const [editForm, setEditForm] = useState<any>({});
+
+    const filteredUsers = useMemo(() => {
+        if (selectedMarket === "all") return users;
+        return users.filter(u => u.marketId === selectedMarket || u.managedMarketId === selectedMarket);
+    }, [users, selectedMarket]);
 
     // Invite Form State
     const [inviteEmail, setInviteEmail] = useState("");
@@ -293,8 +301,25 @@ export default function AdminUsersPage() {
     return (
         <div className={styles.container}>
             <header className={styles.header}>
-                <h1 className="heading h2">User Management</h1>
-                <p className="text-secondary">Onboard team members and manage active accounts.</p>
+                <div>
+                    <h1 className="heading h2">User Management</h1>
+                    <p className="text-secondary">Onboard team members and manage active accounts.</p>
+                </div>
+                <div className={styles.actions} style={{ alignItems: "center" }}>
+                    <select 
+                        value={selectedMarket} 
+                        onChange={(e) => setSelectedMarket(e.target.value)} 
+                        className="input" 
+                        style={{ width: "auto", minWidth: "160px", padding: "0.5rem 0.75rem", fontSize: "0.875rem", height: "38px" }}
+                    >
+                        <option value="all">All Markets</option>
+                        {markets.map(m => (
+                            <option key={m.id} value={m.id}>
+                                {m.name}
+                            </option>
+                        ))}
+                    </select>
+                </div>
             </header>
 
             <div className="flex-column gap-4" style={{ display: "flex", flexDirection: "column" }}>
@@ -408,7 +433,9 @@ export default function AdminUsersPage() {
                         <tbody>
                             {loading ? (
                                 <tr><td colSpan={9} className="text-center" style={{ padding: "3rem" }}>Loading team...</td></tr>
-                            ) : users.map(user => {
+                            ) : filteredUsers.length === 0 ? (
+                                <tr><td colSpan={9} className="text-center" style={{ padding: "3rem" }}>No team members found.</td></tr>
+                            ) : filteredUsers.map(user => {
                                 const isEditing = editingUserId === user.id;
 
                                 return (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import styles from "./jobs.module.css";
 
 interface Job {
@@ -12,6 +12,7 @@ interface Job {
     bonus: number;
     status: string;
     store: { name: string; address: string };
+    marketId: string;
     market: { name: string };
     assignments: Array<{ worker: { name: string; email: string } }>;
 }
@@ -36,6 +37,7 @@ export default function AdminJobsPage() {
     const [showForm, setShowForm] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
+    const [selectedMarket, setSelectedMarket] = useState<string>("all");
 
     const [formData, setFormData] = useState({
         title: "",
@@ -177,10 +179,28 @@ export default function AdminJobsPage() {
         }
     };
 
+    const filteredJobs = useMemo(() => {
+        if (selectedMarket === "all") return jobs;
+        return jobs.filter(job => job.marketId === selectedMarket);
+    }, [jobs, selectedMarket]);
+
     return (
         <div className={styles.container}>
             <header className={styles.header}>
-                <div className={styles.actions}>
+                <div className={styles.actions} style={{ alignItems: "center" }}>
+                    <select 
+                        value={selectedMarket} 
+                        onChange={(e) => setSelectedMarket(e.target.value)} 
+                        className="input" 
+                        style={{ width: "auto", minWidth: "160px", padding: "0.5rem 0.75rem", fontSize: "0.875rem", height: "38px" }}
+                    >
+                        <option value="all">All Markets</option>
+                        {markets.map(m => (
+                            <option key={m.id} value={m.id}>
+                                {m.name}
+                            </option>
+                        ))}
+                    </select>
                     <button onClick={() => setShowForm(!showForm)} className="btn btn-primary">
                         {showForm ? "Cancel" : "Create New Job"}
                     </button>
@@ -348,11 +368,11 @@ export default function AdminJobsPage() {
                     </thead>
                     <tbody>
                         {loading ? (
-                            <tr><td colSpan={8} className="text-center" style={{ padding: "3rem" }}>Loading jobs...</td></tr>
-                        ) : jobs.length === 0 ? (
-                            <tr><td colSpan={8} className="text-center" style={{ padding: "3rem" }}>No jobs scheduled yet.</td></tr>
+                            <tr><td colSpan={9} className="text-center" style={{ padding: "3rem" }}>Loading jobs...</td></tr>
+                        ) : filteredJobs.length === 0 ? (
+                            <tr><td colSpan={9} className="text-center" style={{ padding: "3rem" }}>No jobs found.</td></tr>
                         ) : (
-                            jobs.map(job => (
+                            filteredJobs.map(job => (
                                 <tr key={job.id} className="animate-fade-in">
                                     <td><strong>{job.title}</strong></td>
                                     <td>{job.market?.name}</td>

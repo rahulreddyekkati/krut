@@ -13,6 +13,8 @@ export default function AdminReportsPage() {
     const [selectedCycle, setSelectedCycle] = useState<string>("");
     const [payrollData, setPayrollData] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [markets, setMarkets] = useState<any[]>([]);
+    const [selectedMarket, setSelectedMarket] = useState<string>("all");
 
     // Memoize cycles to avoid unnecessary recalculations
     const closedCycles = useMemo(() => getClosedCycles(24), []);
@@ -23,6 +25,21 @@ export default function AdminReportsPage() {
             setSelectedCycle(closedCycles[0].label);
         }
     }, [closedCycles]);
+
+    // Fetch markets on mount
+    useEffect(() => {
+        const fetchMarkets = async () => {
+            try {
+                const res = await fetch("/api/markets");
+                if (res.ok) {
+                    setMarkets(await res.json());
+                }
+            } catch (error) {
+                console.error("Failed to fetch markets", error);
+            }
+        };
+        fetchMarkets();
+    }, []);
 
     // Re-sync dates when cycle changes or tab changes
     useEffect(() => {
@@ -67,6 +84,12 @@ export default function AdminReportsPage() {
         }
     }, [startDate, endDate, activeTab]);
 
+    // Filter payroll data by selected market
+    const filteredPayrollData = useMemo(() => {
+        if (selectedMarket === "all") return payrollData;
+        return payrollData.filter(member => member.location === selectedMarket);
+    }, [payrollData, selectedMarket]);
+
     return (
         <div>
             <div className={styles.headerCard}>
@@ -79,22 +102,40 @@ export default function AdminReportsPage() {
                     <div className={styles.dateFilters}>
                         <div className={styles.filtersContainer}>
                             {activeTab === "pay-reports" && (
-                                <div className={styles.headerRow}>
-                                    <label className="text-secondary" style={{ fontSize: "0.85rem", fontWeight: 500 }}>Pay Cycle</label>
-                                    <select 
-                                        className={styles.dateInput} 
-                                        value={selectedCycle}
-                                        onChange={handleCycleChange}
-                                        style={{ minWidth: "180px" }}
-                                    >
-                                        <option value="manual">Manual Range</option>
-                                        {closedCycles.map(cycle => (
-                                            <option key={cycle.label} value={cycle.label}>
-                                                {cycle.label}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
+                                <>
+                                    <div className={styles.headerRow}>
+                                        <label className="text-secondary" style={{ fontSize: "0.85rem", fontWeight: 500 }}>Market</label>
+                                        <select 
+                                            className={styles.dateInput} 
+                                            value={selectedMarket}
+                                            onChange={(e) => setSelectedMarket(e.target.value)}
+                                            style={{ minWidth: "150px" }}
+                                        >
+                                            <option value="all">All Markets</option>
+                                            {markets.map(market => (
+                                                <option key={market.id} value={market.name}>
+                                                    {market.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className={styles.headerRow}>
+                                        <label className="text-secondary" style={{ fontSize: "0.85rem", fontWeight: 500 }}>Pay Cycle</label>
+                                        <select 
+                                            className={styles.dateInput} 
+                                            value={selectedCycle}
+                                            onChange={handleCycleChange}
+                                            style={{ minWidth: "180px" }}
+                                        >
+                                            <option value="manual">Manual Range</option>
+                                            {closedCycles.map(cycle => (
+                                                <option key={cycle.label} value={cycle.label}>
+                                                    {cycle.label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </>
                             )}
                             <div className={styles.headerRow}>
                                 <label className="text-secondary" style={{ fontSize: "0.85rem", fontWeight: 500 }}>Start Date</label>
@@ -144,7 +185,7 @@ export default function AdminReportsPage() {
                 {activeTab === 'analytics' ? (
                     <AnalyticsDashboard startDate={startDate} endDate={endDate} />
                 ) : (
-                    <PayrollTable data={payrollData} isLoading={isLoading} startDate={startDate} endDate={endDate} />
+                    <PayrollTable data={filteredPayrollData} isLoading={isLoading} startDate={startDate} endDate={endDate} />
                 )}
             </div>
         </div>

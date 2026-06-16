@@ -134,13 +134,10 @@ export async function GET(request: NextRequest) {
                 where: {
                     job: whereJob,
                     status: "RECAP_PENDING",
-                    OR: [
-                        { recap: { is: null } },
-                        { recap: { status: "REJECTED" } }
-                    ],
                     ...assignmentDateFilter
                 },
                 include: {
+                    recap: { select: { status: true } },
                     worker: { select: { id: true, name: true } },
                     job: {
                         include: {
@@ -150,7 +147,10 @@ export async function GET(request: NextRequest) {
                 }
             });
 
-            const data = assignments.map((a: any) => ({
+            // Only show assignments where no recap submitted yet, or recap was rejected
+            const filtered = assignments.filter((a: any) => !a.recap || a.recap.status === "REJECTED");
+
+            const data = filtered.map((a: any) => ({
                 id: a.id,
                 jobId: a.job.id,
                 workerId: a.worker?.id,

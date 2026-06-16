@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { handleApiError } from "@/lib/apiError";
+import { sendPushToUser, sendPushToMany } from "@/lib/notifications";
 
 export async function POST(
     request: NextRequest,
@@ -51,6 +52,8 @@ export async function POST(
             ? new Date(releaseRequest.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
             : "Unknown date";
 
+        let marketWorkerIds: string[] = [];
+
         await prisma.$transaction(async (tx) => {
             // 1. Approve the release request
             await tx.releaseRequest.update({
@@ -84,14 +87,27 @@ export async function POST(
                 select: { id: true }
             });
 
+            marketWorkerIds = marketWorkers.map(w => w.id);
+
             await tx.notification.createMany({
-                data: marketWorkers.map(w => ({
-                    userId: w.id,
+                data: marketWorkerIds.map(id => ({
+                    userId: id,
                     title: "Shift Available",
                     message: `A shift at ${releaseRequest.job.store.name} on ${dateLabel} (${releaseRequest.job.startTimeStr}–${releaseRequest.job.endTimeStr}) is now available. Open the app to request it.`
                 }))
             });
         });
+
+        sendPushToUser(
+            releaseRequest.workerId,
+            "Shift Release Approved",
+            `Your shift at ${releaseRequest.job.store.name} on ${dateLabel} has been released and is now available for other workers.`
+        ).catch(() => {});
+        sendPushToMany(
+            marketWorkerIds,
+            "Shift Available",
+            `A shift at ${releaseRequest.job.store.name} on ${dateLabel} (${releaseRequest.job.startTimeStr}–${releaseRequest.job.endTimeStr}) is now available. Open the app to request it.`
+        ).catch(() => {});
 
         return NextResponse.json({ success: true });
     } catch (error) {

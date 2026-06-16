@@ -15,6 +15,8 @@ export default function RecapDetailPage() {
     const [receiptTotal, setReceiptTotal] = useState<number>(0);
     const [reimbursement, setReimbursement] = useState<number>(0);
     const [rushLevel, setRushLevel] = useState<string>("");
+    const [clockInEdit, setClockInEdit] = useState<string>("");
+    const [clockOutEdit, setClockOutEdit] = useState<string>("");
 
     useEffect(() => {
         async function fetchRecap() {
@@ -29,6 +31,8 @@ export default function RecapDetailPage() {
                     setReceiptTotal(data.receiptTotal || 0);
                     setReimbursement(data.reimbursement || 0);
                     setRushLevel(data.rushLevel || "");
+                    setClockInEdit(toDatetimeLocal(data.clockIn));
+                    setClockOutEdit(toDatetimeLocal(data.clockOut));
                 }
             } catch (e) {
                 console.error("Failed to fetch recap", e);
@@ -56,7 +60,9 @@ export default function RecapDetailPage() {
                         consumersSampled,
                         rushLevel,
                         receiptTotal,
-                        reimbursement
+                        reimbursement,
+                        clockIn: clockInEdit ? new Date(clockInEdit).toISOString() : undefined,
+                        clockOut: clockOutEdit ? new Date(clockOutEdit).toISOString() : undefined,
                     } : {})
                 })
             });
@@ -83,6 +89,13 @@ export default function RecapDetailPage() {
     const formatTime = (date: string | null) => {
         if (!date) return "--";
         return new Date(date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    };
+
+    const toDatetimeLocal = (isoStr: string | null) => {
+        if (!isoStr) return "";
+        const d = new Date(isoStr);
+        const pad = (n: number) => String(n).padStart(2, "0");
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
     };
 
     const sectionStyle: React.CSSProperties = {
@@ -193,11 +206,29 @@ export default function RecapDetailPage() {
                 </div>
                 <div style={rowStyle}>
                     <span style={labelStyle}>Clock In</span>
-                    <span style={valueStyle}>{formatTime(recap.clockIn)}</span>
+                    {recap.status === "PENDING" ? (
+                        <input
+                            type="datetime-local"
+                            value={clockInEdit}
+                            onChange={(e) => setClockInEdit(e.target.value)}
+                            style={{ ...inputStyle, width: "190px" }}
+                        />
+                    ) : (
+                        <span style={valueStyle}>{formatTime(recap.clockIn)}</span>
+                    )}
                 </div>
                 <div style={{ ...rowStyle, borderBottom: "none" }}>
                     <span style={labelStyle}>Clock Out</span>
-                    <span style={valueStyle}>{formatTime(recap.clockOut)}</span>
+                    {recap.status === "PENDING" ? (
+                        <input
+                            type="datetime-local"
+                            value={clockOutEdit}
+                            onChange={(e) => setClockOutEdit(e.target.value)}
+                            style={{ ...inputStyle, width: "190px" }}
+                        />
+                    ) : (
+                        <span style={valueStyle}>{formatTime(recap.clockOut)}</span>
+                    )}
                 </div>
             </div>
 

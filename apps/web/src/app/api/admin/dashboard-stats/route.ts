@@ -74,17 +74,13 @@ export async function GET(request: NextRequest) {
             };
         }
 
-        const pendingRecaps = await prisma.jobAssignment.count({
-            where: {
-                job: whereJob,
-                status: "RECAP_PENDING",
-                OR: [
-                    { recap: { is: null } },
-                    { recap: { status: "REJECTED" } }
-                ],
-                ...assignmentDateFilter
-            }
+        const pendingRecapAssignments = await prisma.jobAssignment.findMany({
+            where: { job: whereJob, status: "RECAP_PENDING", ...assignmentDateFilter },
+            select: { id: true, recap: { select: { status: true } } }
         });
+        const pendingRecaps = pendingRecapAssignments.filter(
+            (a: any) => !a.recap || a.recap.status === "REJECTED"
+        ).length;
 
         return NextResponse.json({
             totalJobs,

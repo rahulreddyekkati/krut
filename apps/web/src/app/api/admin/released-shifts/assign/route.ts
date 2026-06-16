@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { sendPushToUser } from "@/lib/notifications";
 
 export async function POST(request: NextRequest) {
     try {
@@ -11,6 +12,7 @@ export async function POST(request: NextRequest) {
 
         const body = await request.json();
         const { openJobId, workerId, date } = body;
+        const pushQueue: Array<{ userId: string; title: string; message: string }> = [];
 
         if (!openJobId || !workerId) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -59,23 +61,22 @@ export async function POST(request: NextRequest) {
                     data: { status: "DENIED" }
                 });
                 await tx.notification.create({
-                    data: {
-                        userId: pr.workerId,
-                        title: "Shift Assigned",
-                        message: `The shift at ${job.store.name} was assigned to another worker.`
-                    }
+                    data: { userId: pr.workerId, title: "Shift Assigned", message: `The shift at ${job.store.name} was assigned to another worker.` }
                 });
+                pushQueue.push({ userId: pr.workerId, title: "Shift Assigned", message: `The shift at ${job.store.name} was assigned to another worker.` });
             }
 
             // Create success notification for the newly assigned worker
+            const assignedMsg = `You have been manually assigned a shift at ${job.store.name} on ${date ? new Date(date).toLocaleDateString() : "Recurring"}.`;
             await tx.notification.create({
-                data: {
-                    userId: workerId,
-                    title: "Shift Manually Assigned",
-                    message: `You have been manually assigned a shift at ${job.store.name} on ${date ? new Date(date).toLocaleDateString() : "Recurring"}.`
-                }
+                data: { userId: workerId, title: "Shift Manually Assigned", message: assignedMsg }
             });
+            pushQueue.push({ userId: workerId, title: "Shift Manually Assigned", message: assignedMsg });
         });
+
+        for (const n of pushQueue) {
+            sendPushToUser(n.userId, n.title, n.message).catch(() => {});
+        }
 
         return NextResponse.json({ success: true });
     } catch (error: any) {

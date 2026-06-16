@@ -4,6 +4,7 @@ import { requireAuth } from "@/lib/auth";
 import { handleApiError, AppError } from "@/lib/apiError";
 import { resolveTimezone, getLocalDayBoundsUTC, localShiftEndToUTC, toLocalDateStr } from "@/lib/timezone";
 import { toZonedTime } from "date-fns-tz";
+import { sendPushToUser } from "@/lib/notifications";
 
 export async function GET(request: NextRequest) {
     try {
@@ -29,7 +30,7 @@ export async function GET(request: NextRequest) {
             include: {
                 job: {
                     include: {
-                        store: { select: { name: true, address: true } }
+                        store: { select: { name: true, address: true, latitude: true, longitude: true, radius: true } }
                     }
                 }
             },
@@ -59,7 +60,7 @@ export async function GET(request: NextRequest) {
                 include: {
                     job: {
                         include: {
-                            store: { select: { name: true, address: true } }
+                            store: { select: { name: true, address: true, latitude: true, longitude: true, radius: true } }
                         }
                     }
                 },
@@ -78,7 +79,7 @@ export async function GET(request: NextRequest) {
                     include: {
                         job: {
                             include: {
-                                store: { select: { name: true, address: true } }
+                                store: { select: { name: true, address: true, latitude: true, longitude: true, radius: true } }
                             }
                         }
                     }
@@ -156,7 +157,7 @@ export async function GET(request: NextRequest) {
                     where: { id: activeAssignment.id },
                     data: { clockOut: finalClockOut, workedHours, status: "RECAP_PENDING" } as any,
                     include: {
-                        job: { include: { store: { select: { name: true, address: true } } } }
+                        job: { include: { store: { select: { name: true, address: true, latitude: true, longitude: true, radius: true } } } }
                     }
                 }) as any;
 
@@ -202,6 +203,19 @@ export async function POST(request: NextRequest) {
             const isMobileApp = request.headers.get("x-app-client") === "mobile-app";
             if (!isMobileApp) {
                 throw new AppError("Clock-in is only available from the mobile app", 403);
+            }
+
+            // Block clock-in if worker has any unsubmitted recaps
+            const pendingRecap = await prisma.jobAssignment.findFirst({
+                where: { workerId: user.id, status: "RECAP_PENDING", id: { not: assignmentId } },
+                include: { job: { include: { store: { select: { name: true } } } } }
+            });
+            if (pendingRecap) {
+                const storeName = pendingRecap.job?.store?.name || "a previous shift";
+                throw new AppError(
+                    `You have an unsubmitted recap for ${storeName}. Please complete it before clocking in to your next shift.`,
+                    403
+                );
             }
 
             // Reject clock-in if outside shift window
@@ -361,9 +375,14 @@ export async function POST(request: NextRequest) {
                     }
                 });
 
-                return { clockOut: now, workedHours };
+                return { clockOut: now, workedHours, workerId: assignment.workerId, storeName: assignment.job.store?.name || 'the store' };
             });
 
+            sendPushToUser(
+                result.workerId,
+                "Recap Required",
+                `Please submit your recap for your shift at ${result.storeName}. You have clocked out — don't forget to submit your recap.`
+            ).catch(() => {});
             return NextResponse.json(result);
         }
 

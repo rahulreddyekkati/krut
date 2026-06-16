@@ -45,6 +45,8 @@ model User {
   // Audit trail of admin actions affecting payroll
   auditLogs     AuditLog[]
 
+  expoPushToken String?
+
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }

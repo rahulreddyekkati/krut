@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { handleApiError, AppError } from "@/lib/apiError";
+import { sendPushToUser } from "@/lib/notifications";
 
 export async function POST(
     request: NextRequest,
@@ -84,6 +85,12 @@ export async function POST(
                 }
             });
         });
+
+        sendPushToUser(
+            assignment.worker.id,
+            "Recap Rejected",
+            `Your recap for ${storeName} on ${shiftDate} has been rejected. Please resubmit. Notes: ${managerNotes ?? "No notes provided."}`
+        ).catch(() => {});
 
         return NextResponse.json({ success: true, message: "Recap rejected" });
     } catch (error) {

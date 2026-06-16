@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { localShiftEndToUTC, toLocalDateStr } from "@/lib/timezone";
+import { sendPushToUser } from "@/lib/notifications";
 
 const TZ = "America/Chicago";
 
@@ -23,6 +24,35 @@ export async function GET(request: NextRequest) {
             breaks: { where: { endTime: null } }
         }
     });
+
+    // Send 1-hour warning to workers whose shift ends in ~1 hour
+    for (const assignment of stuck) {
+        try {
+            const endTimeStr = (assignment as any).customEndTimeStr ?? assignment.job.endTimeStr;
+            const shiftDateStr = assignment.date
+                ? toLocalDateStr(new Date(assignment.date), TZ)
+                : toLocalDateStr(new Date(assignment.clockIn!), TZ);
+            const scheduledEnd = localShiftEndToUTC(shiftDateStr, assignment.job.startTimeStr, endTimeStr, TZ);
+            const minutesUntilEnd = (scheduledEnd.getTime() - now.getTime()) / 60000;
+
+            if (minutesUntilEnd >= 55 && minutesUntilEnd <= 65) {
+                await prisma.notification.create({
+                    data: {
+                        userId: assignment.workerId,
+                        title: "Shift Ending Soon",
+                        message: "Your shift ends in 1 hour. Please prepare to clock out."
+                    }
+                });
+                sendPushToUser(
+                    assignment.workerId,
+                    "Shift Ending Soon",
+                    "Your shift ends in 1 hour. Please prepare to clock out."
+                ).catch(() => {});
+            }
+        } catch (err) {
+            console.error(`[cron/auto-clockout] Warning check failed for ${(assignment as any).id}:`, err);
+        }
+    }
 
     for (const assignment of stuck) {
         try {
@@ -95,6 +125,12 @@ export async function GET(request: NextRequest) {
                     }
                 });
             });
+
+            sendPushToUser(
+                assignment.workerId,
+                "Auto Clocked Out",
+                "You were automatically clocked out at your shift end time. Please submit your recap."
+            ).catch(() => {});
 
             processed++;
         } catch (err) {

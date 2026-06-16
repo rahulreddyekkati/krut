@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { handleApiError, AppError } from "@/lib/apiError";
+import { sendPushToUser } from "@/lib/notifications";
 
 export async function POST(
     request: NextRequest,
@@ -10,13 +11,18 @@ export async function POST(
     try {
         const user = await requireAuth(request, ["ADMIN", "MARKET_MANAGER"]);
         const { id: recapId } = await context.params;
-        const { 
+        const {
             managerNotes,
             consumersSampled,
             rushLevel,
             receiptTotal,
-            reimbursement
+            reimbursement,
+            clockIn: clockInRaw,
+            clockOut: clockOutRaw,
         } = await request.json();
+
+        const newClockIn = clockInRaw ? new Date(clockInRaw) : null;
+        const newClockOut = clockOutRaw ? new Date(clockOutRaw) : null;
 
         const recap = await (prisma.recap as any).findUnique({
             where: { id: recapId },
@@ -47,6 +53,8 @@ export async function POST(
             ? new Date(recap.job.date).toLocaleDateString() 
             : "your recent shift";
 
+        const workerPush = { userId: assignment.worker.id, title: "Recap Approved", message: `Your recap for ${storeName} on ${shiftDate} has been approved.` };
+
         await prisma.$transaction(async (tx: any) => {
             // 1. Update and Approve recap
             await tx.recap.update({
@@ -62,10 +70,20 @@ export async function POST(
                 }
             });
 
-            // 2. Update THIS assignment to COMPLETED
+            // 2. Update THIS assignment to COMPLETED (+ adjust clock times if admin edited them)
+            const clockUpdate: any = { status: "COMPLETED" };
+            if (newClockIn) clockUpdate.clockIn = newClockIn;
+            if (newClockOut) clockUpdate.clockOut = newClockOut;
+            if (newClockIn && newClockOut) {
+                const effectiveClockIn = newClockIn;
+                const effectiveClockOut = newClockOut;
+                const breakMins = assignment.breakTimeMinutes ?? 0;
+                const grossMins = (effectiveClockOut.getTime() - effectiveClockIn.getTime()) / 60000;
+                clockUpdate.workedHours = parseFloat(Math.max(0, (grossMins - breakMins) / 60).toFixed(2));
+            }
             await tx.jobAssignment.update({
                 where: { id: assignment.id },
-                data: { status: "COMPLETED" }
+                data: clockUpdate,
             });
 
             // 3. Check if ALL assignments for this job are COMPLETED
@@ -102,10 +120,12 @@ export async function POST(
                     action: "RECAP_APPROVED",
                     entityType: "Recap",
                     entityId: recapId,
-                    newValue: JSON.stringify({ managerNotes, consumersSampled, rushLevel, receiptTotal, reimbursement }),
+                    newValue: JSON.stringify({ managerNotes, consumersSampled, rushLevel, receiptTotal, reimbursement, clockIn: newClockIn, clockOut: newClockOut }),
                 }
             });
         });
+
+        sendPushToUser(workerPush.userId, workerPush.title, workerPush.message).catch(() => {});
 
         return NextResponse.json({ success: true, message: "Recap approved" });
     } catch (error) {

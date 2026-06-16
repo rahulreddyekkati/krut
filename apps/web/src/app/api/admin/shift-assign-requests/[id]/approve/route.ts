@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { handleApiError } from "@/lib/apiError";
+import { sendPushToUser } from "@/lib/notifications";
 
 export async function POST(
     request: NextRequest,
@@ -23,6 +24,8 @@ export async function POST(
         const dateLabel = shiftRequest.date
             ? new Date(shiftRequest.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
             : "Unknown date";
+
+        const pushQueue: Array<{ userId: string; title: string; message: string }> = [];
 
         await prisma.$transaction(async (tx) => {
             if (shiftRequest.assignmentId) {
@@ -56,13 +59,11 @@ export async function POST(
 
                 for (const other of otherRequests) {
                     await tx.shiftRequest.update({ where: { id: other.id }, data: { status: "DENIED" } });
+                    const noLongerAvailableMsg = `The shift at ${shiftRequest.job.store.name} on ${dateLabel} has been assigned to another worker.`;
                     await tx.notification.create({
-                        data: {
-                            userId: other.workerId,
-                            title: "Shift No Longer Available",
-                            message: `The shift at ${shiftRequest.job.store.name} on ${dateLabel} has been assigned to another worker.`
-                        }
+                        data: { userId: other.workerId, title: "Shift No Longer Available", message: noLongerAvailableMsg }
                     });
+                    pushQueue.push({ userId: other.workerId, title: "Shift No Longer Available", message: noLongerAvailableMsg });
                 }
             } else {
                 // Legacy flow: create a new assignment for an OPEN job
@@ -86,26 +87,26 @@ export async function POST(
                 });
                 for (const other of otherRequests) {
                     await tx.shiftRequest.update({ where: { id: other.id }, data: { status: "DENIED" } });
+                    const noLongerAvailableMsg = `The shift at ${shiftRequest.job.store.name} on ${dateLabel} has been assigned to another worker.`;
                     await tx.notification.create({
-                        data: {
-                            userId: other.workerId,
-                            title: "Shift No Longer Available",
-                            message: `The shift at ${shiftRequest.job.store.name} on ${dateLabel} has been assigned to another worker.`
-                        }
+                        data: { userId: other.workerId, title: "Shift No Longer Available", message: noLongerAvailableMsg }
                     });
+                    pushQueue.push({ userId: other.workerId, title: "Shift No Longer Available", message: noLongerAvailableMsg });
                 }
             }
 
             // Approve this request and notify the worker
             await tx.shiftRequest.update({ where: { id: requestId }, data: { status: "APPROVED" } });
+            const assignedMsg = `Your request for the shift at ${shiftRequest.job.store.name} on ${dateLabel} has been approved.`;
             await tx.notification.create({
-                data: {
-                    userId: shiftRequest.workerId,
-                    title: "Shift Assigned",
-                    message: `Your request for the shift at ${shiftRequest.job.store.name} on ${dateLabel} has been approved.`
-                }
+                data: { userId: shiftRequest.workerId, title: "Shift Assigned", message: assignedMsg }
             });
+            pushQueue.push({ userId: shiftRequest.workerId, title: "Shift Assigned", message: assignedMsg });
         });
+
+        for (const n of pushQueue) {
+            sendPushToUser(n.userId, n.title, n.message).catch(() => {});
+        }
 
         return NextResponse.json({ success: true });
     } catch (error) {

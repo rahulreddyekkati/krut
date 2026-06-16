@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { handleApiError } from "@/lib/apiError";
+import { sendPushToUser } from "@/lib/notifications";
 
 export async function POST(
     request: NextRequest,
@@ -27,14 +28,14 @@ export async function POST(
             data: { status: "DENIED" }
         });
 
+        const rejectTitle = "Shift Assign Rejected";
+        const rejectMessage = `Your request for the shift at ${shiftRequest.job.store.name} on ${shiftRequest.date ? new Date(shiftRequest.date).toLocaleDateString() : "Recurring"} was not approved.`;
+
         // Notify the worker
         await prisma.notification.create({
-            data: {
-                userId: shiftRequest.workerId,
-                title: "Shift Assign Rejected",
-                message: `Your request for the shift at ${shiftRequest.job.store.name} on ${shiftRequest.date ? new Date(shiftRequest.date).toLocaleDateString() : "Recurring"} was not approved.`
-            }
+            data: { userId: shiftRequest.workerId, title: rejectTitle, message: rejectMessage }
         });
+        sendPushToUser(shiftRequest.workerId, rejectTitle, rejectMessage).catch(() => {});
 
         return NextResponse.json(updated);
     } catch (error) {

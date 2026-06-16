@@ -185,7 +185,32 @@ export default function AdminReportsPage() {
                 {activeTab === 'analytics' ? (
                     <AnalyticsDashboard startDate={startDate} endDate={endDate} />
                 ) : (
-                    <PayrollTable data={filteredPayrollData} isLoading={isLoading} startDate={startDate} endDate={endDate} />
+                    <>
+                        <PayrollTable data={filteredPayrollData} isLoading={isLoading} startDate={startDate} endDate={endDate} />
+                        {!isLoading && filteredPayrollData.length > 0 && (
+                            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "1.5rem" }}>
+                                <a
+                                    href={`/admin/reports/payroll/print?startDate=${startDate}&endDate=${endDate}&market=${selectedMarket}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                >
+                                    <button style={{
+                                        padding: "0.75rem 1.75rem",
+                                        backgroundColor: "#6366f1",
+                                        color: "white",
+                                        fontWeight: 700,
+                                        borderRadius: "10px",
+                                        border: "none",
+                                        cursor: "pointer",
+                                        fontSize: "0.9rem",
+                                        boxShadow: "0 1px 3px rgba(0,0,0,0.12)"
+                                    }}>
+                                        🖨 Print Report
+                                    </button>
+                                </a>
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
         </div>

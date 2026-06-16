@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
                     },
                     include: {
                         job: true,
-                        recap: true
+                        recap: { include: { skus: true } }
                     } as any
                 }
             }
@@ -71,6 +71,7 @@ export async function GET(request: NextRequest) {
             let totalWorkedHours = 0;
             let totalAssignedHours = 0;
             let totalReimbursements = 0;
+            let totalBottlesSold = 0;
 
             user.jobs.forEach((assignment: any) => {
                 const job = assignment.job;
@@ -93,9 +94,12 @@ export async function GET(request: NextRequest) {
                     totalWorkedHours += Math.max(0, (diffMins - breakMins) / 60);
                 }
 
-                // --- Reimbursement Calculation ---
+                // --- Reimbursement & Bottles Sold (approved recaps only) ---
                 if (assignment.recap?.status === "APPROVED") {
                     totalReimbursements += (assignment.recap.reimbursement || 0);
+                    (assignment.recap.skus || []).forEach((sku: any) => {
+                        totalBottlesSold += sku.bottlesSold || 0;
+                    });
                 }
             });
 
@@ -121,6 +125,7 @@ export async function GET(request: NextRequest) {
                 worked: parseFloat(totalWorkedHours.toFixed(2)),
                 assigned: parseFloat(Math.max(0, totalAssignedHours).toFixed(2)),
                 reimb: parseFloat(totalReimbursements.toFixed(2)),
+                bottlesSold: totalBottlesSold,
                 payForCycle: parseFloat(payForCycle.toFixed(2))
             } as any;
         });

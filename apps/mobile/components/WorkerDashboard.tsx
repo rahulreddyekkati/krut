@@ -196,7 +196,7 @@ export default function HomeTab() {
           } else if (res.status === 403) {
             Alert.alert('Outside Store Location', `You must be physically at ${activeAssignment.job?.store?.name || 'the store'} to clock in.\n\n${msg}`);
           } else if (res.status === 400 && msg.toLowerCase().includes('early')) {
-            Alert.alert('Too Early', `You cannot clock in more than 15 minutes before your shift starts.\n\n${msg}`);
+            Alert.alert('Too Early', msg);
           } else {
             Alert.alert('Clock In Failed', msg);
           }

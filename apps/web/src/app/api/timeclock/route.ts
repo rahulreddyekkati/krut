@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
             const [effEndH, effEndM] = effectiveEndTimeStr.split(':').map(Number);
             const effEndTimeMins = effEndH * 60 + effEndM;
 
-            if (activeAssignment.clockIn && !activeAssignment.clockOut && (isPastDay || nowTimeMins > effEndTimeMins)) {
+            if (activeAssignment.clockIn && !activeAssignment.clockOut && (isPastDay || nowTimeMins > effEndTimeMins + 10)) {
                 const autoClockOutDateStr = toLocalDateStr(
                     activeAssignment.date ? new Date(activeAssignment.date) : new Date(activeAssignment.clockIn),
                     tz
@@ -228,13 +228,13 @@ export async function POST(request: NextRequest) {
             const [endH, endM] = endTimeStr.split(":").map(Number);
             const startMins = startH * 60 + startM;
             const endMins = endH * 60 + endM;
-            if (nowMins < startMins) {
+            if (nowMins < startMins - 10) {
                 throw new AppError(
-                    `Your shift doesn't start until ${startH % 12 || 12}:${String(startM).padStart(2, "0")} ${startH >= 12 ? "PM" : "AM"}. You cannot clock in early.`,
+                    `Your shift doesn't start until ${startH % 12 || 12}:${String(startM).padStart(2, "0")} ${startH >= 12 ? "PM" : "AM"}. You can clock in up to 10 minutes early.`,
                     400
                 );
             }
-            if (nowMins > endMins) {
+            if (nowMins > endMins + 10) {
                 throw new AppError(
                     `Your shift ended at ${endH % 12 || 12}:${String(endM).padStart(2, "0")} ${endH >= 12 ? "PM" : "AM"}. Clock-in is no longer available.`,
                     400

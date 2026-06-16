@@ -12,6 +12,7 @@ interface PayrollMember {
     worked: number;
     assigned: number;
     reimb: number;
+    bottlesSold: number;
     payForCycle: number;
 }
 
@@ -52,6 +53,7 @@ export default function PayrollTable({ data, isLoading, startDate, endDate }: Pa
                         <th>WORKED</th>
                         <th>ASSIGNED</th>
                         <th>REIMB.</th>
+                        <th>BOTTLES SOLD</th>
                         <th>PAY FOR CYCLE</th>
                         <th>ACTIONS</th>
                     </tr>
@@ -73,6 +75,7 @@ export default function PayrollTable({ data, isLoading, startDate, endDate }: Pa
                             <td>{member.worked} hrs</td>
                             <td>{member.assigned} hrs</td>
                             <td>${member.reimb.toFixed(2)}</td>
+                            <td>{member.role === "WORKER" ? member.bottlesSold : "N/A"}</td>
                             <td>
                                 <span className={styles.payAmount}>
                                     {member.role === "WORKER"

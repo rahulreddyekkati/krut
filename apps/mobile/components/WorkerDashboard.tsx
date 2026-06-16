@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Dimensions, ScrollView, Alert } from 'react-native';
 import { useAuth } from '../providers/AuthProvider';
 import { fetchWithAuth } from '../utils/apiClient';
@@ -7,6 +7,17 @@ import * as Location from 'expo-location';
 import { useNotificationCount } from '../hooks/useNotificationCount';
 
 const CIRCLE_SIZE = Dimensions.get('window').width * 0.44;
+const GEOFENCE_BREAK_THRESHOLD_SECS = 15 * 60; // 15 minutes cumulative outside
+const GEOFENCE_POLL_MS = 30_000; // poll every 30 seconds
+
+function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 
 const formatToClockTime = (dateStr: string | null) => {
   if (!dateStr) return "--:--";
@@ -34,12 +45,85 @@ export default function HomeTab() {
   const [clockLoading, setClockLoading] = useState(false);
   const [pendingRecaps, setPendingRecaps] = useState<any[]>([]);
 
+  // Derived clock state — must be computed before effects that depend on them
+  const isDone = !!(activeAssignment?.clockIn && activeAssignment?.clockOut);
+  const isClockedIn = !!(activeAssignment?.clockIn && !activeAssignment?.clockOut);
+
+  // Geofence tracking refs (avoid stale closures inside interval)
+  const storeRef = useRef<{ latitude: number; longitude: number; radius: number } | null>(null);
+  const assignmentIdRef = useRef<string | null>(null);
+  const outsideSecondsRef = useRef(0);
+  const isOnAutoBreakRef = useRef(false);
+
   useEffect(() => {
     if (token) {
       loadTodayShift();
       checkPendingRecaps();
     }
   }, [token]);
+
+  // Keep refs in sync with activeAssignment
+  useEffect(() => {
+    const store = activeAssignment?.job?.store;
+    storeRef.current =
+      store?.latitude != null && store?.longitude != null && store?.radius != null
+        ? { latitude: store.latitude, longitude: store.longitude, radius: store.radius }
+        : null;
+    assignmentIdRef.current = activeAssignment?.id ?? null;
+  }, [activeAssignment]);
+
+  // Reset geofence tracking when clocked-in state changes
+  useEffect(() => {
+    if (!isClockedIn) {
+      outsideSecondsRef.current = 0;
+      isOnAutoBreakRef.current = false;
+    }
+  }, [isClockedIn]);
+
+  // Poll location every 30s while clocked in to auto-trigger breaks
+  useEffect(() => {
+    if (!isClockedIn) return;
+
+    const interval = setInterval(async () => {
+      const store = storeRef.current;
+      const aid = assignmentIdRef.current;
+      if (!store || !aid) return;
+
+      try {
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        const dist = haversineDistance(loc.coords.latitude, loc.coords.longitude, store.latitude, store.longitude);
+        const isOutside = dist > store.radius;
+
+        if (isOutside) {
+          outsideSecondsRef.current += GEOFENCE_POLL_MS / 1000;
+          if (outsideSecondsRef.current >= GEOFENCE_BREAK_THRESHOLD_SECS && !isOnAutoBreakRef.current) {
+            const res = await fetchWithAuth('/timeclock', {
+              method: 'POST',
+              body: JSON.stringify({ action: 'BREAK_START', assignmentId: aid }),
+            });
+            if (res.ok) {
+              isOnAutoBreakRef.current = true;
+            }
+          }
+        } else {
+          outsideSecondsRef.current = 0;
+          if (isOnAutoBreakRef.current) {
+            const res = await fetchWithAuth('/timeclock', {
+              method: 'POST',
+              body: JSON.stringify({ action: 'BREAK_END', assignmentId: aid }),
+            });
+            if (res.ok) {
+              isOnAutoBreakRef.current = false;
+            }
+          }
+        }
+      } catch {
+        // Location or network error — skip this tick
+      }
+    }, GEOFENCE_POLL_MS);
+
+    return () => clearInterval(interval);
+  }, [isClockedIn]);
 
   const loadTodayShift = async () => {
     setLoading(true);
@@ -107,7 +191,9 @@ export default function HomeTab() {
         } else {
           const data = await res.json().catch(() => ({}));
           const msg = data.error || `Server error (${res.status})`;
-          if (res.status === 403) {
+          if (res.status === 403 && msg.toLowerCase().includes('recap')) {
+            Alert.alert('Recap Required', msg);
+          } else if (res.status === 403) {
             Alert.alert('Outside Store Location', `You must be physically at ${activeAssignment.job?.store?.name || 'the store'} to clock in.\n\n${msg}`);
           } else if (res.status === 400 && msg.toLowerCase().includes('early')) {
             Alert.alert('Too Early', `You cannot clock in more than 15 minutes before your shift starts.\n\n${msg}`);
@@ -144,9 +230,6 @@ export default function HomeTab() {
       }
     }
   };
-
-  const isDone = !!(activeAssignment?.clockIn && activeAssignment?.clockOut);
-  const isClockedIn = !!(activeAssignment?.clockIn && !activeAssignment?.clockOut);
 
   return (
     <View style={styles.container}>

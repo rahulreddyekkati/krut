@@ -331,46 +331,52 @@ async function GET() {
                 status: 401
             });
         }
-        // Fetch all approved ReleaseRequests
-        const approvedReleases = await __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["default"].releaseRequest.findMany({
+        const isMM = session.user.role === "MARKET_MANAGER";
+        const requester = isMM ? await __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["default"].user.findUnique({
             where: {
-                status: "APPROVED"
+                id: session.user.id
+            },
+            select: {
+                managedMarketId: true
+            }
+        }) : null;
+        const assignments = await __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["default"].jobAssignment.findMany({
+            where: {
+                status: "AVAILABLE",
+                ...isMM && requester?.managedMarketId ? {
+                    job: {
+                        marketId: requester.managedMarketId
+                    }
+                } : {}
             },
             include: {
                 worker: {
                     select: {
+                        id: true,
                         name: true
                     }
                 },
                 job: {
                     include: {
-                        store: true,
-                        market: true
+                        store: {
+                            select: {
+                                name: true
+                            }
+                        },
+                        market: {
+                            select: {
+                                name: true,
+                                id: true
+                            }
+                        }
                     }
                 }
             },
             orderBy: {
-                createdAt: "desc"
+                date: "asc"
             }
         });
-        // Fetch all OPEN jobs that have a sourceReleaseId (released shifts awaiting reassignment)
-        const openJobs = await __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["default"].job.findMany({
-            where: {
-                status: "OPEN",
-                sourceReleaseId: {
-                    not: null
-                }
-            }
-        });
-        // Match each approved release to its still-open job via sourceReleaseId
-        const unassignedReleases = approvedReleases.map((release)=>{
-            const matchedJob = openJobs.find((job)=>job.sourceReleaseId === release.id);
-            return {
-                ...release,
-                openJobId: matchedJob?.id
-            };
-        }).filter((r)=>r.openJobId);
-        return __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json(unassignedReleases);
+        return __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json(assignments);
     } catch (error) {
         console.error("Get released shifts error:", error);
         return __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({

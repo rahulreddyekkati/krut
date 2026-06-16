@@ -340,8 +340,8 @@ function AdminUsersPage() {
                 setSuccess(`Invite generated for ${inviteEmail} - opening your email client...`);
                 setInviteLink(data.inviteLink);
                 // Trigger mail client
-                const subject = encodeURIComponent("You've been invited to Workforce OS!");
-                const body = encodeURIComponent(`Hello,\n\nYou have been invited to join the Workforce OS team.\n\nClick the link below to accept your invitation and set up your account:\n${data.inviteLink}\n\nWelcome to the team!`);
+                const subject = encodeURIComponent("You've been invited to Kruto Tastes!");
+                const body = encodeURIComponent(`Hello,\n\nYou have been invited to join the Kruto Tastes team.\n\nClick the link below to accept your invitation and set up your account:\n${data.inviteLink}\n\nWelcome to the team!`);
                 window.location.href = `mailto:${inviteEmail}?subject=${subject}&body=${body}`;
                 setInviteEmail("");
                 setInviteMarketId("");
@@ -445,7 +445,7 @@ function AdminUsersPage() {
                         children: "User Management"
                     }, void 0, false, {
                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                        lineNumber: 295,
+                        lineNumber: 296,
                         columnNumber: 17
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -453,13 +453,13 @@ function AdminUsersPage() {
                         children: "Onboard team members and manage active accounts."
                     }, void 0, false, {
                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                        lineNumber: 296,
+                        lineNumber: 297,
                         columnNumber: 17
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                lineNumber: 294,
+                lineNumber: 295,
                 columnNumber: 13
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -477,7 +477,7 @@ function AdminUsersPage() {
                                 children: "Invite Team Member"
                             }, void 0, false, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                lineNumber: 302,
+                                lineNumber: 303,
                                 columnNumber: 21
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -489,7 +489,7 @@ function AdminUsersPage() {
                                 children: "Send an onboarding link to a new Worker or Manager."
                             }, void 0, false, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                lineNumber: 303,
+                                lineNumber: 304,
                                 columnNumber: 21
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("form", {
@@ -504,7 +504,7 @@ function AdminUsersPage() {
                                                     children: "Email Address"
                                                 }, void 0, false, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                    lineNumber: 309,
+                                                    lineNumber: 310,
                                                     columnNumber: 33
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -516,13 +516,13 @@ function AdminUsersPage() {
                                                     required: true
                                                 }, void 0, false, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                    lineNumber: 310,
+                                                    lineNumber: 311,
                                                     columnNumber: 33
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                            lineNumber: 308,
+                                            lineNumber: 309,
                                             columnNumber: 29
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -532,7 +532,7 @@ function AdminUsersPage() {
                                                     children: "Role"
                                                 }, void 0, false, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                    lineNumber: 320,
+                                                    lineNumber: 321,
                                                     columnNumber: 33
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
@@ -545,7 +545,7 @@ function AdminUsersPage() {
                                                             children: "Worker"
                                                         }, void 0, false, {
                                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                            lineNumber: 326,
+                                                            lineNumber: 327,
                                                             columnNumber: 37
                                                         }, this),
                                                         currentUser?.role === "ADMIN" && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
@@ -555,7 +555,7 @@ function AdminUsersPage() {
                                                                     children: "Market Manager"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                                    lineNumber: 329,
+                                                                    lineNumber: 330,
                                                                     columnNumber: 45
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -563,7 +563,7 @@ function AdminUsersPage() {
                                                                     children: "Admin"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                                    lineNumber: 330,
+                                                                    lineNumber: 331,
                                                                     columnNumber: 45
                                                                 }, this)
                                                             ]
@@ -571,13 +571,13 @@ function AdminUsersPage() {
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                    lineNumber: 321,
+                                                    lineNumber: 322,
                                                     columnNumber: 33
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                            lineNumber: 319,
+                                            lineNumber: 320,
                                             columnNumber: 29
                                         }, this),
                                         (inviteRole === "WORKER" || inviteRole === "MARKET_MANAGER") && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -587,7 +587,7 @@ function AdminUsersPage() {
                                                     children: inviteRole === "WORKER" ? "Assigned Market" : "Managed Market"
                                                 }, void 0, false, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                    lineNumber: 338,
+                                                    lineNumber: 339,
                                                     columnNumber: 37
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
@@ -601,7 +601,7 @@ function AdminUsersPage() {
                                                             children: "Select Market..."
                                                         }, void 0, false, {
                                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                            lineNumber: 345,
+                                                            lineNumber: 346,
                                                             columnNumber: 41
                                                         }, this),
                                                         markets.map((m)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -609,19 +609,19 @@ function AdminUsersPage() {
                                                                 children: m.name
                                                             }, m.id, false, {
                                                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                                lineNumber: 347,
+                                                                lineNumber: 348,
                                                                 columnNumber: 45
                                                             }, this))
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                    lineNumber: 339,
+                                                    lineNumber: 340,
                                                     columnNumber: 37
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                            lineNumber: 337,
+                                            lineNumber: 338,
                                             columnNumber: 33
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -634,7 +634,7 @@ function AdminUsersPage() {
                                                     children: inviteRole === "WORKER" ? "Pay/Hr" : "Monthly Salary"
                                                 }, void 0, false, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                    lineNumber: 354,
+                                                    lineNumber: 355,
                                                     columnNumber: 33
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -647,13 +647,13 @@ function AdminUsersPage() {
                                                     required: true
                                                 }, void 0, false, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                    lineNumber: 355,
+                                                    lineNumber: 356,
                                                     columnNumber: 33
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                            lineNumber: 353,
+                                            lineNumber: 354,
                                             columnNumber: 29
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -666,18 +666,18 @@ function AdminUsersPage() {
                                             children: inviting ? "Sending..." : "Create & Send Invite"
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                            lineNumber: 366,
+                                            lineNumber: 367,
                                             columnNumber: 29
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                    lineNumber: 307,
+                                    lineNumber: 308,
                                     columnNumber: 25
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                lineNumber: 306,
+                                lineNumber: 307,
                                 columnNumber: 21
                             }, this),
                             inviteLink && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -697,7 +697,7 @@ function AdminUsersPage() {
                                         children: "Registration Link:"
                                     }, void 0, false, {
                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                        lineNumber: 374,
+                                        lineNumber: 375,
                                         columnNumber: 29
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("code", {
@@ -709,7 +709,7 @@ function AdminUsersPage() {
                                         children: inviteLink
                                     }, void 0, false, {
                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                        lineNumber: 375,
+                                        lineNumber: 376,
                                         columnNumber: 29
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -726,19 +726,19 @@ function AdminUsersPage() {
                                         children: "Copy Link"
                                     }, void 0, false, {
                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                        lineNumber: 376,
+                                        lineNumber: 377,
                                         columnNumber: 29
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                lineNumber: 373,
+                                lineNumber: 374,
                                 columnNumber: 25
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                        lineNumber: 301,
+                        lineNumber: 302,
                         columnNumber: 17
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
@@ -758,28 +758,18 @@ function AdminUsersPage() {
                                                 children: "User"
                                             }, void 0, false, {
                                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                lineNumber: 396,
+                                                lineNumber: 397,
                                                 columnNumber: 33
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
                                                 children: "Role"
                                             }, void 0, false, {
                                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                lineNumber: 397,
-                                                columnNumber: 33
-                                            }, this),
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
-                                                children: "Location/Scope"
-                                            }, void 0, false, {
-                                                fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
                                                 lineNumber: 398,
                                                 columnNumber: 33
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
-                                                style: {
-                                                    textAlign: 'right'
-                                                },
-                                                children: "Pay Rate"
+                                                children: "Location/Scope"
                                             }, void 0, false, {
                                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
                                                 lineNumber: 399,
@@ -789,7 +779,7 @@ function AdminUsersPage() {
                                                 style: {
                                                     textAlign: 'right'
                                                 },
-                                                children: "Worked"
+                                                children: "Pay Rate"
                                             }, void 0, false, {
                                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
                                                 lineNumber: 400,
@@ -799,7 +789,7 @@ function AdminUsersPage() {
                                                 style: {
                                                     textAlign: 'right'
                                                 },
-                                                children: "Assigned"
+                                                children: "Worked"
                                             }, void 0, false, {
                                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
                                                 lineNumber: 401,
@@ -809,7 +799,7 @@ function AdminUsersPage() {
                                                 style: {
                                                     textAlign: 'right'
                                                 },
-                                                children: "Reimb."
+                                                children: "Assigned"
                                             }, void 0, false, {
                                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
                                                 lineNumber: 402,
@@ -819,28 +809,38 @@ function AdminUsersPage() {
                                                 style: {
                                                     textAlign: 'right'
                                                 },
-                                                children: "Pay for Cycle"
+                                                children: "Reimb."
                                             }, void 0, false, {
                                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
                                                 lineNumber: 403,
                                                 columnNumber: 33
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
-                                                children: "Actions"
+                                                style: {
+                                                    textAlign: 'right'
+                                                },
+                                                children: "Pay for Cycle"
                                             }, void 0, false, {
                                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
                                                 lineNumber: 404,
+                                                columnNumber: 33
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
+                                                children: "Actions"
+                                            }, void 0, false, {
+                                                fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
+                                                lineNumber: 405,
                                                 columnNumber: 33
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                        lineNumber: 395,
+                                        lineNumber: 396,
                                         columnNumber: 29
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                    lineNumber: 394,
+                                    lineNumber: 395,
                                     columnNumber: 25
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("tbody", {
@@ -854,12 +854,12 @@ function AdminUsersPage() {
                                             children: "Loading team..."
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                            lineNumber: 409,
+                                            lineNumber: 410,
                                             columnNumber: 37
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                        lineNumber: 409,
+                                        lineNumber: 410,
                                         columnNumber: 33
                                     }, this) : users.map((user)=>{
                                         const isEditing = editingUserId === user.id;
@@ -884,7 +884,7 @@ function AdminUsersPage() {
                                                                         children: user.name
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                                        lineNumber: 418,
+                                                                        lineNumber: 419,
                                                                         columnNumber: 53
                                                                     }, this),
                                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -899,31 +899,31 @@ function AdminUsersPage() {
                                                                         children: "✎"
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                                        lineNumber: 419,
+                                                                        lineNumber: 420,
                                                                         columnNumber: 53
                                                                     }, this)
                                                                 ]
                                                             }, void 0, true, {
                                                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                                lineNumber: 417,
+                                                                lineNumber: 418,
                                                                 columnNumber: 49
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                                                 children: user.email
                                                             }, void 0, false, {
                                                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                                lineNumber: 429,
+                                                                lineNumber: 430,
                                                                 columnNumber: 49
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                        lineNumber: 416,
+                                                        lineNumber: 417,
                                                         columnNumber: 45
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                    lineNumber: 415,
+                                                    lineNumber: 416,
                                                     columnNumber: 41
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -940,7 +940,7 @@ function AdminUsersPage() {
                                                                 children: "Worker"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                                lineNumber: 439,
+                                                                lineNumber: 440,
                                                                 columnNumber: 53
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -948,7 +948,7 @@ function AdminUsersPage() {
                                                                 children: "Market Manager"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                                lineNumber: 440,
+                                                                lineNumber: 441,
                                                                 columnNumber: 53
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -956,25 +956,25 @@ function AdminUsersPage() {
                                                                 children: "Admin"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                                lineNumber: 441,
+                                                                lineNumber: 442,
                                                                 columnNumber: 53
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                        lineNumber: 434,
+                                                        lineNumber: 435,
                                                         columnNumber: 49
                                                     }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                                         className: "badge",
                                                         children: user.role
                                                     }, void 0, false, {
                                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                        lineNumber: 444,
+                                                        lineNumber: 445,
                                                         columnNumber: 49
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                    lineNumber: 432,
+                                                    lineNumber: 433,
                                                     columnNumber: 41
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -994,7 +994,7 @@ function AdminUsersPage() {
                                                                         children: "Select Market..."
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                                        lineNumber: 456,
+                                                                        lineNumber: 457,
                                                                         columnNumber: 61
                                                                     }, this),
                                                                     markets.map((m)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1002,13 +1002,13 @@ function AdminUsersPage() {
                                                                             children: m.name
                                                                         }, m.id, false, {
                                                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                                            lineNumber: 458,
+                                                                            lineNumber: 459,
                                                                             columnNumber: 65
                                                                         }, this))
                                                                 ]
                                                             }, void 0, true, {
                                                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                                lineNumber: 451,
+                                                                lineNumber: 452,
                                                                 columnNumber: 57
                                                             }, this),
                                                             editForm.role === "ADMIN" && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1019,13 +1019,13 @@ function AdminUsersPage() {
                                                                 children: "System Wide"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                                lineNumber: 462,
+                                                                lineNumber: 463,
                                                                 columnNumber: 83
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                        lineNumber: 449,
+                                                        lineNumber: 450,
                                                         columnNumber: 49
                                                     }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                                         className: "text-secondary",
@@ -1041,24 +1041,24 @@ function AdminUsersPage() {
                                                                         children: user.managedMarket?.name || user.market?.name || 'Unassigned'
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                                        lineNumber: 468,
+                                                                        lineNumber: 469,
                                                                         columnNumber: 71
                                                                     }, this)
                                                                 ]
                                                             }, void 0, true, {
                                                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                                lineNumber: 468,
+                                                                lineNumber: 469,
                                                                 columnNumber: 57
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                        lineNumber: 465,
+                                                        lineNumber: 466,
                                                         columnNumber: 49
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                    lineNumber: 447,
+                                                    lineNumber: 448,
                                                     columnNumber: 41
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1080,12 +1080,12 @@ function AdminUsersPage() {
                                                             })
                                                     }, void 0, false, {
                                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                        lineNumber: 475,
+                                                        lineNumber: 476,
                                                         columnNumber: 49
                                                     }, this) : user.hourlyWage ? `$${user.hourlyWage.toFixed(2)}${user.role === "WORKER" ? "/hr" : "/mo"}` : '-'
                                                 }, void 0, false, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                    lineNumber: 473,
+                                                    lineNumber: 474,
                                                     columnNumber: 41
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1108,12 +1108,12 @@ function AdminUsersPage() {
                                                             })
                                                     }, void 0, false, {
                                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                        lineNumber: 489,
+                                                        lineNumber: 490,
                                                         columnNumber: 49
                                                     }, this) : user.role === "WORKER" ? `${user.workedHours}h` : 'N/A'
                                                 }, void 0, false, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                    lineNumber: 487,
+                                                    lineNumber: 488,
                                                     columnNumber: 41
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1124,7 +1124,7 @@ function AdminUsersPage() {
                                                     children: user.role === "WORKER" ? `${user.assignedHours}h` : 'N/A'
                                                 }, void 0, false, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                    lineNumber: 501,
+                                                    lineNumber: 502,
                                                     columnNumber: 41
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1138,7 +1138,7 @@ function AdminUsersPage() {
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                    lineNumber: 504,
+                                                    lineNumber: 505,
                                                     columnNumber: 41
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1147,10 +1147,10 @@ function AdminUsersPage() {
                                                         color: "var(--success)",
                                                         fontWeight: 700
                                                     },
-                                                    children: user.role === "WORKER" ? `$${(user.workedHours * (user.hourlyWage || 0) + (user.totalReimbursement || 0)).toFixed(2)}` : 'N/A'
+                                                    children: user.role === "WORKER" ? `$${(user.workedHours * (user.hourlyWage || 0) + (user.totalReimbursement || 0) + (user.totalBonus || 0)).toFixed(2)}` : 'N/A'
                                                 }, void 0, false, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                    lineNumber: 507,
+                                                    lineNumber: 508,
                                                     columnNumber: 1
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -1168,7 +1168,7 @@ function AdminUsersPage() {
                                                                     children: "Save"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                                    lineNumber: 516,
+                                                                    lineNumber: 517,
                                                                     columnNumber: 57
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1178,7 +1178,7 @@ function AdminUsersPage() {
                                                                     children: "Delete"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                                    lineNumber: 523,
+                                                                    lineNumber: 524,
                                                                     columnNumber: 57
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1188,7 +1188,7 @@ function AdminUsersPage() {
                                                                     children: "Cancel"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                                    lineNumber: 530,
+                                                                    lineNumber: 531,
                                                                     columnNumber: 57
                                                                 }, this)
                                                             ]
@@ -1201,7 +1201,7 @@ function AdminUsersPage() {
                                                                     children: "Add Job"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                                    lineNumber: 541,
+                                                                    lineNumber: 542,
                                                                     columnNumber: 61
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1211,48 +1211,48 @@ function AdminUsersPage() {
                                                                     children: "Report"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                                    lineNumber: 548,
+                                                                    lineNumber: 549,
                                                                     columnNumber: 61
                                                                 }, this)
                                                             ]
                                                         }, void 0, true)
                                                     }, void 0, false, {
                                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                        lineNumber: 513,
+                                                        lineNumber: 514,
                                                         columnNumber: 45
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                    lineNumber: 512,
+                                                    lineNumber: 513,
                                                     columnNumber: 41
                                                 }, this)
                                             ]
                                         }, user.id, true, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                            lineNumber: 414,
+                                            lineNumber: 415,
                                             columnNumber: 37
                                         }, this);
                                     })
                                 }, void 0, false, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                    lineNumber: 407,
+                                    lineNumber: 408,
                                     columnNumber: 25
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                            lineNumber: 393,
+                            lineNumber: 394,
                             columnNumber: 21
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                        lineNumber: 392,
+                        lineNumber: 393,
                         columnNumber: 17
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                lineNumber: 299,
+                lineNumber: 300,
                 columnNumber: 13
             }, this),
             showJobModal && selectedUser && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1279,7 +1279,7 @@ function AdminUsersPage() {
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                    lineNumber: 574,
+                                    lineNumber: 575,
                                     columnNumber: 33
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1289,13 +1289,13 @@ function AdminUsersPage() {
                                     children: "Close"
                                 }, void 0, false, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                    lineNumber: 575,
+                                    lineNumber: 576,
                                     columnNumber: 33
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                            lineNumber: 573,
+                            lineNumber: 574,
                             columnNumber: 29
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("form", {
@@ -1312,27 +1312,27 @@ function AdminUsersPage() {
                                             children: "Day"
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                            lineNumber: 580,
+                                            lineNumber: 581,
                                             columnNumber: 37
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                             children: "Hours"
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                            lineNumber: 581,
+                                            lineNumber: 582,
                                             columnNumber: 37
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                             children: "Location (Store)"
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                            lineNumber: 582,
+                                            lineNumber: 583,
                                             columnNumber: 37
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                    lineNumber: 579,
+                                    lineNumber: 580,
                                     columnNumber: 33
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1355,20 +1355,20 @@ function AdminUsersPage() {
                                                             }
                                                         }, void 0, false, {
                                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                            lineNumber: 589,
+                                                            lineNumber: 590,
                                                             columnNumber: 49
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("strong", {
                                                             children: dayData.day
                                                         }, void 0, false, {
                                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                            lineNumber: 598,
+                                                            lineNumber: 599,
                                                             columnNumber: 49
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                    lineNumber: 588,
+                                                    lineNumber: 589,
                                                     columnNumber: 45
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1388,14 +1388,14 @@ function AdminUsersPage() {
                                                             }
                                                         }, void 0, false, {
                                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                            lineNumber: 602,
+                                                            lineNumber: 603,
                                                             columnNumber: 49
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                                             children: "to"
                                                         }, void 0, false, {
                                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                            lineNumber: 613,
+                                                            lineNumber: 614,
                                                             columnNumber: 49
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -1412,13 +1412,13 @@ function AdminUsersPage() {
                                                             }
                                                         }, void 0, false, {
                                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                            lineNumber: 614,
+                                                            lineNumber: 615,
                                                             columnNumber: 49
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                    lineNumber: 601,
+                                                    lineNumber: 602,
                                                     columnNumber: 45
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1441,7 +1441,7 @@ function AdminUsersPage() {
                                                                 children: "Select Store..."
                                                             }, void 0, false, {
                                                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                                lineNumber: 639,
+                                                                lineNumber: 640,
                                                                 columnNumber: 53
                                                             }, this),
                                                             stores.map((s)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1449,29 +1449,29 @@ function AdminUsersPage() {
                                                                     children: s.name
                                                                 }, s.id, false, {
                                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                                    lineNumber: 640,
+                                                                    lineNumber: 641,
                                                                     columnNumber: 70
                                                                 }, this))
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                        lineNumber: 628,
+                                                        lineNumber: 629,
                                                         columnNumber: 49
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                                    lineNumber: 627,
+                                                    lineNumber: 628,
                                                     columnNumber: 45
                                                 }, this)
                                             ]
                                         }, dayData.day, true, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                            lineNumber: 587,
+                                            lineNumber: 588,
                                             columnNumber: 41
                                         }, this))
                                 }, void 0, false, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                    lineNumber: 585,
+                                    lineNumber: 586,
                                     columnNumber: 33
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1491,29 +1491,29 @@ function AdminUsersPage() {
                                         children: "Publish Weekly Schedule"
                                     }, void 0, false, {
                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                        lineNumber: 648,
+                                        lineNumber: 649,
                                         columnNumber: 37
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                                    lineNumber: 647,
+                                    lineNumber: 648,
                                     columnNumber: 33
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                            lineNumber: 578,
+                            lineNumber: 579,
                             columnNumber: 29
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                    lineNumber: 572,
+                    lineNumber: 573,
                     columnNumber: 25
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                lineNumber: 571,
+                lineNumber: 572,
                 columnNumber: 21
             }, this),
             error && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1521,7 +1521,7 @@ function AdminUsersPage() {
                 children: error
             }, void 0, false, {
                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                lineNumber: 658,
+                lineNumber: 659,
                 columnNumber: 23
             }, this),
             success && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1529,13 +1529,13 @@ function AdminUsersPage() {
                 children: success
             }, void 0, false, {
                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-                lineNumber: 659,
+                lineNumber: 660,
                 columnNumber: 25
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/users/page.tsx",
-        lineNumber: 293,
+        lineNumber: 294,
         columnNumber: 9
     }, this);
 }

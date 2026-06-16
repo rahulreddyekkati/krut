@@ -1,5 +1,16 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from "react";
+import { Platform } from "react-native";
+import * as Notifications from "expo-notifications";
+import * as Device from "expo-device";
 import { getToken, saveToken, deleteToken } from "../utils/tokenManager";
+
+Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+    }),
+});
 
 
 interface UserInfo {
@@ -53,6 +64,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const storedToken = await getToken();
         setToken(storedToken);
+        if (storedToken) {
+          registerPushToken(storedToken).catch(() => {});
+        }
       } catch (e) {
         console.error("Failed to load token", e);
       } finally {
@@ -65,11 +79,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = async (newToken: string) => {
     await saveToken(newToken);
     setToken(newToken);
+    registerPushToken(newToken).catch(() => {});
   };
 
   const signOut = async () => {
     await deleteToken();
     setToken(null);
+  };
+
+  const registerPushToken = async (authToken: string) => {
+    if (!Device.isDevice) return;
+
+    if (Platform.OS === "android") {
+      await Notifications.setNotificationChannelAsync("default", {
+        name: "default",
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: "#FF231F7C",
+      });
+    }
+
+    const { status: existing } = await Notifications.getPermissionsAsync();
+    const { status } = existing === "granted"
+      ? { status: existing }
+      : await Notifications.requestPermissionsAsync();
+    if (status !== "granted") return;
+
+    const pushToken = (
+      await Notifications.getExpoPushTokenAsync({
+        projectId: "74b77b94-ceb2-4183-8b7e-245c768aeee3",
+      })
+    ).data;
+
+    const apiBase = process.env.EXPO_PUBLIC_API_BASE_URL;
+    await fetch(`${apiBase}/users/push-token`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({ token: pushToken }),
+    });
   };
 
   return (

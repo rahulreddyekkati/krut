@@ -395,20 +395,11 @@ async function GET(request) {
                 ...dateFilter
             }
         });
-        // Active Workers: Workers with active clock-ins in the scoped jobs
+        // Active Workers: anyone currently clocked in (no clock-out yet), regardless of date
         const activeWorkers = await __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["default"].jobAssignment.count({
             where: {
                 job: whereJob,
-                clockIn: {
-                    not: null
-                },
-                clockOut: null,
-                ...dateParam ? {
-                    clockIn: {
-                        gte: new Date(dateParam + "T00:00:00"),
-                        not: null
-                    }
-                } : {}
+                status: "IN_PROGRESS"
             }
         });
         // Pending Recaps: Assignments where the worker clocked out but hasn't submitted a recap

@@ -61,10 +61,10 @@ var __turbopack_async_dependencies__ = __turbopack_handle_async_dependencies__([
 ;
 ;
 const prismaClientSingleton = ()=>{
-    const url = process.env.DATABASE_URL || "file:./dev.db";
-    if (url.startsWith("libsql://") || url.startsWith("https://")) {
+    const tursoUrl = process.env.TURSO_DATABASE_URL;
+    if (tursoUrl && (tursoUrl.startsWith("libsql://") || tursoUrl.startsWith("https://"))) {
         const libsql = (0, __TURBOPACK__imported__module__$5b$externals$5d2f40$libsql$2f$client__$5b$external$5d$__$2840$libsql$2f$client$2c$__esm_import$2c$__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$node_modules$2f40$libsql$2f$client$29$__["createClient"])({
-            url,
+            url: tursoUrl,
             authToken: process.env.TURSO_AUTH_TOKEN
         });
         const adapter = new __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$node_modules$2f40$prisma$2f$adapter$2d$libsql$2f$dist$2f$index$2e$mjs__$5b$app$2d$route$5d$__$28$ecmascript$29$__["PrismaLibSQL"](libsql);
@@ -72,7 +72,7 @@ const prismaClientSingleton = ()=>{
             adapter
         });
     }
-    // Fallback to native for local SQLite
+    // Fallback to native SQLite for local dev
     return new __TURBOPACK__imported__module__$5b$externals$5d2f40$prisma$2f$client__$5b$external$5d$__$2840$prisma$2f$client$2c$__cjs$2c$__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$node_modules$2f40$prisma$2f$client$29$__["PrismaClient"]();
 };
 const prisma = globalThis.prisma ?? prismaClientSingleton();

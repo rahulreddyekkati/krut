@@ -164,6 +164,12 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
     const [isSelectingContact, setIsSelectingContact] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
     const [contacts, setContacts] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])([]);
     const [contactSearch, setContactSearch] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])("");
+    const [showPasswordModal, setShowPasswordModal] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
+    const [pwCurrent, setPwCurrent] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])("");
+    const [pwNew, setPwNew] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])("");
+    const [pwConfirm, setPwConfirm] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])("");
+    const [pwError, setPwError] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])("");
+    const [pwSaving, setPwSaving] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
     const [showRecapPopup, setShowRecapPopup] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
     const [inventoryItems, setInventoryItems] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])([]);
     const [pendingRecaps, setPendingRecaps] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])([]);
@@ -462,6 +468,12 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                 assignmentId: id
             };
         }
+        if (action === "RELEASE") {
+            body = {
+                action,
+                assignmentId: id
+            };
+        }
         try {
             console.log(`Executing ${action} on ${endpoint} with`, body);
             const res = await fetch(endpoint, {
@@ -473,7 +485,9 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                 },
                 body: JSON.stringify(body)
             });
-            const data = await res.json();
+            const rawText = await res.text();
+            console.log(`${action} raw response [${res.status}]:`, rawText);
+            const data = rawText ? JSON.parse(rawText) : {};
             if (res.ok) {
                 console.log(`${action} success:`, data);
                 await onRefresh();
@@ -505,7 +519,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                     children: activeAssignment?.clockOut ? "done" : activeAssignment?.clockIn ? "clocked in" : "Clock In"
                                 }, void 0, false, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                    lineNumber: 407,
+                                    lineNumber: 419,
                                     columnNumber: 21
                                 }, this),
                                 activeAssignment && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -513,13 +527,13 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                     children: activeAssignment.job.store.name
                                 }, void 0, false, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                    lineNumber: 415,
+                                    lineNumber: 427,
                                     columnNumber: 25
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                            lineNumber: 396,
+                            lineNumber: 408,
                             columnNumber: 17
                         }, this),
                         activeAssignment && !activeAssignment.clockIn && !isShiftStarted(activeAssignment.job.startTimeStr) && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -530,7 +544,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                             ]
                         }, void 0, true, {
                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                            lineNumber: 422,
+                            lineNumber: 434,
                             columnNumber: 21
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -544,7 +558,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                             children: formatToClockTime(activeAssignment?.clockIn)
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 427,
+                                            lineNumber: 439,
                                             columnNumber: 25
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -552,13 +566,13 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                             children: "Start Time"
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 428,
+                                            lineNumber: 440,
                                             columnNumber: 25
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                    lineNumber: 426,
+                                    lineNumber: 438,
                                     columnNumber: 21
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -569,7 +583,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                             children: "--:--"
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 431,
+                                            lineNumber: 443,
                                             columnNumber: 25
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -577,13 +591,13 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                             children: "Break Time"
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 432,
+                                            lineNumber: 444,
                                             columnNumber: 25
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                    lineNumber: 430,
+                                    lineNumber: 442,
                                     columnNumber: 21
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -594,7 +608,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                             children: formatToClockTime(activeAssignment?.clockOut)
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 435,
+                                            lineNumber: 447,
                                             columnNumber: 25
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -602,19 +616,19 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                             children: "End Time"
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 436,
+                                            lineNumber: 448,
                                             columnNumber: 25
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                    lineNumber: 434,
+                                    lineNumber: 446,
                                     columnNumber: 21
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                            lineNumber: 425,
+                            lineNumber: 437,
                             columnNumber: 17
                         }, this),
                         !activeAssignment && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -622,13 +636,13 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                             children: "No shift active today"
                         }, void 0, false, {
                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                            lineNumber: 441,
+                            lineNumber: 453,
                             columnNumber: 21
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                    lineNumber: 395,
+                    lineNumber: 407,
                     columnNumber: 13
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -638,7 +652,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                             children: "Today's Shift"
                         }, void 0, false, {
                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                            lineNumber: 446,
+                            lineNumber: 458,
                             columnNumber: 17
                         }, this),
                         activeAssignment ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -653,7 +667,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                    lineNumber: 449,
+                                    lineNumber: 461,
                                     columnNumber: 25
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -670,7 +684,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                     })}`
                                 }, void 0, false, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                    lineNumber: 452,
+                                    lineNumber: 464,
                                     columnNumber: 25
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -678,26 +692,26 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                     children: activeAssignment.job.store.address
                                 }, void 0, false, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                    lineNumber: 457,
+                                    lineNumber: 469,
                                     columnNumber: 25
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                            lineNumber: 448,
+                            lineNumber: 460,
                             columnNumber: 21
                         }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                             className: __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$src$2f$components$2f$WorkerDashboard$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].emptyMsg,
                             children: "Take a break, you have no shifts today!"
                         }, void 0, false, {
                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                            lineNumber: 460,
+                            lineNumber: 472,
                             columnNumber: 21
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                    lineNumber: 445,
+                    lineNumber: 457,
                     columnNumber: 13
                 }, this),
                 pendingRecaps.map((recap)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -711,7 +725,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                         children: "📋"
                                     }, void 0, false, {
                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                        lineNumber: 467,
+                                        lineNumber: 479,
                                         columnNumber: 25
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -721,7 +735,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                 children: "Incomplete Recap"
                                             }, void 0, false, {
                                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                lineNumber: 469,
+                                                lineNumber: 481,
                                                 columnNumber: 29
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -738,19 +752,19 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                lineNumber: 470,
+                                                lineNumber: 482,
                                                 columnNumber: 29
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                        lineNumber: 468,
+                                        lineNumber: 480,
                                         columnNumber: 25
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                lineNumber: 466,
+                                lineNumber: 478,
                                 columnNumber: 21
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -762,19 +776,19 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                 children: "Do Recap"
                             }, void 0, false, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                lineNumber: 476,
+                                lineNumber: 488,
                                 columnNumber: 21
                             }, this)
                         ]
                     }, recap.assignmentId, true, {
                         fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                        lineNumber: 465,
+                        lineNumber: 477,
                         columnNumber: 17
                     }, this))
             ]
         }, void 0, true, {
             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-            lineNumber: 394,
+            lineNumber: 406,
             columnNumber: 9
         }, this);
     const renderMyShifts = ()=>{
@@ -801,12 +815,12 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                         children: cycleHeader
                     }, void 0, false, {
                         fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                        lineNumber: 501,
+                        lineNumber: 513,
                         columnNumber: 21
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                    lineNumber: 500,
+                    lineNumber: 512,
                     columnNumber: 17
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -831,7 +845,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                             })
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 508,
+                                            lineNumber: 520,
                                             columnNumber: 37
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -839,7 +853,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                             children: a.job?.store?.name
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 513,
+                                            lineNumber: 525,
                                             columnNumber: 37
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -851,13 +865,13 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 514,
+                                            lineNumber: 526,
                                             columnNumber: 37
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                    lineNumber: 507,
+                                    lineNumber: 519,
                                     columnNumber: 33
                                 }, this),
                                 (()=>{
@@ -888,7 +902,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                             children: "Completed"
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 545,
+                                            lineNumber: 557,
                                             columnNumber: 48
                                         }, this);
                                     }
@@ -902,7 +916,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                             children: isPast ? "Recap Pending" : "Clocked In"
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 548,
+                                            lineNumber: 560,
                                             columnNumber: 48
                                         }, this);
                                     }
@@ -916,7 +930,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                             children: "No Show"
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 551,
+                                            lineNumber: 563,
                                             columnNumber: 48
                                         }, this);
                                     }
@@ -933,7 +947,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                             children: "Requested"
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 554,
+                                            lineNumber: 566,
                                             columnNumber: 48
                                         }, this);
                                     }
@@ -945,40 +959,40 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                         children: isPast ? "Closed" : "Too close to release"
                                     }, void 0, false, {
                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                        lineNumber: 558,
+                                        lineNumber: 570,
                                         columnNumber: 41
                                     }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                                        onClick: ()=>handleAction("RELEASE", a.job.id, shiftDate.toISOString()),
+                                        onClick: ()=>handleAction("RELEASE", a.id),
                                         className: __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$src$2f$components$2f$WorkerDashboard$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].releaseBtn,
                                         children: "Release"
                                     }, void 0, false, {
                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                        lineNumber: 560,
+                                        lineNumber: 572,
                                         columnNumber: 41
                                     }, this);
                                 })()
                             ]
                         }, a.id, true, {
                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                            lineNumber: 506,
+                            lineNumber: 518,
                             columnNumber: 29
                         }, this)) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                         className: __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$src$2f$components$2f$WorkerDashboard$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].emptyMsg,
                         children: "No shifts in this cycle."
                     }, void 0, false, {
                         fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                        lineNumber: 571,
+                        lineNumber: 583,
                         columnNumber: 25
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                    lineNumber: 503,
+                    lineNumber: 515,
                     columnNumber: 17
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-            lineNumber: 499,
+            lineNumber: 511,
             columnNumber: 13
         }, this);
     };
@@ -991,12 +1005,12 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                         children: "Available Shifts"
                     }, void 0, false, {
                         fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                        lineNumber: 581,
+                        lineNumber: 593,
                         columnNumber: 17
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                    lineNumber: 580,
+                    lineNumber: 592,
                     columnNumber: 13
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1029,13 +1043,13 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                     children: "Released Shift"
                                                 }, void 0, false, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                    lineNumber: 590,
+                                                    lineNumber: 602,
                                                     columnNumber: 61
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 588,
+                                            lineNumber: 600,
                                             columnNumber: 33
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1043,7 +1057,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                             children: job.store?.name
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 592,
+                                            lineNumber: 604,
                                             columnNumber: 33
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1055,13 +1069,13 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 593,
+                                            lineNumber: 605,
                                             columnNumber: 33
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                    lineNumber: 587,
+                                    lineNumber: 599,
                                     columnNumber: 29
                                 }, this),
                                 job.isRequested ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1076,7 +1090,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                     children: "Requested"
                                 }, void 0, false, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                    lineNumber: 598,
+                                    lineNumber: 610,
                                     columnNumber: 33
                                 }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
                                     onClick: ()=>handleAction("ACCEPT", job.id, job.date),
@@ -1084,13 +1098,13 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                     children: "Request Shift"
                                 }, void 0, false, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                    lineNumber: 600,
+                                    lineNumber: 612,
                                     columnNumber: 33
                                 }, this)
                             ]
                         }, job.id, true, {
                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                            lineNumber: 586,
+                            lineNumber: 598,
                             columnNumber: 25
                         }, this)) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                         className: __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$src$2f$components$2f$WorkerDashboard$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].emptyCenter,
@@ -1100,7 +1114,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                 children: "No open shifts available right now."
                             }, void 0, false, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                lineNumber: 611,
+                                lineNumber: 623,
                                 columnNumber: 25
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1108,24 +1122,24 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                 children: "Check back later or notify your manager if you want more hours."
                             }, void 0, false, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                lineNumber: 612,
+                                lineNumber: 624,
                                 columnNumber: 25
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                        lineNumber: 610,
+                        lineNumber: 622,
                         columnNumber: 21
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                    lineNumber: 583,
+                    lineNumber: 595,
                     columnNumber: 13
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-            lineNumber: 579,
+            lineNumber: 591,
             columnNumber: 9
         }, this);
     const renderTraining = ()=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1137,12 +1151,12 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                         children: "Training Materials"
                     }, void 0, false, {
                         fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                        lineNumber: 622,
+                        lineNumber: 634,
                         columnNumber: 17
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                    lineNumber: 621,
+                    lineNumber: 633,
                     columnNumber: 13
                 }, this),
                 trainingDocs.length > 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1158,7 +1172,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                     children: "📄"
                                 }, void 0, false, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                    lineNumber: 628,
+                                    lineNumber: 640,
                                     columnNumber: 29
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1166,7 +1180,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                     children: doc.title
                                 }, void 0, false, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                    lineNumber: 629,
+                                    lineNumber: 641,
                                     columnNumber: 29
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1174,18 +1188,18 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                     children: doc.category
                                 }, void 0, false, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                    lineNumber: 630,
+                                    lineNumber: 642,
                                     columnNumber: 29
                                 }, this)
                             ]
                         }, doc.id, true, {
                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                            lineNumber: 627,
+                            lineNumber: 639,
                             columnNumber: 25
                         }, this))
                 }, void 0, false, {
                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                    lineNumber: 625,
+                    lineNumber: 637,
                     columnNumber: 17
                 }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                     className: __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$src$2f$components$2f$WorkerDashboard$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].emptyCenter,
@@ -1194,18 +1208,18 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                         children: "No training materials assigned yet."
                     }, void 0, false, {
                         fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                        lineNumber: 636,
+                        lineNumber: 648,
                         columnNumber: 21
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                    lineNumber: 635,
+                    lineNumber: 647,
                     columnNumber: 17
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-            lineNumber: 620,
+            lineNumber: 632,
             columnNumber: 9
         }, this);
     const renderMessages = ()=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1251,30 +1265,30 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                             points: "15 18 9 12 15 6"
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 649,
+                                            lineNumber: 661,
                                             columnNumber: 33
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                        lineNumber: 648,
+                                        lineNumber: 660,
                                         columnNumber: 29
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                    lineNumber: 647,
+                                    lineNumber: 659,
                                     columnNumber: 25
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
                                     children: isSelectingContact ? "New Message" : currentChat ? currentChat.participants?.find((p)=>p.id !== user.id)?.name || currentChat.type.replace('_', ' ') : "Messages"
                                 }, void 0, false, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                    lineNumber: 653,
+                                    lineNumber: 665,
                                     columnNumber: 21
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                            lineNumber: 645,
+                            lineNumber: 657,
                             columnNumber: 17
                         }, this),
                         !currentChat && !isSelectingContact && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1311,7 +1325,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                         y2: "19"
                                     }, void 0, false, {
                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                        lineNumber: 661,
+                                        lineNumber: 673,
                                         columnNumber: 29
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("line", {
@@ -1321,24 +1335,24 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                         y2: "12"
                                     }, void 0, false, {
                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                        lineNumber: 662,
+                                        lineNumber: 674,
                                         columnNumber: 29
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                lineNumber: 660,
+                                lineNumber: 672,
                                 columnNumber: 25
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                            lineNumber: 656,
+                            lineNumber: 668,
                             columnNumber: 21
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                    lineNumber: 644,
+                    lineNumber: 656,
                     columnNumber: 13
                 }, this),
                 !currentChat && !isSelectingContact && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1367,7 +1381,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                     }
                                 }, void 0, false, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                    lineNumber: 671,
+                                    lineNumber: 683,
                                     columnNumber: 25
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("svg", {
@@ -1393,7 +1407,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                             r: "8"
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 677,
+                                            lineNumber: 689,
                                             columnNumber: 29
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("line", {
@@ -1403,19 +1417,19 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                             y2: "16.65"
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 678,
+                                            lineNumber: 690,
                                             columnNumber: 29
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                    lineNumber: 676,
+                                    lineNumber: 688,
                                     columnNumber: 25
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                            lineNumber: 670,
+                            lineNumber: 682,
                             columnNumber: 21
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1438,7 +1452,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                         children: recipient?.name || thread.type.replace('_', ' ')
                                                     }, void 0, false, {
                                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                        lineNumber: 688,
+                                                        lineNumber: 700,
                                                         columnNumber: 41
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1446,13 +1460,13 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                         children: thread.messages?.[0]?.content || "No messages yet"
                                                     }, void 0, false, {
                                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                        lineNumber: 689,
+                                                        lineNumber: 701,
                                                         columnNumber: 41
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                lineNumber: 687,
+                                                lineNumber: 699,
                                                 columnNumber: 37
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1463,13 +1477,13 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                 children: thread.messages?.[0] ? new Date(thread.messages[0].createdAt).toLocaleDateString() : ""
                                             }, void 0, false, {
                                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                lineNumber: 693,
+                                                lineNumber: 705,
                                                 columnNumber: 37
                                             }, this)
                                         ]
                                     }, thread.id, true, {
                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                        lineNumber: 686,
+                                        lineNumber: 698,
                                         columnNumber: 33
                                     }, this);
                                 }),
@@ -1484,7 +1498,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                             children: "No active conversations."
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 701,
+                                            lineNumber: 713,
                                             columnNumber: 33
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1500,25 +1514,25 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                             children: "Start your first chat"
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 702,
+                                            lineNumber: 714,
                                             columnNumber: 33
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                    lineNumber: 700,
+                                    lineNumber: 712,
                                     columnNumber: 29
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                            lineNumber: 682,
+                            lineNumber: 694,
                             columnNumber: 21
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                    lineNumber: 669,
+                    lineNumber: 681,
                     columnNumber: 17
                 }, this),
                 isSelectingContact && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1550,7 +1564,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                     autoFocus: true
                                 }, void 0, false, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                    lineNumber: 717,
+                                    lineNumber: 729,
                                     columnNumber: 25
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("svg", {
@@ -1576,7 +1590,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                             r: "8"
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 726,
+                                            lineNumber: 738,
                                             columnNumber: 29
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("line", {
@@ -1586,19 +1600,19 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                             y2: "16.65"
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 727,
+                                            lineNumber: 739,
                                             columnNumber: 29
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                    lineNumber: 725,
+                                    lineNumber: 737,
                                     columnNumber: 25
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                            lineNumber: 716,
+                            lineNumber: 728,
                             columnNumber: 21
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1618,7 +1632,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                     children: contact.name
                                                 }, void 0, false, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                    lineNumber: 735,
+                                                    lineNumber: 747,
                                                     columnNumber: 37
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1630,18 +1644,18 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                    lineNumber: 736,
+                                                    lineNumber: 748,
                                                     columnNumber: 37
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 734,
+                                            lineNumber: 746,
                                             columnNumber: 33
                                         }, this)
                                     }, contact.id, false, {
                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                        lineNumber: 733,
+                                        lineNumber: 745,
                                         columnNumber: 29
                                     }, this)),
                                 contacts.length === 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1653,19 +1667,19 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                     children: "No contacts found."
                                 }, void 0, false, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                    lineNumber: 743,
+                                    lineNumber: 755,
                                     columnNumber: 29
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                            lineNumber: 731,
+                            lineNumber: 743,
                             columnNumber: 21
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                    lineNumber: 715,
+                    lineNumber: 727,
                     columnNumber: 17
                 }, this),
                 currentChat && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1705,12 +1719,12 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                     children: msg.content
                                 }, i, false, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                    lineNumber: 753,
+                                    lineNumber: 765,
                                     columnNumber: 29
                                 }, this))
                         }, void 0, false, {
                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                            lineNumber: 751,
+                            lineNumber: 763,
                             columnNumber: 21
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1737,7 +1751,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                     }
                                 }, void 0, false, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                    lineNumber: 769,
+                                    lineNumber: 781,
                                     columnNumber: 25
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1767,45 +1781,86 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                 y2: "13"
                                             }, void 0, false, {
                                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                lineNumber: 782,
+                                                lineNumber: 794,
                                                 columnNumber: 33
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("polygon", {
                                                 points: "22 2 15 22 11 13 2 9 22 2"
                                             }, void 0, false, {
                                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                lineNumber: 783,
+                                                lineNumber: 795,
                                                 columnNumber: 33
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                        lineNumber: 781,
+                                        lineNumber: 793,
                                         columnNumber: 29
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                    lineNumber: 777,
+                                    lineNumber: 789,
                                     columnNumber: 25
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                            lineNumber: 768,
+                            lineNumber: 780,
                             columnNumber: 21
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                    lineNumber: 750,
+                    lineNumber: 762,
                     columnNumber: 17
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-            lineNumber: 643,
+            lineNumber: 655,
             columnNumber: 9
         }, this);
+    const handleChangePassword = async ()=>{
+        setPwError("");
+        if (!pwCurrent || !pwNew || !pwConfirm) {
+            setPwError("All fields are required.");
+            return;
+        }
+        if (pwNew.length < 8) {
+            setPwError("New password must be at least 8 characters.");
+            return;
+        }
+        if (pwNew !== pwConfirm) {
+            setPwError("New passwords do not match.");
+            return;
+        }
+        setPwSaving(true);
+        try {
+            const res = await fetch("/api/auth/profile", {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    currentPassword: pwCurrent,
+                    newPassword: pwNew
+                })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setShowPasswordModal(false);
+                setPwCurrent("");
+                setPwNew("");
+                setPwConfirm("");
+            } else {
+                setPwError(data.error || "Failed to update password.");
+            }
+        } catch  {
+            setPwError("Network error. Please try again.");
+        } finally{
+            setPwSaving(false);
+        }
+    };
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
         className: __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$src$2f$components$2f$WorkerDashboard$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].container,
         children: [
@@ -1817,10 +1872,10 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                         children: [
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                 className: __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$src$2f$components$2f$WorkerDashboard$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].navBrand,
-                                children: "Workforce OS"
+                                children: "Kruto Tastes"
                             }, void 0, false, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                lineNumber: 796,
+                                lineNumber: 834,
                                 columnNumber: 21
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1828,13 +1883,13 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                 children: user.name
                             }, void 0, false, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                lineNumber: 797,
+                                lineNumber: 835,
                                 columnNumber: 21
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                        lineNumber: 795,
+                        lineNumber: 833,
                         columnNumber: 17
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1857,17 +1912,17 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                         d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
                                     }, void 0, false, {
                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                        lineNumber: 806,
+                                        lineNumber: 844,
                                         columnNumber: 29
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                    lineNumber: 805,
+                                    lineNumber: 843,
                                     columnNumber: 25
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                lineNumber: 800,
+                                lineNumber: 838,
                                 columnNumber: 21
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1894,33 +1949,33 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                         d: "M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"
                                                     }, void 0, false, {
                                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                        lineNumber: 816,
+                                                        lineNumber: 854,
                                                         columnNumber: 33
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
                                                         d: "M13.73 21a2 2 0 0 1-3.46 0"
                                                     }, void 0, false, {
                                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                        lineNumber: 817,
+                                                        lineNumber: 855,
                                                         columnNumber: 33
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                lineNumber: 815,
+                                                lineNumber: 853,
                                                 columnNumber: 29
                                             }, this),
                                             notifications.length > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                                 className: __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$src$2f$components$2f$WorkerDashboard$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].msgBadge
                                             }, void 0, false, {
                                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                lineNumber: 819,
+                                                lineNumber: 857,
                                                 columnNumber: 58
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                        lineNumber: 810,
+                                        lineNumber: 848,
                                         columnNumber: 25
                                     }, this),
                                     showNotifications && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1958,7 +2013,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                         children: "Notifications"
                                                     }, void 0, false, {
                                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                        lineNumber: 838,
+                                                        lineNumber: 876,
                                                         columnNumber: 37
                                                     }, this),
                                                     notifications.length > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1974,13 +2029,13 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                         children: "Clear all"
                                                     }, void 0, false, {
                                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                        lineNumber: 840,
+                                                        lineNumber: 878,
                                                         columnNumber: 41
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                lineNumber: 837,
+                                                lineNumber: 875,
                                                 columnNumber: 33
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1998,7 +2053,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                     children: "No new notifications"
                                                 }, void 0, false, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                    lineNumber: 850,
+                                                    lineNumber: 888,
                                                     columnNumber: 41
                                                 }, this) : notifications.map((n)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                                         style: {
@@ -2024,7 +2079,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                                 children: n.title
                                                             }, void 0, false, {
                                                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                                lineNumber: 868,
+                                                                lineNumber: 906,
                                                                 columnNumber: 49
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2036,7 +2091,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                                 children: n.message
                                                             }, void 0, false, {
                                                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                                lineNumber: 869,
+                                                                lineNumber: 907,
                                                                 columnNumber: 49
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2055,30 +2110,76 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                                 ]
                                                             }, void 0, true, {
                                                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                                lineNumber: 870,
+                                                                lineNumber: 908,
                                                                 columnNumber: 49
                                                             }, this)
                                                         ]
                                                     }, n.id, true, {
                                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                        lineNumber: 855,
+                                                        lineNumber: 893,
                                                         columnNumber: 45
                                                     }, this))
                                             }, void 0, false, {
                                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                lineNumber: 848,
+                                                lineNumber: 886,
                                                 columnNumber: 33
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                        lineNumber: 823,
+                                        lineNumber: 861,
                                         columnNumber: 29
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                lineNumber: 809,
+                                lineNumber: 847,
+                                columnNumber: 21
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                className: __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$src$2f$components$2f$WorkerDashboard$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].logoutBtn,
+                                "aria-label": "Change password",
+                                title: "Change password",
+                                onClick: ()=>setShowPasswordModal(true),
+                                style: {
+                                    marginRight: 6
+                                },
+                                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("svg", {
+                                    viewBox: "0 0 24 24",
+                                    fill: "none",
+                                    stroke: "currentColor",
+                                    strokeWidth: "2",
+                                    strokeLinecap: "round",
+                                    strokeLinejoin: "round",
+                                    children: [
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("rect", {
+                                            x: "3",
+                                            y: "11",
+                                            width: "18",
+                                            height: "11",
+                                            rx: "2",
+                                            ry: "2"
+                                        }, void 0, false, {
+                                            fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
+                                            lineNumber: 926,
+                                            columnNumber: 29
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
+                                            d: "M7 11V7a5 5 0 0 1 10 0v4"
+                                        }, void 0, false, {
+                                            fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
+                                            lineNumber: 927,
+                                            columnNumber: 29
+                                        }, this)
+                                    ]
+                                }, void 0, true, {
+                                    fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
+                                    lineNumber: 925,
+                                    columnNumber: 25
+                                }, this)
+                            }, void 0, false, {
+                                fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
+                                lineNumber: 918,
                                 columnNumber: 21
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -2097,14 +2198,14 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                             d: "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 886,
+                                            lineNumber: 936,
                                             columnNumber: 29
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("polyline", {
                                             points: "16 17 21 12 16 7"
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 887,
+                                            lineNumber: 937,
                                             columnNumber: 29
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("line", {
@@ -2114,30 +2215,30 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                             y2: "12"
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 888,
+                                            lineNumber: 938,
                                             columnNumber: 29
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                    lineNumber: 885,
+                                    lineNumber: 935,
                                     columnNumber: 25
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                lineNumber: 880,
+                                lineNumber: 930,
                                 columnNumber: 21
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                        lineNumber: 799,
+                        lineNumber: 837,
                         columnNumber: 17
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                lineNumber: 794,
+                lineNumber: 832,
                 columnNumber: 13
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2149,7 +2250,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                         children: "Home"
                     }, void 0, false, {
                         fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                        lineNumber: 895,
+                        lineNumber: 945,
                         columnNumber: 17
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -2158,7 +2259,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                         children: "My Shifts"
                     }, void 0, false, {
                         fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                        lineNumber: 901,
+                        lineNumber: 951,
                         columnNumber: 17
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -2167,7 +2268,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                         children: "Open Shifts"
                     }, void 0, false, {
                         fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                        lineNumber: 907,
+                        lineNumber: 957,
                         columnNumber: 17
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -2176,13 +2277,13 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                         children: "Training"
                     }, void 0, false, {
                         fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                        lineNumber: 913,
+                        lineNumber: 963,
                         columnNumber: 17
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                lineNumber: 894,
+                lineNumber: 944,
                 columnNumber: 13
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("main", {
@@ -2196,7 +2297,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                 ]
             }, void 0, true, {
                 fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                lineNumber: 921,
+                lineNumber: 971,
                 columnNumber: 13
             }, this),
             showRecapPopup && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2213,7 +2314,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                     children: "Recaps"
                                 }, void 0, false, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                    lineNumber: 934,
+                                    lineNumber: 984,
                                     columnNumber: 29
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -2222,13 +2323,13 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                     children: "×"
                                 }, void 0, false, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                    lineNumber: 935,
+                                    lineNumber: 985,
                                     columnNumber: 29
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                            lineNumber: 933,
+                            lineNumber: 983,
                             columnNumber: 25
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2245,7 +2346,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                     children: "Worker"
                                                 }, void 0, false, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                    lineNumber: 941,
+                                                    lineNumber: 991,
                                                     columnNumber: 37
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -2253,13 +2354,13 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                     children: user?.name
                                                 }, void 0, false, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                    lineNumber: 942,
+                                                    lineNumber: 992,
                                                     columnNumber: 37
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 940,
+                                            lineNumber: 990,
                                             columnNumber: 33
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2270,7 +2371,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                     children: "Market"
                                                 }, void 0, false, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                    lineNumber: 945,
+                                                    lineNumber: 995,
                                                     columnNumber: 37
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -2278,13 +2379,13 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                     children: user?.market?.name || '—'
                                                 }, void 0, false, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                    lineNumber: 946,
+                                                    lineNumber: 996,
                                                     columnNumber: 37
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 944,
+                                            lineNumber: 994,
                                             columnNumber: 33
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2295,7 +2396,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                     children: "Store"
                                                 }, void 0, false, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                    lineNumber: 949,
+                                                    lineNumber: 999,
                                                     columnNumber: 37
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -2303,13 +2404,13 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                     children: selectedRecapData?.storeName || activeAssignment?.job?.store?.name
                                                 }, void 0, false, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                    lineNumber: 950,
+                                                    lineNumber: 1000,
                                                     columnNumber: 37
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 948,
+                                            lineNumber: 998,
                                             columnNumber: 33
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2320,7 +2421,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                     children: "Date"
                                                 }, void 0, false, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                    lineNumber: 953,
+                                                    lineNumber: 1003,
                                                     columnNumber: 37
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -2338,13 +2439,13 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                     })
                                                 }, void 0, false, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                    lineNumber: 954,
+                                                    lineNumber: 1004,
                                                     columnNumber: 37
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 952,
+                                            lineNumber: 1002,
                                             columnNumber: 33
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2355,7 +2456,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                     children: "Clock In"
                                                 }, void 0, false, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                    lineNumber: 957,
+                                                    lineNumber: 1007,
                                                     columnNumber: 37
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -2363,13 +2464,13 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                     children: formatToClockTime(selectedRecapData?.clockIn || activeAssignment?.clockIn)
                                                 }, void 0, false, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                    lineNumber: 958,
+                                                    lineNumber: 1008,
                                                     columnNumber: 37
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 956,
+                                            lineNumber: 1006,
                                             columnNumber: 33
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2380,7 +2481,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                     children: "Clock Out"
                                                 }, void 0, false, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                    lineNumber: 961,
+                                                    lineNumber: 1011,
                                                     columnNumber: 37
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -2388,19 +2489,19 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                     children: formatToClockTime(selectedRecapData?.clockOut || activeAssignment?.clockOut)
                                                 }, void 0, false, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                    lineNumber: 962,
+                                                    lineNumber: 1012,
                                                     columnNumber: 37
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 960,
+                                            lineNumber: 1010,
                                             columnNumber: 33
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                    lineNumber: 939,
+                                    lineNumber: 989,
                                     columnNumber: 29
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2411,7 +2512,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                             children: "How was the rush?"
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 968,
+                                            lineNumber: 1018,
                                             columnNumber: 33
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2433,24 +2534,24 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                             children: level
                                                         }, void 0, false, {
                                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                            lineNumber: 978,
+                                                            lineNumber: 1028,
                                                             columnNumber: 45
                                                         }, this)
                                                     ]
                                                 }, level, true, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                    lineNumber: 971,
+                                                    lineNumber: 1021,
                                                     columnNumber: 41
                                                 }, this))
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 969,
+                                            lineNumber: 1019,
                                             columnNumber: 33
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                    lineNumber: 967,
+                                    lineNumber: 1017,
                                     columnNumber: 29
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2461,7 +2562,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                             children: "Sales Summary"
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 986,
+                                            lineNumber: 1036,
                                             columnNumber: 33
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2474,7 +2575,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                             children: "Customers Sampled"
                                                         }, void 0, false, {
                                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                            lineNumber: 989,
+                                                            lineNumber: 1039,
                                                             columnNumber: 41
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -2487,13 +2588,13 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                                     }))
                                                         }, void 0, false, {
                                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                            lineNumber: 990,
+                                                            lineNumber: 1040,
                                                             columnNumber: 41
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                    lineNumber: 988,
+                                                    lineNumber: 1038,
                                                     columnNumber: 37
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2503,7 +2604,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                             children: "Receipt Total"
                                                         }, void 0, false, {
                                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                            lineNumber: 998,
+                                                            lineNumber: 1048,
                                                             columnNumber: 41
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2514,7 +2615,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                                     children: "$"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                                    lineNumber: 1000,
+                                                                    lineNumber: 1050,
                                                                     columnNumber: 45
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -2528,19 +2629,19 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                                             }))
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                                    lineNumber: 1001,
+                                                                    lineNumber: 1051,
                                                                     columnNumber: 45
                                                                 }, this)
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                            lineNumber: 999,
+                                                            lineNumber: 1049,
                                                             columnNumber: 41
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                    lineNumber: 997,
+                                                    lineNumber: 1047,
                                                     columnNumber: 37
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2550,7 +2651,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                             children: "Reimbursement Total"
                                                         }, void 0, false, {
                                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                            lineNumber: 1011,
+                                                            lineNumber: 1061,
                                                             columnNumber: 41
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2561,7 +2662,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                                     children: "$"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                                    lineNumber: 1013,
+                                                                    lineNumber: 1063,
                                                                     columnNumber: 45
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -2575,31 +2676,31 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                                             }))
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                                    lineNumber: 1014,
+                                                                    lineNumber: 1064,
                                                                     columnNumber: 45
                                                                 }, this)
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                            lineNumber: 1012,
+                                                            lineNumber: 1062,
                                                             columnNumber: 41
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                    lineNumber: 1010,
+                                                    lineNumber: 1060,
                                                     columnNumber: 37
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 987,
+                                            lineNumber: 1037,
                                             columnNumber: 33
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                    lineNumber: 985,
+                                    lineNumber: 1035,
                                     columnNumber: 29
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2610,7 +2711,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                             children: "Inventory Tracking"
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 1028,
+                                            lineNumber: 1078,
                                             columnNumber: 33
                                         }, this),
                                         inventoryItems.length > 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2626,7 +2727,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                                     children: item.name
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                                    lineNumber: 1034,
+                                                                    lineNumber: 1084,
                                                                     columnNumber: 53
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -2639,13 +2740,13 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                                     ]
                                                                 }, void 0, true, {
                                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                                    lineNumber: 1035,
+                                                                    lineNumber: 1085,
                                                                     columnNumber: 53
                                                                 }, this)
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                            lineNumber: 1033,
+                                                            lineNumber: 1083,
                                                             columnNumber: 49
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2658,7 +2759,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                                             children: "Beginning Inv."
                                                                         }, void 0, false, {
                                                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                                            lineNumber: 1039,
+                                                                            lineNumber: 1089,
                                                                             columnNumber: 57
                                                                         }, this),
                                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -2668,13 +2769,13 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                                             onChange: (e)=>updateInventoryField(item.id, 'beginning', e.target.value)
                                                                         }, void 0, false, {
                                                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                                            lineNumber: 1040,
+                                                                            lineNumber: 1090,
                                                                             columnNumber: 57
                                                                         }, this)
                                                                     ]
                                                                 }, void 0, true, {
                                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                                    lineNumber: 1038,
+                                                                    lineNumber: 1088,
                                                                     columnNumber: 53
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2684,7 +2785,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                                             children: "Purchased"
                                                                         }, void 0, false, {
                                                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                                            lineNumber: 1048,
+                                                                            lineNumber: 1098,
                                                                             columnNumber: 57
                                                                         }, this),
                                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -2694,13 +2795,13 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                                             onChange: (e)=>updateInventoryField(item.id, 'purchased', e.target.value)
                                                                         }, void 0, false, {
                                                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                                            lineNumber: 1049,
+                                                                            lineNumber: 1099,
                                                                             columnNumber: 57
                                                                         }, this)
                                                                     ]
                                                                 }, void 0, true, {
                                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                                    lineNumber: 1047,
+                                                                    lineNumber: 1097,
                                                                     columnNumber: 53
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2710,7 +2811,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                                             children: "Bottles Sold"
                                                                         }, void 0, false, {
                                                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                                            lineNumber: 1057,
+                                                                            lineNumber: 1107,
                                                                             columnNumber: 57
                                                                         }, this),
                                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -2720,13 +2821,13 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                                             onChange: (e)=>updateInventoryField(item.id, 'sold', e.target.value)
                                                                         }, void 0, false, {
                                                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                                            lineNumber: 1058,
+                                                                            lineNumber: 1108,
                                                                             columnNumber: 57
                                                                         }, this)
                                                                     ]
                                                                 }, void 0, true, {
                                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                                    lineNumber: 1056,
+                                                                    lineNumber: 1106,
                                                                     columnNumber: 53
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2736,7 +2837,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                                             children: "Store Price"
                                                                         }, void 0, false, {
                                                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                                            lineNumber: 1066,
+                                                                            lineNumber: 1116,
                                                                             columnNumber: 57
                                                                         }, this),
                                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2747,7 +2848,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                                                     children: "$"
                                                                                 }, void 0, false, {
                                                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                                                    lineNumber: 1068,
+                                                                                    lineNumber: 1118,
                                                                                     columnNumber: 61
                                                                                 }, this),
                                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -2758,49 +2859,49 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                                                     onChange: (e)=>updateInventoryField(item.id, 'storePrice', e.target.value)
                                                                                 }, void 0, false, {
                                                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                                                    lineNumber: 1069,
+                                                                                    lineNumber: 1119,
                                                                                     columnNumber: 61
                                                                                 }, this)
                                                                             ]
                                                                         }, void 0, true, {
                                                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                                            lineNumber: 1067,
+                                                                            lineNumber: 1117,
                                                                             columnNumber: 57
                                                                         }, this)
                                                                     ]
                                                                 }, void 0, true, {
                                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                                    lineNumber: 1065,
+                                                                    lineNumber: 1115,
                                                                     columnNumber: 53
                                                                 }, this)
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                            lineNumber: 1037,
+                                                            lineNumber: 1087,
                                                             columnNumber: 49
                                                         }, this)
                                                     ]
                                                 }, item.id, true, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                    lineNumber: 1032,
+                                                    lineNumber: 1082,
                                                     columnNumber: 45
                                                 }, this))
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 1030,
+                                            lineNumber: 1080,
                                             columnNumber: 37
                                         }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                             className: __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$src$2f$components$2f$WorkerDashboard$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].recapPlaceholder,
                                             children: "No inventory items added yet. Add items in the admin Inventory page first."
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 1083,
+                                            lineNumber: 1133,
                                             columnNumber: 37
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                    lineNumber: 1027,
+                                    lineNumber: 1077,
                                     columnNumber: 29
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2811,7 +2912,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                             children: "Upload Receipts"
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 1089,
+                                            lineNumber: 1139,
                                             columnNumber: 33
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -2879,7 +2980,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                             }
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 1090,
+                                            lineNumber: 1140,
                                             columnNumber: 33
                                         }, this),
                                         recapForm.receiptUrls && recapForm.receiptUrls.length > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2906,7 +3007,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                             }
                                                         }, void 0, false, {
                                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                            lineNumber: 1154,
+                                                            lineNumber: 1204,
                                                             columnNumber: 49
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -2933,24 +3034,24 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                             children: "×"
                                                         }, void 0, false, {
                                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                            lineNumber: 1155,
+                                                            lineNumber: 1205,
                                                             columnNumber: 49
                                                         }, this)
                                                     ]
                                                 }, idx, true, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                                    lineNumber: 1153,
+                                                    lineNumber: 1203,
                                                     columnNumber: 45
                                                 }, this))
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 1151,
+                                            lineNumber: 1201,
                                             columnNumber: 37
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                    lineNumber: 1088,
+                                    lineNumber: 1138,
                                     columnNumber: 29
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2961,7 +3062,7 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                             children: "Customer Feedback"
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 1164,
+                                            lineNumber: 1214,
                                             columnNumber: 33
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("textarea", {
@@ -2975,19 +3076,19 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                                     }))
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                            lineNumber: 1165,
+                                            lineNumber: 1215,
                                             columnNumber: 33
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                    lineNumber: 1163,
+                                    lineNumber: 1213,
                                     columnNumber: 29
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                            lineNumber: 937,
+                            lineNumber: 987,
                             columnNumber: 25
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2998,33 +3099,202 @@ function WorkerDashboard({ user, activeAssignment, myShifts, openShifts, onRefre
                                 children: "Submit Recap"
                             }, void 0, false, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                                lineNumber: 1175,
+                                lineNumber: 1225,
                                 columnNumber: 29
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                            lineNumber: 1174,
+                            lineNumber: 1224,
                             columnNumber: 25
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                    lineNumber: 932,
+                    lineNumber: 982,
                     columnNumber: 21
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-                lineNumber: 931,
+                lineNumber: 981,
+                columnNumber: 17
+            }, this),
+            showPasswordModal && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                style: {
+                    position: "fixed",
+                    inset: 0,
+                    background: "rgba(0,0,0,0.45)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    zIndex: 2000,
+                    padding: "1rem"
+                },
+                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                    style: {
+                        background: "#fff",
+                        borderRadius: 20,
+                        padding: "2rem",
+                        width: "100%",
+                        maxWidth: 420,
+                        boxShadow: "0 20px 40px rgba(0,0,0,0.15)"
+                    },
+                    children: [
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
+                            style: {
+                                fontSize: "1.25rem",
+                                fontWeight: 700,
+                                color: "#111827",
+                                marginBottom: "1.5rem"
+                            },
+                            children: "Change Password"
+                        }, void 0, false, {
+                            fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
+                            lineNumber: 1235,
+                            columnNumber: 25
+                        }, this),
+                        pwError && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                            style: {
+                                color: "#EF4444",
+                                fontSize: "0.875rem",
+                                marginBottom: "1rem",
+                                background: "#FEF2F2",
+                                padding: "0.75rem",
+                                borderRadius: 8
+                            },
+                            children: pwError
+                        }, void 0, false, {
+                            fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
+                            lineNumber: 1236,
+                            columnNumber: 37
+                        }, this),
+                        [
+                            "Current Password",
+                            "New Password",
+                            "Confirm New Password"
+                        ].map((label, i)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                style: {
+                                    marginBottom: "1rem"
+                                },
+                                children: [
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
+                                        style: {
+                                            display: "block",
+                                            fontSize: "0.8125rem",
+                                            fontWeight: 600,
+                                            color: "#374151",
+                                            marginBottom: 6
+                                        },
+                                        children: label
+                                    }, void 0, false, {
+                                        fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
+                                        lineNumber: 1239,
+                                        columnNumber: 33
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
+                                        type: "password",
+                                        placeholder: i === 1 ? "Min. 8 characters" : "",
+                                        value: i === 0 ? pwCurrent : i === 1 ? pwNew : pwConfirm,
+                                        onChange: (e)=>{
+                                            if (i === 0) setPwCurrent(e.target.value);
+                                            else if (i === 1) setPwNew(e.target.value);
+                                            else setPwConfirm(e.target.value);
+                                        },
+                                        style: {
+                                            width: "100%",
+                                            padding: "0.75rem",
+                                            border: "1px solid #E5E7EB",
+                                            borderRadius: 10,
+                                            fontSize: "0.9375rem",
+                                            color: "#111827",
+                                            background: "#F9FAFB",
+                                            boxSizing: "border-box"
+                                        }
+                                    }, void 0, false, {
+                                        fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
+                                        lineNumber: 1240,
+                                        columnNumber: 33
+                                    }, this)
+                                ]
+                            }, label, true, {
+                                fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
+                                lineNumber: 1238,
+                                columnNumber: 29
+                            }, this)),
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                            style: {
+                                display: "flex",
+                                gap: "0.75rem",
+                                marginTop: "1.25rem"
+                            },
+                            children: [
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                    onClick: ()=>{
+                                        setShowPasswordModal(false);
+                                        setPwCurrent("");
+                                        setPwNew("");
+                                        setPwConfirm("");
+                                        setPwError("");
+                                    },
+                                    style: {
+                                        flex: 1,
+                                        padding: "0.75rem",
+                                        border: "1px solid #E5E7EB",
+                                        borderRadius: 10,
+                                        background: "#fff",
+                                        color: "#374151",
+                                        fontWeight: 600,
+                                        cursor: "pointer"
+                                    },
+                                    children: "Cancel"
+                                }, void 0, false, {
+                                    fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
+                                    lineNumber: 1250,
+                                    columnNumber: 29
+                                }, this),
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                    onClick: handleChangePassword,
+                                    disabled: pwSaving,
+                                    style: {
+                                        flex: 1,
+                                        padding: "0.75rem",
+                                        border: "none",
+                                        borderRadius: 10,
+                                        background: pwSaving ? "#A5B4FC" : "#6366F1",
+                                        color: "#fff",
+                                        fontWeight: 700,
+                                        cursor: pwSaving ? "not-allowed" : "pointer"
+                                    },
+                                    children: pwSaving ? "Saving…" : "Update Password"
+                                }, void 0, false, {
+                                    fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
+                                    lineNumber: 1253,
+                                    columnNumber: 29
+                                }, this)
+                            ]
+                        }, void 0, true, {
+                            fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
+                            lineNumber: 1249,
+                            columnNumber: 25
+                        }, this)
+                    ]
+                }, void 0, true, {
+                    fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
+                    lineNumber: 1234,
+                    columnNumber: 21
+                }, this)
+            }, void 0, false, {
+                fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
+                lineNumber: 1233,
                 columnNumber: 17
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/Desktop/clock in:out/apps/web/src/components/WorkerDashboard.tsx",
-        lineNumber: 793,
+        lineNumber: 831,
         columnNumber: 9
     }, this);
 }
-_s(WorkerDashboard, "yxwgYwZrMPcGJnbJ7ytZ9aNjN2I=");
+_s(WorkerDashboard, "/Zs9Gt4k280/dfSkW/tjSVL5tjM=");
 _c = WorkerDashboard;
 var _c;
 __turbopack_context__.k.register(_c, "WorkerDashboard");
@@ -3194,7 +3464,7 @@ function DashboardPage() {
                         children: [
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
                                 className: "heading",
-                                children: "Workforce OS"
+                                children: "Kruto Tastes"
                             }, void 0, false, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/dashboard/page.tsx",
                                 lineNumber: 120,

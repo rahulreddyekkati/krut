@@ -61,10 +61,10 @@ var __turbopack_async_dependencies__ = __turbopack_handle_async_dependencies__([
 ;
 ;
 const prismaClientSingleton = ()=>{
-    const url = process.env.DATABASE_URL || "file:./dev.db";
-    if (url.startsWith("libsql://") || url.startsWith("https://")) {
+    const tursoUrl = process.env.TURSO_DATABASE_URL;
+    if (tursoUrl && (tursoUrl.startsWith("libsql://") || tursoUrl.startsWith("https://"))) {
         const libsql = (0, __TURBOPACK__imported__module__$5b$externals$5d2f40$libsql$2f$client__$5b$external$5d$__$2840$libsql$2f$client$2c$__esm_import$2c$__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$node_modules$2f40$libsql$2f$client$29$__["createClient"])({
-            url,
+            url: tursoUrl,
             authToken: process.env.TURSO_AUTH_TOKEN
         });
         const adapter = new __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$node_modules$2f40$prisma$2f$adapter$2d$libsql$2f$dist$2f$index$2e$mjs__$5b$app$2d$route$5d$__$28$ecmascript$29$__["PrismaLibSQL"](libsql);
@@ -72,7 +72,7 @@ const prismaClientSingleton = ()=>{
             adapter
         });
     }
-    // Fallback to native for local SQLite
+    // Fallback to native SQLite for local dev
     return new __TURBOPACK__imported__module__$5b$externals$5d2f40$prisma$2f$client__$5b$external$5d$__$2840$prisma$2f$client$2c$__cjs$2c$__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$node_modules$2f40$prisma$2f$client$29$__["PrismaClient"]();
 };
 const prisma = globalThis.prisma ?? prismaClientSingleton();
@@ -308,6 +308,8 @@ __turbopack_context__.s([
     ()=>getCurrentCycleDates,
     "getCycleDisplayName",
     ()=>getCycleDisplayName,
+    "getDatesForWeekdays",
+    ()=>getDatesForWeekdays,
     "getPreviousCycleDates",
     ()=>getPreviousCycleDates
 ]);
@@ -356,18 +358,55 @@ function getPreviousCycleDates(baseDate = new Date()) {
 }
 function getClosedCycles(count = 6) {
     const cycles = [];
-    let currentBase = new Date();
-    // Start from the most recent closed cycle
-    // If today is 16th+, the 1-15 cycle is closed.
-    // If today is 1-15, the 16-31 of prev month is closed.
+    const now = new Date();
+    let year = now.getFullYear();
+    let month = now.getMonth();
+    // true = first half (1-15), false = second half (16-end)
+    let firstHalf;
+    if (now.getDate() <= 15) {
+        // Current cycle is first half → most recent closed is second half of previous month
+        if (month === 0) {
+            month = 11;
+            year--;
+        } else {
+            month--;
+        }
+        firstHalf = false;
+    } else {
+        // Current cycle is second half → most recent closed is first half of current month
+        firstHalf = true;
+    }
     for(let i = 0; i < count; i++){
-        const prev = getPreviousCycleDates(currentBase);
+        let start, end;
+        if (firstHalf) {
+            start = new Date(year, month, 1, 0, 0, 0, 0);
+            end = new Date(year, month, 15, 23, 59, 59, 999);
+        } else {
+            start = new Date(year, month, 16, 0, 0, 0, 0);
+            end = new Date(year, month + 1, 0, 23, 59, 59, 999);
+        }
         cycles.push({
-            ...prev,
-            label: getCycleDisplayName(prev) + ` (${prev.start.getFullYear()})`
+            start,
+            end,
+            label: getCycleDisplayName({
+                start,
+                end
+            }) + ` (${year})`
         });
-        // Move currentBase back to before the start of this cycle to get the next previous
-        currentBase = new Date(prev.start.getTime() - 1000);
+        // Step back one half-cycle
+        if (firstHalf) {
+            // First half → previous is second half of prior month
+            if (month === 0) {
+                month = 11;
+                year--;
+            } else {
+                month--;
+            }
+            firstHalf = false;
+        } else {
+            // Second half → previous is first half of same month
+            firstHalf = true;
+        }
     }
     return cycles;
 }
@@ -377,6 +416,20 @@ function getCycleDisplayName(dates) {
         day: 'numeric'
     };
     return `${dates.start.toLocaleDateString(undefined, options)} - ${dates.end.toLocaleDateString(undefined, options)}`;
+}
+function getDatesForWeekdays(weekdays, start, end) {
+    const results = [];
+    const cursor = new Date(start);
+    cursor.setHours(0, 0, 0, 0);
+    const finish = new Date(end);
+    finish.setHours(23, 59, 59, 999);
+    while(cursor <= finish){
+        if (weekdays.includes(cursor.getDay())) {
+            results.push(new Date(cursor));
+        }
+        cursor.setDate(cursor.getDate() + 1);
+    }
+    return results;
 }
 }),
 "[project]/Desktop/clock in:out/apps/web/src/app/api/users/route.ts [app-route] (ecmascript)", ((__turbopack_context__) => {
@@ -501,7 +554,7 @@ async function GET() {
             let assignedHours = 0;
             let workedHours = 0;
             let totalReimbursement = 0;
-            const seenJobRecaps = new Set();
+            let totalBonus = 0;
             user.jobs.forEach((assignment)=>{
                 const job = assignment.job;
                 if (job && job.startTimeStr && job.endTimeStr) {
@@ -509,8 +562,7 @@ async function GET() {
                     const [eh, em] = job.endTimeStr.split(":").map(Number);
                     let durationMins = eh * 60 + em - (sh * 60 + sm);
                     if (durationMins < 0) durationMins += 24 * 60;
-                    const duration = durationMins / 60;
-                    assignedHours += duration;
+                    assignedHours += durationMins / 60;
                     if (typeof assignment.workedHours === 'number') {
                         workedHours += assignment.workedHours;
                     } else if (assignment.clockIn && assignment.clockOut) {
@@ -522,15 +574,18 @@ async function GET() {
                             workedHours += Math.max(0, (diffMins - breakMinutes) / 60);
                         }
                     }
-                    if (assignment.recap?.reimbursement && assignment.recap?.status === "APPROVED") {
-                        totalReimbursement += assignment.recap.reimbursement;
+                    // Only count bonus and reimbursement for completed/approved shifts
+                    if (assignment.recap?.status === "APPROVED") {
+                        if (assignment.recap.reimbursement) totalReimbursement += assignment.recap.reimbursement;
+                        if (job.bonus) totalBonus += job.bonus;
                     }
                 }
             });
             return {
                 assignedHours,
                 workedHours,
-                totalReimbursement
+                totalReimbursement,
+                totalBonus
             };
         };
         // Fetch approved releases this week to subtract from assignedHours
@@ -557,7 +612,7 @@ async function GET() {
             releasesByWorker[rel.workerId].push(rel);
         }
         const usersWithHours = users.map((user)=>{
-            let { assignedHours, workedHours, totalReimbursement } = calcHours(user);
+            let { assignedHours, workedHours, totalReimbursement, totalBonus } = calcHours(user);
             // Subtract released shift hours
             const userReleases = releasesByWorker[user.id] || [];
             for (const rel of userReleases){
@@ -576,12 +631,13 @@ async function GET() {
                 ...userData,
                 assignedHours: parseFloat(assignedHours.toFixed(2)),
                 workedHours: finalWorkedHours,
-                totalReimbursement: parseFloat(totalReimbursement.toFixed(2))
+                totalReimbursement: parseFloat(totalReimbursement.toFixed(2)),
+                totalBonus: parseFloat(totalBonus.toFixed(2))
             };
         });
         return __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json(usersWithHours);
     } catch (error) {
-        console.error("DEBUG: GET Users error full details:", JSON.stringify(error, Object.getOwnPropertyNames(error)));
+        console.error("GET Users error:", error);
         return __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
             error: "Internal server error",
             details: error.message

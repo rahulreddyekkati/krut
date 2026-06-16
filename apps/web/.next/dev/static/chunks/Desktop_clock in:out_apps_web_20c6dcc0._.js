@@ -102,16 +102,236 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$
 var __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$navigation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/Desktop/clock in:out/apps/web/node_modules/next/navigation.js [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$src$2f$app$2f$admin$2f$LogoutButton$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/Desktop/clock in:out/apps/web/src/app/admin/LogoutButton.tsx [app-client] (ecmascript)");
 ;
-var _s = __turbopack_context__.k.signature();
+var _s = __turbopack_context__.k.signature(), _s1 = __turbopack_context__.k.signature();
 "use client";
 ;
 ;
 ;
 ;
 ;
-function AdminLayout({ children }) {
+function ChangePasswordModal({ onClose }) {
     _s();
+    const [current, setCurrent] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])("");
+    const [next, setNext] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])("");
+    const [confirm, setConfirm] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])("");
+    const [error, setError] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])("");
+    const [saving, setSaving] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
+    const handleSave = async ()=>{
+        setError("");
+        if (!current || !next || !confirm) {
+            setError("All fields are required.");
+            return;
+        }
+        if (next.length < 8) {
+            setError("New password must be at least 8 characters.");
+            return;
+        }
+        if (next !== confirm) {
+            setError("New passwords do not match.");
+            return;
+        }
+        setSaving(true);
+        try {
+            const res = await fetch("/api/auth/profile", {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    currentPassword: current,
+                    newPassword: next
+                })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                onClose();
+            } else {
+                setError(data.error || "Failed to update password.");
+            }
+        } catch  {
+            setError("Network error. Please try again.");
+        } finally{
+            setSaving(false);
+        }
+    };
+    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+        style: {
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 2000,
+            padding: "1rem"
+        },
+        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+            style: {
+                background: "#fff",
+                borderRadius: 20,
+                padding: "2rem",
+                width: "100%",
+                maxWidth: 420,
+                boxShadow: "0 20px 40px rgba(0,0,0,0.15)"
+            },
+            children: [
+                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
+                    style: {
+                        fontSize: "1.25rem",
+                        fontWeight: 700,
+                        color: "#111827",
+                        marginBottom: "1.5rem"
+                    },
+                    children: "Change Password"
+                }, void 0, false, {
+                    fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
+                    lineNumber: 38,
+                    columnNumber: 17
+                }, this),
+                error && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                    style: {
+                        color: "#EF4444",
+                        fontSize: "0.875rem",
+                        marginBottom: "1rem",
+                        background: "#FEF2F2",
+                        padding: "0.75rem",
+                        borderRadius: 8
+                    },
+                    children: error
+                }, void 0, false, {
+                    fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
+                    lineNumber: 39,
+                    columnNumber: 27
+                }, this),
+                [
+                    [
+                        "Current Password",
+                        current,
+                        setCurrent
+                    ],
+                    [
+                        "New Password",
+                        next,
+                        setNext
+                    ],
+                    [
+                        "Confirm New Password",
+                        confirm,
+                        setConfirm
+                    ]
+                ].map(([label, val, setter])=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        style: {
+                            marginBottom: "1rem"
+                        },
+                        children: [
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
+                                style: {
+                                    display: "block",
+                                    fontSize: "0.8125rem",
+                                    fontWeight: 600,
+                                    color: "#374151",
+                                    marginBottom: 6
+                                },
+                                children: label
+                            }, void 0, false, {
+                                fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
+                                lineNumber: 42,
+                                columnNumber: 25
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
+                                type: "password",
+                                value: val,
+                                onChange: (e)=>setter(e.target.value),
+                                placeholder: label === "New Password" ? "Min. 8 characters" : "",
+                                style: {
+                                    width: "100%",
+                                    padding: "0.75rem",
+                                    border: "1px solid #E5E7EB",
+                                    borderRadius: 10,
+                                    fontSize: "0.9375rem",
+                                    color: "#111827",
+                                    background: "#F9FAFB",
+                                    boxSizing: "border-box"
+                                }
+                            }, void 0, false, {
+                                fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
+                                lineNumber: 43,
+                                columnNumber: 25
+                            }, this)
+                        ]
+                    }, label, true, {
+                        fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
+                        lineNumber: 41,
+                        columnNumber: 21
+                    }, this)),
+                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                    style: {
+                        display: "flex",
+                        gap: "0.75rem",
+                        marginTop: "1.25rem"
+                    },
+                    children: [
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                            onClick: onClose,
+                            style: {
+                                flex: 1,
+                                padding: "0.75rem",
+                                border: "1px solid #E5E7EB",
+                                borderRadius: 10,
+                                background: "#fff",
+                                color: "#374151",
+                                fontWeight: 600,
+                                cursor: "pointer"
+                            },
+                            children: "Cancel"
+                        }, void 0, false, {
+                            fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
+                            lineNumber: 49,
+                            columnNumber: 21
+                        }, this),
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                            onClick: handleSave,
+                            disabled: saving,
+                            style: {
+                                flex: 1,
+                                padding: "0.75rem",
+                                border: "none",
+                                borderRadius: 10,
+                                background: saving ? "#A5B4FC" : "#6366F1",
+                                color: "#fff",
+                                fontWeight: 700,
+                                cursor: saving ? "not-allowed" : "pointer"
+                            },
+                            children: saving ? "Saving…" : "Update Password"
+                        }, void 0, false, {
+                            fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
+                            lineNumber: 50,
+                            columnNumber: 21
+                        }, this)
+                    ]
+                }, void 0, true, {
+                    fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
+                    lineNumber: 48,
+                    columnNumber: 17
+                }, this)
+            ]
+        }, void 0, true, {
+            fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
+            lineNumber: 37,
+            columnNumber: 13
+        }, this)
+    }, void 0, false, {
+        fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
+        lineNumber: 36,
+        columnNumber: 9
+    }, this);
+}
+_s(ChangePasswordModal, "43Rzw8ZlwDkBR1QuJTAqaBDfCL8=");
+_c = ChangePasswordModal;
+function AdminLayout({ children }) {
+    _s1();
     const [isSidebarOpen, setIsSidebarOpen] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
+    const [showPasswordModal, setShowPasswordModal] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
     const [stats, setStats] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])({
         role: ""
     });
@@ -179,7 +399,7 @@ function AdminLayout({ children }) {
             children: children
         }, void 0, false, {
             fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-            lineNumber: 57,
+            lineNumber: 108,
             columnNumber: 13
         }, this);
     }
@@ -191,10 +411,10 @@ function AdminLayout({ children }) {
                 children: [
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                         className: __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$src$2f$app$2f$admin$2f$admin$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].mobileTitle,
-                        children: "Workforce OS"
+                        children: "Kruto Tastes"
                     }, void 0, false, {
                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                        lineNumber: 67,
+                        lineNumber: 118,
                         columnNumber: 17
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -219,12 +439,12 @@ function AdminLayout({ children }) {
                                                 d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
                                             }, void 0, false, {
                                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                                                lineNumber: 72,
+                                                lineNumber: 123,
                                                 columnNumber: 33
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                                            lineNumber: 71,
+                                            lineNumber: 122,
                                             columnNumber: 29
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -232,18 +452,18 @@ function AdminLayout({ children }) {
                                             children: "2"
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                                            lineNumber: 74,
+                                            lineNumber: 125,
                                             columnNumber: 29
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                                    lineNumber: 70,
+                                    lineNumber: 121,
                                     columnNumber: 25
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                                lineNumber: 69,
+                                lineNumber: 120,
                                 columnNumber: 21
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
@@ -266,20 +486,20 @@ function AdminLayout({ children }) {
                                                     d: "M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"
                                                 }, void 0, false, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                                                    lineNumber: 80,
+                                                    lineNumber: 131,
                                                     columnNumber: 33
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
                                                     d: "M13.73 21a2 2 0 0 1-3.46 0"
                                                 }, void 0, false, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                                                    lineNumber: 81,
+                                                    lineNumber: 132,
                                                     columnNumber: 33
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                                            lineNumber: 79,
+                                            lineNumber: 130,
                                             columnNumber: 29
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -287,18 +507,18 @@ function AdminLayout({ children }) {
                                             children: "5"
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                                            lineNumber: 83,
+                                            lineNumber: 134,
                                             columnNumber: 29
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                                    lineNumber: 78,
+                                    lineNumber: 129,
                                     columnNumber: 25
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                                lineNumber: 77,
+                                lineNumber: 128,
                                 columnNumber: 21
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -321,7 +541,7 @@ function AdminLayout({ children }) {
                                             y2: "12"
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                                            lineNumber: 88,
+                                            lineNumber: 139,
                                             columnNumber: 29
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("line", {
@@ -331,7 +551,7 @@ function AdminLayout({ children }) {
                                             y2: "6"
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                                            lineNumber: 89,
+                                            lineNumber: 140,
                                             columnNumber: 29
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("line", {
@@ -341,30 +561,30 @@ function AdminLayout({ children }) {
                                             y2: "18"
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                                            lineNumber: 90,
+                                            lineNumber: 141,
                                             columnNumber: 29
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                                    lineNumber: 87,
+                                    lineNumber: 138,
                                     columnNumber: 25
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                                lineNumber: 86,
+                                lineNumber: 137,
                                 columnNumber: 21
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                        lineNumber: 68,
+                        lineNumber: 119,
                         columnNumber: 17
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                lineNumber: 66,
+                lineNumber: 117,
                 columnNumber: 13
             }, this),
             isSidebarOpen && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -372,7 +592,7 @@ function AdminLayout({ children }) {
                 onClick: ()=>setIsSidebarOpen(false)
             }, void 0, false, {
                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                lineNumber: 97,
+                lineNumber: 148,
                 columnNumber: 31
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("aside", {
@@ -386,7 +606,7 @@ function AdminLayout({ children }) {
                                 children: portalTitle
                             }, void 0, false, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                                lineNumber: 101,
+                                lineNumber: 152,
                                 columnNumber: 21
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -409,7 +629,7 @@ function AdminLayout({ children }) {
                                             y2: "18"
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                                            lineNumber: 104,
+                                            lineNumber: 155,
                                             columnNumber: 29
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("line", {
@@ -419,24 +639,24 @@ function AdminLayout({ children }) {
                                             y2: "18"
                                         }, void 0, false, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                                            lineNumber: 105,
+                                            lineNumber: 156,
                                             columnNumber: 29
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                                    lineNumber: 103,
+                                    lineNumber: 154,
                                     columnNumber: 25
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                                lineNumber: 102,
+                                lineNumber: 153,
                                 columnNumber: 21
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                        lineNumber: 100,
+                        lineNumber: 151,
                         columnNumber: 17
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("nav", {
@@ -448,7 +668,7 @@ function AdminLayout({ children }) {
                                 children: "Dashboard"
                             }, void 0, false, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                                lineNumber: 110,
+                                lineNumber: 161,
                                 columnNumber: 21
                             }, this),
                             role === "ADMIN" && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
@@ -457,7 +677,7 @@ function AdminLayout({ children }) {
                                 children: "Markets"
                             }, void 0, false, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                                lineNumber: 111,
+                                lineNumber: 162,
                                 columnNumber: 42
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
@@ -466,7 +686,7 @@ function AdminLayout({ children }) {
                                 children: "Stores"
                             }, void 0, false, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                                lineNumber: 112,
+                                lineNumber: 163,
                                 columnNumber: 21
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
@@ -475,7 +695,7 @@ function AdminLayout({ children }) {
                                 children: "Users"
                             }, void 0, false, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                                lineNumber: 113,
+                                lineNumber: 164,
                                 columnNumber: 21
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
@@ -484,7 +704,7 @@ function AdminLayout({ children }) {
                                 children: "Jobs"
                             }, void 0, false, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                                lineNumber: 114,
+                                lineNumber: 165,
                                 columnNumber: 21
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
@@ -493,7 +713,7 @@ function AdminLayout({ children }) {
                                 children: "Inventory Items"
                             }, void 0, false, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                                lineNumber: 115,
+                                lineNumber: 166,
                                 columnNumber: 21
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
@@ -502,7 +722,7 @@ function AdminLayout({ children }) {
                                 children: "Reports"
                             }, void 0, false, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                                lineNumber: 116,
+                                lineNumber: 167,
                                 columnNumber: 21
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
@@ -524,13 +744,13 @@ function AdminLayout({ children }) {
                                         }
                                     }, void 0, false, {
                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                                        lineNumber: 119,
+                                        lineNumber: 170,
                                         columnNumber: 49
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                                lineNumber: 117,
+                                lineNumber: 168,
                                 columnNumber: 21
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
@@ -552,13 +772,13 @@ function AdminLayout({ children }) {
                                         }
                                     }, void 0, false, {
                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                                        lineNumber: 123,
+                                        lineNumber: 174,
                                         columnNumber: 47
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                                lineNumber: 121,
+                                lineNumber: 172,
                                 columnNumber: 21
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
@@ -580,13 +800,13 @@ function AdminLayout({ children }) {
                                         }
                                     }, void 0, false, {
                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                                        lineNumber: 127,
+                                        lineNumber: 178,
                                         columnNumber: 55
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                                lineNumber: 125,
+                                lineNumber: 176,
                                 columnNumber: 21
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
@@ -608,37 +828,59 @@ function AdminLayout({ children }) {
                                         }
                                     }, void 0, false, {
                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                                        lineNumber: 131,
+                                        lineNumber: 182,
                                         columnNumber: 55
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                                lineNumber: 129,
+                                lineNumber: 180,
                                 columnNumber: 21
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                        lineNumber: 109,
+                        lineNumber: 160,
                         columnNumber: 17
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                         className: __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$src$2f$app$2f$admin$2f$admin$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].sidebarFooter,
-                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$src$2f$app$2f$admin$2f$LogoutButton$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {}, void 0, false, {
-                            fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                            lineNumber: 135,
-                            columnNumber: 21
-                        }, this)
-                    }, void 0, false, {
+                        children: [
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                onClick: ()=>setShowPasswordModal(true),
+                                style: {
+                                    width: "100%",
+                                    padding: "0.75rem 1rem",
+                                    marginBottom: "0.5rem",
+                                    background: "rgba(99,102,241,0.1)",
+                                    color: "#6366f1",
+                                    border: "1px solid rgba(99,102,241,0.3)",
+                                    borderRadius: 8,
+                                    cursor: "pointer",
+                                    fontWeight: 600,
+                                    fontSize: "0.875rem"
+                                },
+                                children: "Change Password"
+                            }, void 0, false, {
+                                fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
+                                lineNumber: 186,
+                                columnNumber: 21
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$src$2f$app$2f$admin$2f$LogoutButton$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {}, void 0, false, {
+                                fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
+                                lineNumber: 197,
+                                columnNumber: 21
+                            }, this)
+                        ]
+                    }, void 0, true, {
                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                        lineNumber: 134,
+                        lineNumber: 185,
                         columnNumber: 17
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                lineNumber: 99,
+                lineNumber: 150,
                 columnNumber: 13
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("main", {
@@ -646,24 +888,32 @@ function AdminLayout({ children }) {
                 children: children
             }, void 0, false, {
                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-                lineNumber: 138,
+                lineNumber: 200,
                 columnNumber: 13
+            }, this),
+            showPasswordModal && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(ChangePasswordModal, {
+                onClose: ()=>setShowPasswordModal(false)
+            }, void 0, false, {
+                fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
+                lineNumber: 203,
+                columnNumber: 35
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/layout.tsx",
-        lineNumber: 64,
+        lineNumber: 115,
         columnNumber: 9
     }, this);
 }
-_s(AdminLayout, "ZYk1i8vnD4bohLWNp4ZLigqzrEk=", false, function() {
+_s1(AdminLayout, "dTd7rT8RWYmsJGqVdFieEAsZzZM=", false, function() {
     return [
         __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$navigation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["usePathname"]
     ];
 });
-_c = AdminLayout;
-var _c;
-__turbopack_context__.k.register(_c, "AdminLayout");
+_c1 = AdminLayout;
+var _c, _c1;
+__turbopack_context__.k.register(_c, "ChangePasswordModal");
+__turbopack_context__.k.register(_c1, "AdminLayout");
 if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelpers !== null) {
     __turbopack_context__.k.registerExports(__turbopack_context__.m, globalThis.$RefreshHelpers$);
 }

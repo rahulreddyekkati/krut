@@ -44,6 +44,8 @@ __turbopack_context__.s([
     ()=>getCurrentCycleDates,
     "getCycleDisplayName",
     ()=>getCycleDisplayName,
+    "getDatesForWeekdays",
+    ()=>getDatesForWeekdays,
     "getPreviousCycleDates",
     ()=>getPreviousCycleDates
 ]);
@@ -92,18 +94,55 @@ function getPreviousCycleDates(baseDate = new Date()) {
 }
 function getClosedCycles(count = 6) {
     const cycles = [];
-    let currentBase = new Date();
-    // Start from the most recent closed cycle
-    // If today is 16th+, the 1-15 cycle is closed.
-    // If today is 1-15, the 16-31 of prev month is closed.
+    const now = new Date();
+    let year = now.getFullYear();
+    let month = now.getMonth();
+    // true = first half (1-15), false = second half (16-end)
+    let firstHalf;
+    if (now.getDate() <= 15) {
+        // Current cycle is first half → most recent closed is second half of previous month
+        if (month === 0) {
+            month = 11;
+            year--;
+        } else {
+            month--;
+        }
+        firstHalf = false;
+    } else {
+        // Current cycle is second half → most recent closed is first half of current month
+        firstHalf = true;
+    }
     for(let i = 0; i < count; i++){
-        const prev = getPreviousCycleDates(currentBase);
+        let start, end;
+        if (firstHalf) {
+            start = new Date(year, month, 1, 0, 0, 0, 0);
+            end = new Date(year, month, 15, 23, 59, 59, 999);
+        } else {
+            start = new Date(year, month, 16, 0, 0, 0, 0);
+            end = new Date(year, month + 1, 0, 23, 59, 59, 999);
+        }
         cycles.push({
-            ...prev,
-            label: getCycleDisplayName(prev) + ` (${prev.start.getFullYear()})`
+            start,
+            end,
+            label: getCycleDisplayName({
+                start,
+                end
+            }) + ` (${year})`
         });
-        // Move currentBase back to before the start of this cycle to get the next previous
-        currentBase = new Date(prev.start.getTime() - 1000);
+        // Step back one half-cycle
+        if (firstHalf) {
+            // First half → previous is second half of prior month
+            if (month === 0) {
+                month = 11;
+                year--;
+            } else {
+                month--;
+            }
+            firstHalf = false;
+        } else {
+            // Second half → previous is first half of same month
+            firstHalf = true;
+        }
     }
     return cycles;
 }
@@ -113,6 +152,20 @@ function getCycleDisplayName(dates) {
         day: 'numeric'
     };
     return `${dates.start.toLocaleDateString(undefined, options)} - ${dates.end.toLocaleDateString(undefined, options)}`;
+}
+function getDatesForWeekdays(weekdays, start, end) {
+    const results = [];
+    const cursor = new Date(start);
+    cursor.setHours(0, 0, 0, 0);
+    const finish = new Date(end);
+    finish.setHours(23, 59, 59, 999);
+    while(cursor <= finish){
+        if (weekdays.includes(cursor.getDay())) {
+            results.push(new Date(cursor));
+        }
+        cursor.setDate(cursor.getDate() + 1);
+    }
+    return results;
 }
 if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelpers !== null) {
     __turbopack_context__.k.registerExports(__turbopack_context__.m, globalThis.$RefreshHelpers$);
@@ -463,6 +516,7 @@ var _s = __turbopack_context__.k.signature();
 function AnalyticsDashboard({ startDate, endDate }) {
     _s();
     const [data, setData] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
+    const [workers, setWorkers] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])([]);
     const [loading, setLoading] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(true);
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
         "AnalyticsDashboard.useEffect": ()=>{
@@ -471,9 +525,14 @@ function AnalyticsDashboard({ startDate, endDate }) {
                     if (!startDate || !endDate) return;
                     setLoading(true);
                     try {
-                        const res = await fetch(`/api/admin/reports/analytics?startDate=${startDate}&endDate=${endDate}`);
-                        if (res.ok) {
-                            setData(await res.json());
+                        const [analyticsRes, perfRes] = await Promise.all([
+                            fetch(`/api/admin/reports/analytics?startDate=${startDate}&endDate=${endDate}`),
+                            fetch(`/api/admin/reports/worker-performance?startDate=${startDate}&endDate=${endDate}`)
+                        ]);
+                        if (analyticsRes.ok) setData(await analyticsRes.json());
+                        if (perfRes.ok) {
+                            const d = await perfRes.json();
+                            setWorkers(d.workers || []);
                         }
                     } catch (error) {
                         console.error("Failed to fetch analytics", error);
@@ -496,20 +555,20 @@ function AnalyticsDashboard({ startDate, endDate }) {
                     className: __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$src$2f$app$2f$admin$2f$reports$2f$reports$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].spinner
                 }, void 0, false, {
                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                    lineNumber: 36,
+                    lineNumber: 39,
                     columnNumber: 17
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                     children: "Calculating insights..."
                 }, void 0, false, {
                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                    lineNumber: 37,
+                    lineNumber: 40,
                     columnNumber: 17
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-            lineNumber: 35,
+            lineNumber: 38,
             columnNumber: 13
         }, this);
     }
@@ -525,7 +584,7 @@ function AnalyticsDashboard({ startDate, endDate }) {
                     children: "No recorded data found for the selected period."
                 }, void 0, false, {
                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                    lineNumber: 45,
+                    lineNumber: 48,
                     columnNumber: 17
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -536,13 +595,13 @@ function AnalyticsDashboard({ startDate, endDate }) {
                     children: "Ensure recaps are submitted and approved to see analytics."
                 }, void 0, false, {
                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                    lineNumber: 46,
+                    lineNumber: 49,
                     columnNumber: 17
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-            lineNumber: 44,
+            lineNumber: 47,
             columnNumber: 13
         }, this);
     }
@@ -564,7 +623,7 @@ function AnalyticsDashboard({ startDate, endDate }) {
                                 children: "TOTAL SALES"
                             }, void 0, false, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                                lineNumber: 56,
+                                lineNumber: 59,
                                 columnNumber: 21
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
@@ -582,13 +641,13 @@ function AnalyticsDashboard({ startDate, endDate }) {
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                                lineNumber: 57,
+                                lineNumber: 60,
                                 columnNumber: 21
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                        lineNumber: 55,
+                        lineNumber: 58,
                         columnNumber: 17
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -603,7 +662,7 @@ function AnalyticsDashboard({ startDate, endDate }) {
                                 children: "CUSTOMERS ENGAGED"
                             }, void 0, false, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                                lineNumber: 62,
+                                lineNumber: 65,
                                 columnNumber: 21
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
@@ -616,13 +675,13 @@ function AnalyticsDashboard({ startDate, endDate }) {
                                 children: data.summary.totalCustomers.toLocaleString()
                             }, void 0, false, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                                lineNumber: 63,
+                                lineNumber: 66,
                                 columnNumber: 21
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                        lineNumber: 61,
+                        lineNumber: 64,
                         columnNumber: 17
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -637,7 +696,7 @@ function AnalyticsDashboard({ startDate, endDate }) {
                                 children: "EFFICIENCY (Sales/Customer)"
                             }, void 0, false, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                                lineNumber: 68,
+                                lineNumber: 71,
                                 columnNumber: 21
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
@@ -653,13 +712,13 @@ function AnalyticsDashboard({ startDate, endDate }) {
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                                lineNumber: 69,
+                                lineNumber: 72,
                                 columnNumber: 21
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                        lineNumber: 67,
+                        lineNumber: 70,
                         columnNumber: 17
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -674,7 +733,7 @@ function AnalyticsDashboard({ startDate, endDate }) {
                                 children: "TOTAL REIMbursements"
                             }, void 0, false, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                                lineNumber: 74,
+                                lineNumber: 77,
                                 columnNumber: 21
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
@@ -690,19 +749,19 @@ function AnalyticsDashboard({ startDate, endDate }) {
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                                lineNumber: 75,
+                                lineNumber: 78,
                                 columnNumber: 21
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                        lineNumber: 73,
+                        lineNumber: 76,
                         columnNumber: 17
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                lineNumber: 54,
+                lineNumber: 57,
                 columnNumber: 13
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -724,7 +783,7 @@ function AnalyticsDashboard({ startDate, endDate }) {
                                         children: "Top Performing Stores"
                                     }, void 0, false, {
                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                                        lineNumber: 85,
+                                        lineNumber: 88,
                                         columnNumber: 25
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -732,13 +791,13 @@ function AnalyticsDashboard({ startDate, endDate }) {
                                         children: "By Gross Sales"
                                     }, void 0, false, {
                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                                        lineNumber: 86,
+                                        lineNumber: 89,
                                         columnNumber: 25
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                                lineNumber: 84,
+                                lineNumber: 87,
                                 columnNumber: 21
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("table", {
@@ -764,12 +823,12 @@ function AnalyticsDashboard({ startDate, endDate }) {
                                                         children: store.name
                                                     }, void 0, false, {
                                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                                                        lineNumber: 93,
+                                                        lineNumber: 96,
                                                         columnNumber: 41
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                                                    lineNumber: 92,
+                                                    lineNumber: 95,
                                                     columnNumber: 37
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -788,34 +847,34 @@ function AnalyticsDashboard({ startDate, endDate }) {
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                                                        lineNumber: 96,
+                                                        lineNumber: 99,
                                                         columnNumber: 41
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                                                    lineNumber: 95,
+                                                    lineNumber: 98,
                                                     columnNumber: 37
                                                 }, this)
                                             ]
                                         }, i, true, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                                            lineNumber: 91,
+                                            lineNumber: 94,
                                             columnNumber: 33
                                         }, this))
                                 }, void 0, false, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                                    lineNumber: 89,
+                                    lineNumber: 92,
                                     columnNumber: 25
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                                lineNumber: 88,
+                                lineNumber: 91,
                                 columnNumber: 21
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                        lineNumber: 83,
+                        lineNumber: 86,
                         columnNumber: 17
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -829,7 +888,7 @@ function AnalyticsDashboard({ startDate, endDate }) {
                                         children: "Inventory Summary"
                                     }, void 0, false, {
                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                                        lineNumber: 107,
+                                        lineNumber: 110,
                                         columnNumber: 25
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -837,13 +896,13 @@ function AnalyticsDashboard({ startDate, endDate }) {
                                         children: "Quantity Sold"
                                     }, void 0, false, {
                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                                        lineNumber: 108,
+                                        lineNumber: 111,
                                         columnNumber: 25
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                                lineNumber: 106,
+                                lineNumber: 109,
                                 columnNumber: 21
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("table", {
@@ -869,12 +928,12 @@ function AnalyticsDashboard({ startDate, endDate }) {
                                                         children: sku.name
                                                     }, void 0, false, {
                                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                                                        lineNumber: 115,
+                                                        lineNumber: 118,
                                                         columnNumber: 41
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                                                    lineNumber: 114,
+                                                    lineNumber: 117,
                                                     columnNumber: 37
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -893,40 +952,40 @@ function AnalyticsDashboard({ startDate, endDate }) {
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                                                        lineNumber: 118,
+                                                        lineNumber: 121,
                                                         columnNumber: 41
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                                                    lineNumber: 117,
+                                                    lineNumber: 120,
                                                     columnNumber: 37
                                                 }, this)
                                             ]
                                         }, i, true, {
                                             fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                                            lineNumber: 113,
+                                            lineNumber: 116,
                                             columnNumber: 33
                                         }, this))
                                 }, void 0, false, {
                                     fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                                    lineNumber: 111,
+                                    lineNumber: 114,
                                     columnNumber: 25
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                                lineNumber: 110,
+                                lineNumber: 113,
                                 columnNumber: 21
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                        lineNumber: 105,
+                        lineNumber: 108,
                         columnNumber: 17
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                lineNumber: 81,
+                lineNumber: 84,
                 columnNumber: 13
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -942,12 +1001,12 @@ function AnalyticsDashboard({ startDate, endDate }) {
                             children: "Daily Performance Trend"
                         }, void 0, false, {
                             fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                            lineNumber: 130,
+                            lineNumber: 133,
                             columnNumber: 21
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                        lineNumber: 129,
+                        lineNumber: 132,
                         columnNumber: 17
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -976,7 +1035,7 @@ function AnalyticsDashboard({ startDate, endDate }) {
                                         })
                                     }, void 0, false, {
                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                                        lineNumber: 135,
+                                        lineNumber: 138,
                                         columnNumber: 29
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -991,7 +1050,7 @@ function AnalyticsDashboard({ startDate, endDate }) {
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                                        lineNumber: 136,
+                                        lineNumber: 139,
                                         columnNumber: 29
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1005,34 +1064,439 @@ function AnalyticsDashboard({ startDate, endDate }) {
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                                        lineNumber: 137,
+                                        lineNumber: 140,
                                         columnNumber: 29
                                     }, this)
                                 ]
                             }, day.date, true, {
                                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                                lineNumber: 134,
+                                lineNumber: 137,
                                 columnNumber: 25
                             }, this))
                     }, void 0, false, {
                         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                        lineNumber: 132,
+                        lineNumber: 135,
                         columnNumber: 17
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-                lineNumber: 128,
+                lineNumber: 131,
                 columnNumber: 13
+            }, this),
+            workers.length > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                className: "card glass",
+                style: {
+                    marginTop: "1.5rem"
+                },
+                children: [
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        className: __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$src$2f$app$2f$admin$2f$reports$2f$reports$2e$module$2e$css__$5b$app$2d$client$5d$__$28$css__module$29$__["default"].cardHeader,
+                        children: [
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h4", {
+                                className: "heading h4",
+                                children: "Worker Performance"
+                            }, void 0, false, {
+                                fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
+                                lineNumber: 150,
+                                columnNumber: 25
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                className: "text-secondary",
+                                children: "Ranked by avg sales per shift — based on approved recaps"
+                            }, void 0, false, {
+                                fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
+                                lineNumber: 151,
+                                columnNumber: 25
+                            }, this)
+                        ]
+                    }, void 0, true, {
+                        fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
+                        lineNumber: 149,
+                        columnNumber: 21
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        style: {
+                            overflowX: "auto",
+                            marginTop: "1rem"
+                        },
+                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("table", {
+                            style: {
+                                width: "100%",
+                                borderCollapse: "collapse",
+                                fontSize: "0.875rem"
+                            },
+                            children: [
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("thead", {
+                                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("tr", {
+                                        style: {
+                                            borderBottom: "2px solid var(--border-color)"
+                                        },
+                                        children: [
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
+                                                style: {
+                                                    padding: "0.5rem 0.75rem",
+                                                    textAlign: "left",
+                                                    fontWeight: 700,
+                                                    color: "var(--secondary)",
+                                                    fontSize: "0.75rem",
+                                                    textTransform: "uppercase",
+                                                    letterSpacing: "0.05em"
+                                                },
+                                                children: "#"
+                                            }, void 0, false, {
+                                                fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
+                                                lineNumber: 157,
+                                                columnNumber: 37
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
+                                                style: {
+                                                    padding: "0.5rem 0.75rem",
+                                                    textAlign: "left",
+                                                    fontWeight: 700,
+                                                    color: "var(--secondary)",
+                                                    fontSize: "0.75rem",
+                                                    textTransform: "uppercase",
+                                                    letterSpacing: "0.05em"
+                                                },
+                                                children: "Worker"
+                                            }, void 0, false, {
+                                                fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
+                                                lineNumber: 158,
+                                                columnNumber: 37
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
+                                                style: {
+                                                    padding: "0.5rem 0.75rem",
+                                                    textAlign: "center",
+                                                    fontWeight: 700,
+                                                    color: "var(--secondary)",
+                                                    fontSize: "0.75rem",
+                                                    textTransform: "uppercase",
+                                                    letterSpacing: "0.05em"
+                                                },
+                                                children: "Shifts"
+                                            }, void 0, false, {
+                                                fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
+                                                lineNumber: 159,
+                                                columnNumber: 37
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
+                                                style: {
+                                                    padding: "0.5rem 0.75rem",
+                                                    textAlign: "right",
+                                                    fontWeight: 700,
+                                                    color: "var(--secondary)",
+                                                    fontSize: "0.75rem",
+                                                    textTransform: "uppercase",
+                                                    letterSpacing: "0.05em"
+                                                },
+                                                children: "Avg Sales"
+                                            }, void 0, false, {
+                                                fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
+                                                lineNumber: 160,
+                                                columnNumber: 37
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
+                                                style: {
+                                                    padding: "0.5rem 0.75rem",
+                                                    textAlign: "right",
+                                                    fontWeight: 700,
+                                                    color: "var(--secondary)",
+                                                    fontSize: "0.75rem",
+                                                    textTransform: "uppercase",
+                                                    letterSpacing: "0.05em"
+                                                },
+                                                children: "Avg Customers"
+                                            }, void 0, false, {
+                                                fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
+                                                lineNumber: 161,
+                                                columnNumber: 37
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
+                                                style: {
+                                                    padding: "0.5rem 0.75rem",
+                                                    textAlign: "right",
+                                                    fontWeight: 700,
+                                                    color: "var(--secondary)",
+                                                    fontSize: "0.75rem",
+                                                    textTransform: "uppercase",
+                                                    letterSpacing: "0.05em"
+                                                },
+                                                children: "Avg Reimb"
+                                            }, void 0, false, {
+                                                fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
+                                                lineNumber: 162,
+                                                columnNumber: 37
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
+                                                style: {
+                                                    padding: "0.5rem 0.75rem",
+                                                    textAlign: "center",
+                                                    fontWeight: 700,
+                                                    color: "var(--secondary)",
+                                                    fontSize: "0.75rem",
+                                                    textTransform: "uppercase",
+                                                    letterSpacing: "0.05em"
+                                                },
+                                                children: "Typical Rush"
+                                            }, void 0, false, {
+                                                fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
+                                                lineNumber: 163,
+                                                columnNumber: 37
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
+                                                style: {
+                                                    padding: "0.5rem 0.75rem",
+                                                    textAlign: "center",
+                                                    fontWeight: 700,
+                                                    color: "var(--secondary)",
+                                                    fontSize: "0.75rem",
+                                                    textTransform: "uppercase",
+                                                    letterSpacing: "0.05em"
+                                                },
+                                                children: "Risk"
+                                            }, void 0, false, {
+                                                fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
+                                                lineNumber: 164,
+                                                columnNumber: 37
+                                            }, this)
+                                        ]
+                                    }, void 0, true, {
+                                        fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
+                                        lineNumber: 156,
+                                        columnNumber: 33
+                                    }, this)
+                                }, void 0, false, {
+                                    fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
+                                    lineNumber: 155,
+                                    columnNumber: 29
+                                }, this),
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("tbody", {
+                                    children: [
+                                        ...workers
+                                    ].sort((a, b)=>b.avgReceiptSales - a.avgReceiptSales).map((w, i)=>{
+                                        const rank = i + 1;
+                                        const total = workers.length;
+                                        const isTop = rank <= Math.ceil(total * 0.3);
+                                        const isBottom = rank > Math.floor(total * 0.7);
+                                        const rowBg = isTop ? "#f0fdf4" : isBottom ? "#fff7ed" : "transparent";
+                                        const riskColor = w.riskScore >= 60 ? "#dc2626" : w.riskScore >= 30 ? "#d97706" : "#16a34a";
+                                        const riskLabel = w.riskScore >= 60 ? "High" : w.riskScore >= 30 ? "Medium" : "Low";
+                                        return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("tr", {
+                                            style: {
+                                                borderBottom: "1px solid var(--border-color)",
+                                                background: rowBg
+                                            },
+                                            children: [
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
+                                                    style: {
+                                                        padding: "0.75rem",
+                                                        fontWeight: 800,
+                                                        color: isTop ? "#15803d" : isBottom ? "#92400e" : "var(--secondary)"
+                                                    },
+                                                    children: isTop ? "🥇" : isBottom ? "🔻" : rank
+                                                }, void 0, false, {
+                                                    fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
+                                                    lineNumber: 180,
+                                                    columnNumber: 49
+                                                }, this),
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
+                                                    style: {
+                                                        padding: "0.75rem"
+                                                    },
+                                                    children: [
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                            style: {
+                                                                fontWeight: 700
+                                                            },
+                                                            children: w.workerName
+                                                        }, void 0, false, {
+                                                            fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
+                                                            lineNumber: 184,
+                                                            columnNumber: 53
+                                                        }, this),
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                            style: {
+                                                                fontSize: "0.75rem",
+                                                                color: "var(--secondary)"
+                                                            },
+                                                            children: w.workerEmail
+                                                        }, void 0, false, {
+                                                            fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
+                                                            lineNumber: 185,
+                                                            columnNumber: 53
+                                                        }, this)
+                                                    ]
+                                                }, void 0, true, {
+                                                    fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
+                                                    lineNumber: 183,
+                                                    columnNumber: 49
+                                                }, this),
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
+                                                    style: {
+                                                        padding: "0.75rem",
+                                                        textAlign: "center",
+                                                        fontWeight: 600
+                                                    },
+                                                    children: w.shifts
+                                                }, void 0, false, {
+                                                    fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
+                                                    lineNumber: 187,
+                                                    columnNumber: 49
+                                                }, this),
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
+                                                    style: {
+                                                        padding: "0.75rem",
+                                                        textAlign: "right",
+                                                        fontWeight: 700,
+                                                        color: "var(--accent)"
+                                                    },
+                                                    children: [
+                                                        "$",
+                                                        w.avgReceiptSales.toFixed(2)
+                                                    ]
+                                                }, void 0, true, {
+                                                    fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
+                                                    lineNumber: 188,
+                                                    columnNumber: 49
+                                                }, this),
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
+                                                    style: {
+                                                        padding: "0.75rem",
+                                                        textAlign: "right",
+                                                        fontWeight: 600
+                                                    },
+                                                    children: w.avgCustomersSampled
+                                                }, void 0, false, {
+                                                    fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
+                                                    lineNumber: 189,
+                                                    columnNumber: 49
+                                                }, this),
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
+                                                    style: {
+                                                        padding: "0.75rem",
+                                                        textAlign: "right",
+                                                        color: w.avgReimbursement > w.avgReceiptSales ? "#dc2626" : "var(--text)",
+                                                        fontWeight: w.avgReimbursement > w.avgReceiptSales ? 700 : 500
+                                                    },
+                                                    children: [
+                                                        "$",
+                                                        w.avgReimbursement.toFixed(2),
+                                                        w.avgReimbursement > w.avgReceiptSales && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                            title: "Reimbursements exceed sales",
+                                                            children: " ⚠"
+                                                        }, void 0, false, {
+                                                            fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
+                                                            lineNumber: 192,
+                                                            columnNumber: 96
+                                                        }, this)
+                                                    ]
+                                                }, void 0, true, {
+                                                    fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
+                                                    lineNumber: 190,
+                                                    columnNumber: 49
+                                                }, this),
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
+                                                    style: {
+                                                        padding: "0.75rem",
+                                                        textAlign: "center"
+                                                    },
+                                                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                        style: {
+                                                            padding: "0.2rem 0.6rem",
+                                                            borderRadius: "999px",
+                                                            fontSize: "0.75rem",
+                                                            fontWeight: 600,
+                                                            background: w.typicalRushLevel === "VERY_BUSY" ? "#fce4ec" : w.typicalRushLevel === "MEDIUM" ? "#fff3e0" : "#e8f5e9",
+                                                            color: w.typicalRushLevel === "VERY_BUSY" ? "#b71c1c" : w.typicalRushLevel === "MEDIUM" ? "#e65100" : "#1b5e20"
+                                                        },
+                                                        children: w.typicalRushLevel === "VERY_BUSY" ? "Very Busy" : w.typicalRushLevel === "MEDIUM" ? "Medium" : w.typicalRushLevel === "SLOW" ? "Slow" : "—"
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
+                                                        lineNumber: 195,
+                                                        columnNumber: 53
+                                                    }, this)
+                                                }, void 0, false, {
+                                                    fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
+                                                    lineNumber: 194,
+                                                    columnNumber: 49
+                                                }, this),
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
+                                                    style: {
+                                                        padding: "0.75rem",
+                                                        textAlign: "center"
+                                                    },
+                                                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                        style: {
+                                                            padding: "0.2rem 0.75rem",
+                                                            borderRadius: "999px",
+                                                            fontSize: "0.75rem",
+                                                            fontWeight: 700,
+                                                            background: w.riskScore >= 60 ? "#fee2e2" : w.riskScore >= 30 ? "#fef3c7" : "#dcfce7",
+                                                            color: riskColor
+                                                        },
+                                                        children: riskLabel
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
+                                                        lineNumber: 207,
+                                                        columnNumber: 53
+                                                    }, this)
+                                                }, void 0, false, {
+                                                    fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
+                                                    lineNumber: 206,
+                                                    columnNumber: 49
+                                                }, this)
+                                            ]
+                                        }, w.workerId, true, {
+                                            fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
+                                            lineNumber: 179,
+                                            columnNumber: 45
+                                        }, this);
+                                    })
+                                }, void 0, false, {
+                                    fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
+                                    lineNumber: 167,
+                                    columnNumber: 29
+                                }, this)
+                            ]
+                        }, void 0, true, {
+                            fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
+                            lineNumber: 154,
+                            columnNumber: 25
+                        }, this)
+                    }, void 0, false, {
+                        fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
+                        lineNumber: 153,
+                        columnNumber: 21
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                        style: {
+                            fontSize: "0.75rem",
+                            color: "var(--secondary)",
+                            marginTop: "0.75rem",
+                            padding: "0 0.25rem"
+                        },
+                        children: "🥇 Top 30% performers  ·  🔻 Bottom 30%  ·  Risk = fraud signals across reimbursements, missing receipts, missing manager signatures"
+                    }, void 0, false, {
+                        fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
+                        lineNumber: 224,
+                        columnNumber: 21
+                    }, this)
+                ]
+            }, void 0, true, {
+                fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
+                lineNumber: 148,
+                columnNumber: 17
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/Desktop/clock in:out/apps/web/src/app/admin/reports/AnalyticsDashboard.tsx",
-        lineNumber: 52,
+        lineNumber: 55,
         columnNumber: 9
     }, this);
 }
-_s(AnalyticsDashboard, "Zn4cs3026OJRBhxLd0Oqj+bUOXY=");
+_s(AnalyticsDashboard, "CTNB2oNbh+/JaPqFn2ZKeIMYDX8=");
 _c = AnalyticsDashboard;
 var _c;
 __turbopack_context__.k.register(_c, "AnalyticsDashboard");
@@ -1071,7 +1535,7 @@ function AdminReportsPage() {
     const [isLoading, setIsLoading] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
     // Memoize cycles to avoid unnecessary recalculations
     const closedCycles = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMemo"])({
-        "AdminReportsPage.useMemo[closedCycles]": ()=>(0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$src$2f$lib$2f$cycles$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getClosedCycles"])(12)
+        "AdminReportsPage.useMemo[closedCycles]": ()=>(0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$src$2f$lib$2f$cycles$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["getClosedCycles"])(24)
     }["AdminReportsPage.useMemo[closedCycles]"], []);
     // Set initial cycle on mount
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({

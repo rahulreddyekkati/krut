@@ -1,16 +1,96 @@
-[00:00:00.884] Server  WARN    ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
-[00:00:00.974] Server  LOG     ✓ Ready in 759ms
-[00:00:04.313] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:00:04.571] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:00:05.204] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:00:05.266] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:00:05.327] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:00:05.395] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:00:54.273] Server  WARN    ⚠️ Missing x-timezone header, falling back
-[00:00:54.273] Server  WARN    ⚠️ Missing or invalid timezone pulse, defaulting to America/Chicago
-[00:01:37.660] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:01:50.845] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:10:37.807] Server  WARN    ⚠️ Missing x-timezone header, falling back
-[00:10:37.807] Server  WARN    ⚠️ Missing or invalid timezone pulse, defaulting to America/Chicago
-[00:10:37.858] Server  WARN    ⚠️ Missing x-timezone header, falling back
-[00:10:37.858] Server  WARN    ⚠️ Missing or invalid timezone pulse, defaulting to America/Chicago
+[00:00:01.613] Server  WARN    ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+[00:00:01.714] Server  LOG     ✓ Ready in 1505ms
+[144:28:21.623] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[144:28:47.130] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[144:45:54.019] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[144:45:56.980] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[168:11:09.068] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[174:49:14.946] Server  ERROR   [ERROR 0ea84e37-08d8-466c-b3ae-7e03a3f3c627] PrismaClientKnownRequestError: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["default"].job.create()` invocation in
+/Users/rahulreddyekkati/Desktop/clock in:out/apps/web/.next/dev/server/chunks/[root-of-the-server]__837067d4._.js:561:207
+
+  558         status: 403
+  559     });
+  560 }
+→ 561 const job = await __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["default"].job.create(
+SQLITE_CONSTRAINT: SQLite error: UNIQUE constraint failed: Job.title
+[174:50:50.998] Server  ERROR   [ERROR 6cd234a9-821a-42c6-839b-04613b5aa89f] TypeError: fetch failed
+[174:52:34.020] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[174:52:43.030] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[174:53:58.248] Server  ERROR   [ERROR c97e44bb-69e9-4a3d-ac7d-b307e66ee21b] PrismaClientKnownRequestError: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["default"].job.create()` invocation in
+/Users/rahulreddyekkati/Desktop/clock in:out/apps/web/.next/dev/server/chunks/[root-of-the-server]__837067d4._.js:561:207
+
+  558         status: 403
+  559     });
+  560 }
+→ 561 const job = await __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$2f$apps$2f$web$2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["default"].job.create(
+SQLITE_CONSTRAINT: SQLite error: UNIQUE constraint failed: Job.title
+[174:54:09.853] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[174:55:22.300] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[174:55:45.453] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[174:58:50.564] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[193:15:34.024] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[193:16:03.350] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[194:11:53.720] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[214:32:53.018] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[216:54:43.377] Server  LOG       Reload env: .env
+[216:55:03.713] Server  LOG     ✓ Finished writing to filesystem cache in 15.1s
+[216:58:56.959] Server  ERROR   Get notification counts error: TypeError: fetch failed
+[216:58:58.056] Server  ERROR   Get notification counts error: TypeError: fetch failed
+[217:08:13.332] Server  ERROR   Get notification counts error: TypeError: fetch failed
+[217:08:13.354] Server  ERROR   Get notification counts error: TypeError: fetch failed
+[217:09:13.392] Server  ERROR   Get notification counts error: TypeError: fetch failed
+[217:09:13.430] Server  ERROR   Get notification counts error: TypeError: fetch failed
+[217:10:13.344] Server  ERROR   Get notification counts error: TypeError: fetch failed
+[217:10:13.362] Server  ERROR   Get notification counts error: TypeError: fetch failed
+[217:11:13.331] Server  ERROR   Get notification counts error: TypeError: fetch failed
+[217:11:13.347] Server  ERROR   Get notification counts error: TypeError: fetch failed
+[217:12:13.313] Server  ERROR   Get notification counts error: TypeError: fetch failed
+[217:12:13.341] Server  ERROR   Get notification counts error: TypeError: fetch failed
+[217:13:13.324] Server  ERROR   Get notification counts error: TypeError: fetch failed
+[217:13:13.344] Server  ERROR   Get notification counts error: TypeError: fetch failed
+[217:14:13.356] Server  ERROR   Get notification counts error: TypeError: fetch failed
+[217:14:13.371] Server  ERROR   Get notification counts error: TypeError: fetch failed
+[217:15:13.342] Server  ERROR   Get notification counts error: TypeError: fetch failed
+[217:15:13.502] Server  ERROR   Get notification counts error: TypeError: fetch failed
+[217:16:13.389] Server  ERROR   Get notification counts error: TypeError: fetch failed
+[217:16:13.406] Server  ERROR   Get notification counts error: TypeError: fetch failed
+[217:17:13.337] Server  ERROR   Get notification counts error: TypeError: fetch failed
+[217:17:13.357] Server  ERROR   Get notification counts error: TypeError: fetch failed
+[217:18:16.108] Server  ERROR   Get notification counts error: TypeError: fetch failed
+[217:18:16.288] Server  ERROR   Get notification counts error: TypeError: fetch failed
+[217:19:15.988] Server  ERROR   Get notification counts error: TypeError: fetch failed
+[217:19:16.363] Server  ERROR   Get notification counts error: TypeError: fetch failed
+[217:19:22.169] Server  ERROR   Get notification counts error: TypeError: fetch failed
+[217:19:24.987] Server  ERROR   [ERROR 24c8513c-7be2-48ae-b6e7-a33dae2be557] TypeError: fetch failed
+[217:19:25.046] Server  ERROR   [ERROR 7d2ef2da-0b11-48f0-8dc1-2a05a172a728] TypeError: fetch failed
+[217:19:25.080] Server  ERROR   ⨯ TypeError: fetch failed
+[217:19:25.115] Server  ERROR   GET Users error: TypeError: fetch failed
+[217:19:25.349] Server  ERROR   [ERROR 5c8f12f5-8137-416f-92da-3faef9390eb5] TypeError: fetch failed
+[217:19:25.376] Browser ERROR   User fetch details: fetch failed
+[217:19:25.394] Server  ERROR   [ERROR 58d554d3-8555-4685-b21e-731e4e12f889] TypeError: fetch failed
+[217:19:25.510] Server  ERROR   ⨯ TypeError: fetch failed
+[217:19:25.518] Server  ERROR   GET Users error: TypeError: fetch failed
+[217:19:25.734] Browser ERROR   User fetch details: fetch failed
+[217:19:27.758] Server  ERROR   [ERROR e4df6516-ec21-42ab-bb30-3b35317fe3ba] TypeError: fetch failed
+[217:19:27.772] Server  ERROR   [ERROR d6b49e03-8875-44e3-bd34-8dad36ed1dbb] TypeError: fetch failed
+[217:19:27.832] Server  ERROR   [ERROR 7bfad196-2291-493c-9888-d4ed3484026f] TypeError: fetch failed
+[217:19:27.840] Server  ERROR   [ERROR 06b7b787-322d-4811-8ebe-4193c047feaf] TypeError: fetch failed
+[217:19:48.649] Server  ERROR   Get notification counts error: TypeError: fetch failed
+[217:20:13.328] Server  ERROR   Get notification counts error: TypeError: fetch failed
+[217:20:18.683] Server  ERROR   Get notification counts error: TypeError: fetch failed
+[217:20:30.165] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[217:20:30.819] Server  ERROR   [ERROR 0041de6e-c68f-40e7-9728-3eb1ea3e6719] TypeError: fetch failed
+[217:20:30.854] Server  ERROR   [ERROR e8ba2047-258b-4cd8-96b6-621f21a2084f] TypeError: fetch failed
+[217:20:30.930] Server  ERROR   ⨯ TypeError: fetch failed
+[217:20:31.005] Server  ERROR   Get notification counts error: TypeError: fetch failed
+[217:20:40.968] Server  ERROR   [ERROR be298692-8c4a-4535-9bf7-d1c3562f92af] TypeError: fetch failed
+[217:20:42.185] Server  ERROR   [ERROR 6c5bee95-2edc-4207-ad6e-9ed6024776e8] TypeError: fetch failed
+[227:27:51.874] Server  ERROR   Get notification counts error: TypeError: fetch failed
+[247:53:49.031] Browser ERROR   unhandledRejection: TypeError: Failed to fetch
+[266:02:45.822] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[266:02:45.854] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[361:32:15.293] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[362:29:15.492] Server  LOG     ✓ Compiled in 282ms
+[577:55:20.949] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold

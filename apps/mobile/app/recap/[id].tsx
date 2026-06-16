@@ -196,7 +196,7 @@ export default function SubmitRecap() {
   // Signature pad view
   if (showSignaturePad) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#fff' }}>
+      <View style={{ flex: 1, backgroundColor: '#fff', paddingTop: 56 }}>
         <View style={styles.headerRow}>
           <Text style={styles.title}>Manager Signature</Text>
           <TouchableOpacity onPress={() => setShowSignaturePad(false)} style={styles.closeBtn}>
@@ -284,15 +284,15 @@ export default function SubmitRecap() {
           <TextInput style={[styles.input, { paddingLeft: 24 }]} value={reimbursementTotal} onChangeText={setReimbursementTotal} keyboardType="decimal-pad" placeholder="0.00" />
         </View>
 
-        {/* ─── Inventory Tracking ─── */}
-        <Text style={styles.sectionTitle}>INVENTORY</Text>
+        {/* ─── Sales Summary ─── */}
+        <Text style={styles.sectionTitle}>SALES SUMMARY</Text>
         {inventoryLoading ? (
           <ActivityIndicator color="#6366F1" style={{ marginBottom: 16 }} />
         ) : skuData.length > 0 ? (
           skuData.map((sku, index) => (
             <View key={sku.id} style={styles.skuRow}>
               <View style={styles.skuHeader}>
-                <Text style={styles.skuName}>{sku.name}</Text>
+                <Text style={styles.skuName}>{sku.name}{sku.volume ? ` (${sku.volume}${sku.unit || ''})` : ''}</Text>
                 <View style={styles.notCarriedRow}>
                   <Text style={styles.notCarriedLabel}>N/A</Text>
                   <Switch

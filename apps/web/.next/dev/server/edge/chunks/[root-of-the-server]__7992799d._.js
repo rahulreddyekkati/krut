@@ -26,7 +26,9 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$Desktop$2f$clock__in$3a$out$
 const publicRoutes = [
     "/login",
     "/api/auth/login",
-    "/invite"
+    "/invite",
+    "/privacy",
+    "/terms"
 ];
 async function middleware(request) {
     const path = request.nextUrl.pathname;

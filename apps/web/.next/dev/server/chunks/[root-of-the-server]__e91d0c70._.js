@@ -351,9 +351,11 @@ async function GET(request) {
             };
         }
         let dateFilter = {};
+        let dayOfWeek = null;
         if (dateParam) {
             const startStr = `${dateParam}T00:00:00Z`;
             const endStr = `${dateParam}T23:59:59Z`;
+            dayOfWeek = new Date(startStr).getUTCDay();
             dateFilter = {
                 OR: [
                     {
@@ -373,7 +375,8 @@ async function GET(request) {
                                         }
                                     },
                                     {
-                                        isRecurring: true
+                                        isRecurring: true,
+                                        dayOfWeek
                                     }
                                 ]
                             }
@@ -411,12 +414,13 @@ async function GET(request) {
                             OR: [
                                 {
                                     date: {
-                                        gte: new Date(dateParam + "T00:00:00"),
-                                        lte: new Date(dateParam + "T23:59:59")
+                                        gte: new Date(dateParam + "T00:00:00Z"),
+                                        lte: new Date(dateParam + "T23:59:59Z")
                                     }
                                 },
                                 {
-                                    isRecurring: true
+                                    isRecurring: true,
+                                    dayOfWeek
                                 }
                             ]
                         } : {}

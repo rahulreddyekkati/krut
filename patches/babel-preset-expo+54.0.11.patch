@@ -1,0 +1,14 @@
+diff --git a/node_modules/babel-preset-expo/build/common.js b/node_modules/babel-preset-expo/build/common.js
+index a9e606f..e2b8b4b 100644
+--- a/node_modules/babel-preset-expo/build/common.js
++++ b/node_modules/babel-preset-expo/build/common.js
+@@ -26,6 +26,9 @@ exports.toPosixPath = toPosixPath;
+ const helper_module_imports_1 = require("@babel/helper-module-imports");
+ const node_path_1 = __importDefault(require("node:path"));
+ function hasModule(name) {
++    if (name === 'expo-router') {
++        return true;
++    }
+     try {
+         return !!require.resolve(name);
+     }

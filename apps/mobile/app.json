@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.krutotastes.app",
-      "buildNumber": "3",
+      "buildNumber": "4",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Kruto Tastes uses your location to verify you are at the assigned store before clocking in.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Kruto Tastes uses your location to verify you are at the assigned store before clocking in.",
@@ -28,7 +28,7 @@
     },
     "android": {
       "package": "com.krutotastes.app",
-      "versionCode": 7,
+      "versionCode": 8,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -39,7 +39,7 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-router",
+      ["expo-router", { "root": "./app" }],
       "expo-secure-store",
       [
         "expo-notifications",

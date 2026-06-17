@@ -9,6 +9,7 @@
     "node": ">=18"
   },
   "scripts": {
+    "postinstall": "patch-package",
     "prisma:generate": "./node_modules/.bin/prisma generate",
     "prisma:migrate": "./node_modules/.bin/prisma migrate dev",
     "prisma:studio": "./node_modules/.bin/prisma studio",
@@ -16,6 +17,7 @@
   },
   "devDependencies": {
     "@prisma/client": "^6.4.1",
+    "patch-package": "^8.0.1",
     "prisma": "^6.4.1"
   },
   "dependencies": {

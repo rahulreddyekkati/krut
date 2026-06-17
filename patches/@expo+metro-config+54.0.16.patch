@@ -1,0 +1,36 @@
+diff --git a/node_modules/@expo/metro-config/build/babel-transformer.js b/node_modules/@expo/metro-config/build/babel-transformer.js
+index 400a323..8058ad6 100644
+--- a/node_modules/@expo/metro-config/build/babel-transformer.js
++++ b/node_modules/@expo/metro-config/build/babel-transformer.js
+@@ -93,6 +93,8 @@ function stringOrUndefined(value) {
+ const transform = ({ filename, src, options, 
+ // `plugins` is used for `functionMapBabelPlugin` from `metro-source-map`. Could make sense to move this to `babel-preset-expo` too.
+ plugins, }) => {
++    const path = require('path');
++    const absoluteFilename = path.isAbsolute(filename) ? filename : path.resolve(options.projectRoot, filename);
+     const OLD_BABEL_ENV = process.env.BABEL_ENV;
+     process.env.BABEL_ENV = options.dev ? 'development' : process.env.BABEL_ENV || 'production';
+     try {
+@@ -109,7 +111,7 @@ plugins, }) => {
+             cloneInputAst: false,
+             // Options for debugging
+             cwd: options.projectRoot,
+-            filename,
++            filename: absoluteFilename,
+             highlightCode: true,
+             // Load the project babel config file.
+             ...(0, loadBabelConfig_1.loadBabelConfig)(options),
+@@ -122,8 +124,12 @@ plugins, }) => {
+             // ensure the Babel config caching is more accurate.
+             // Additionally, by moving everything Babel-related to the Babel preset, it makes it easier for users to reason
+             // about the requirements of an Expo project, making it easier to migrate to other transpilers in the future.
+-            caller: getBabelCaller({ filename, options }),
++            caller: getBabelCaller({ filename: absoluteFilename, options }),
+         };
++        if (absoluteFilename.includes('node_modules/expo-router') || absoluteFilename.includes('node_modules\\expo-router') || absoluteFilename.includes('expo-router/')) {
++            babelConfig.presets = [require('babel-preset-expo')];
++            babelConfig.babelrc = false;
++        }
+         const result = (0, transformSync_1.transformSync)(src, babelConfig, options);
+         // The result from `transformFromAstSync` can be null (if the file is ignored)
+         if (!result) {

@@ -99,3 +99,43 @@
         grid-template-columns: 1fr !important;
     }
 }
+
+.tabContainer {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--card-border);
+    padding-bottom: 0.5rem;
+}
+
+.tabButton {
+    background: none;
+    border: none;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--secondary);
+    cursor: pointer;
+    position: relative;
+    transition: color 0.2s;
+}
+
+.tabButtonActive {
+    color: var(--primary) !important;
+}
+
+.tabButtonActive::after {
+    content: "";
+    position: absolute;
+    bottom: -0.625rem;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background-color: var(--primary);
+}
+
+.bulkForm {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}

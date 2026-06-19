@@ -114,13 +114,7 @@ export async function GET(request: NextRequest) {
             if (reimb > 0 && sales === 0) { w.zeroSalesWithReimbCount++; shiftFlags.push("Reimb with $0 sales"); }
             if (reimb > sales && sales > 0) { w.highReimbLowSalesCount++; shiftFlags.push("Reimb > sales"); }
 
-            // SKU sanity: sold > beginning + purchased is physically impossible
-            for (const sku of recap.skus ?? []) {
-                const maxSellable = (sku.beginningInventory ?? 0) + (sku.purchased ?? 0);
-                if (sku.bottlesSold > maxSellable) {
-                    shiftFlags.push(`${sku.skuName}: sold ${sku.bottlesSold} but only had ${maxSellable}`);
-                }
-            }
+
 
             w.recentShifts.push({
                 date: recap.createdAt.toISOString().split("T")[0],

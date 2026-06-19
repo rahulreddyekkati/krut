@@ -388,12 +388,7 @@ export default function RecapDetailPage() {
                 if (reimb > 0 && sales === 0) flags.push({ label: `Claims $${reimb.toFixed(2)} reimbursement with $0.00 in sales`, level: "danger" });
                 if (reimb > sales && sales > 0) flags.push({ label: `Reimbursement ($${reimb.toFixed(2)}) exceeds sales ($${sales.toFixed(2)})`, level: "warn" });
 
-                (recap.skus ?? []).forEach((sku: any) => {
-                    const max = (sku.beginningInventory ?? 0) + (sku.purchased ?? 0);
-                    if (sku.bottlesSold > max) {
-                        flags.push({ label: `${sku.skuName}: sold ${sku.bottlesSold} but only had ${max} in stock — impossible`, level: "danger" });
-                    }
-                });
+
 
                 if (flags.length === 0) return (
                     <div style={{ ...sectionStyle, background: "#f0fdf4", border: "1px solid #bbf7d0", marginBottom: "1rem" }}>

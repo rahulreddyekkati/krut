@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { sendPushToUser } from "@/lib/notifications";
+import { sendRecapReminderEmail } from "@/lib/mailer";
 
 export async function GET(request: NextRequest) {
     const secret = request.headers.get("x-cron-secret");
@@ -11,7 +12,7 @@ export async function GET(request: NextRequest) {
     const now = new Date();
     const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
     const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
+    const oneHourAgoThrottled = new Date(now.getTime() - 50 * 60 * 1000); // 50 mins buffer to prevent double-sends within same hour
 
     // Find all assignments pending recap that clocked out between 1hr and 24hrs ago
     const pending = await prisma.jobAssignment.findMany({
@@ -19,19 +20,24 @@ export async function GET(request: NextRequest) {
             status: "RECAP_PENDING",
             clockOut: { gte: twentyFourHoursAgo, lte: oneHourAgo }
         },
-        select: { id: true, workerId: true, job: { select: { store: { select: { name: true } } } } }
+        select: {
+            id: true,
+            workerId: true,
+            worker: { select: { email: true } },
+            job: { select: { store: { select: { name: true } } } }
+        }
     });
 
     let sent = 0;
 
     for (const assignment of pending) {
         try {
-            // Skip if we already sent a reminder in the last 2 hours
+            // Skip if we already sent a reminder in the last 50 minutes
             const recentReminder = await prisma.notification.findFirst({
                 where: {
                     userId: assignment.workerId,
                     title: "Recap Reminder",
-                    createdAt: { gte: twoHoursAgo }
+                    createdAt: { gte: oneHourAgoThrottled }
                 }
             });
             if (recentReminder) continue;
@@ -43,7 +49,14 @@ export async function GET(request: NextRequest) {
                 data: { userId: assignment.workerId, title: "Recap Reminder", message }
             });
 
+            // Trigger push notification
             sendPushToUser(assignment.workerId, "Recap Reminder", message).catch(() => {});
+            
+            // Trigger SMTP email notification
+            if (assignment.worker?.email) {
+                sendRecapReminderEmail(assignment.worker.email, storeName).catch(() => {});
+            }
+            
             sent++;
         } catch (err) {
             console.error(`[cron/recap-reminder] Failed for assignment ${assignment.id}:`, err);

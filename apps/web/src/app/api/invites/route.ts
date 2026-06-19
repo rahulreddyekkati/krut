@@ -3,6 +3,7 @@ import crypto from "crypto";
 import prisma from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { handleApiError } from "@/lib/apiError";
+import { sendInviteEmail } from "@/lib/mailer";
 
 export async function POST(request: NextRequest) {
     try {
@@ -58,9 +59,24 @@ export async function POST(request: NextRequest) {
             },
         });
 
+        const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/invite/${token}`;
+
+        // Look up market name for personalized email
+        let marketName = "Dallas";
+        if (invite.marketId) {
+            const market = await prisma.market.findUnique({
+                where: { id: invite.marketId },
+                select: { name: true }
+            });
+            if (market) marketName = market.name;
+        }
+
+        const emailSent = await sendInviteEmail(email, inviteLink, role, marketName);
+
         return NextResponse.json({
             success: true,
-            inviteLink: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/invite/${token}`
+            inviteLink,
+            emailSent
         });
     } catch (error) {
         return handleApiError(error);

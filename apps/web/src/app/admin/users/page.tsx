@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import styles from "./users.module.css";
 import { generateUserReportPDF } from "@/lib/pdf-service";
+import Papa from "papaparse";
 
 interface User {
     id: string;
@@ -48,6 +49,17 @@ export default function AdminUsersPage() {
     const [inviteLink, setInviteLink] = useState("");
     const [markets, setMarkets] = useState<any[]>([]);
 
+    // Bulk Invite State
+    const [bulkEmailsText, setBulkEmailsText] = useState("");
+    const [bulkRole, setBulkRole] = useState("WORKER");
+    const [bulkMarketId, setBulkMarketId] = useState("");
+    const [bulkHourlyWage, setBulkHourlyWage] = useState("20.00");
+    const [bulkFile, setBulkFile] = useState<File | null>(null);
+    const [bulkProcessing, setBulkProcessing] = useState(false);
+    const [bulkProgress, setBulkProgress] = useState("");
+    const [bulkResults, setBulkResults] = useState<any[] | null>(null);
+    const [bulkTab, setBulkTab] = useState<"paste" | "upload">("paste");
+
     // Quick Job Modal State
     const [showJobModal, setShowJobModal] = useState(false);
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -80,6 +92,7 @@ export default function AdminUsersPage() {
             // /api/auth/me now returns managedMarketId directly from DB
             if (user.role === "MARKET_MANAGER" && user.managedMarketId) {
                 setInviteMarketId(user.managedMarketId);
+                setBulkMarketId(user.managedMarketId);
             }
         }
     };
@@ -214,6 +227,158 @@ export default function AdminUsersPage() {
             setError("An unexpected error occurred");
         } finally {
             setInviting(false);
+        }
+    };
+
+    const handleBulkInvite = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setBulkProcessing(true);
+        setBulkProgress("Initializing...");
+        setBulkResults(null);
+        setError("");
+        setSuccess("");
+
+        try {
+            let emails: string[] = [];
+            let originalCsvRows: any[] = [];
+            let emailColumnName = "";
+
+            if (bulkTab === "paste") {
+                // Split by comma, semi-colon, or newlines
+                emails = bulkEmailsText
+                    .split(/[\n,;]+/)
+                    .map(email => email.trim())
+                    .filter(email => email && email.includes("@"));
+                if (emails.length === 0) {
+                    throw new Error("No valid email addresses found in the text field.");
+                }
+            } else {
+                if (!bulkFile) {
+                    throw new Error("Please select a CSV file first.");
+                }
+
+                // Parse CSV file client-side
+                const fileText = await bulkFile.text();
+                const parseResult = Papa.parse(fileText, {
+                    header: true,
+                    skipEmptyLines: true,
+                });
+
+                if (parseResult.errors.length > 0) {
+                    console.warn("CSV parsing errors:", parseResult.errors);
+                }
+
+                originalCsvRows = parseResult.data;
+                if (originalCsvRows.length === 0) {
+                    throw new Error("The uploaded CSV file is empty.");
+                }
+
+                // Find the email column. We support various column headers:
+                // "E-mail 1 - Value", "E-mail 2 - Value", "Email", "E-mail", "Email Address", etc.
+                const headers = Object.keys(originalCsvRows[0]);
+                const emailHeader = headers.find(h => {
+                    const normalized = h.toLowerCase().trim();
+                    return normalized === "e-mail 1 - value" || 
+                           normalized === "email" || 
+                           normalized === "e-mail" || 
+                           normalized === "email address" ||
+                           normalized.includes("email 1") ||
+                           normalized.includes("email_value");
+                });
+
+                if (!emailHeader) {
+                    throw new Error("Could not find an email column in the CSV (e.g. 'E-mail 1 - Value', 'Email').");
+                }
+
+                emailColumnName = emailHeader;
+                emails = originalCsvRows.map(row => row[emailColumnName]?.trim()).filter(Boolean);
+
+                if (emails.length === 0) {
+                    throw new Error(`The column '${emailColumnName}' contains no email addresses.`);
+                }
+            }
+
+            setBulkProgress(`Sending ${emails.length} invites...`);
+
+            const resolvedMarketId = (currentUser?.role === "MARKET_MANAGER" && currentUser?.managedMarketId)
+                ? currentUser.managedMarketId
+                : bulkMarketId;
+
+            const res = await fetch("/api/invites/bulk", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    emails,
+                    role: bulkRole,
+                    marketId: resolvedMarketId,
+                    hourlyWage: bulkHourlyWage
+                })
+            });
+
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.error || "Failed to process bulk invites");
+            }
+
+            const results = data.results || [];
+            setBulkResults(results);
+
+            const successes = results.filter((r: any) => r.success).length;
+            const failures = results.length - successes;
+            
+            setSuccess(`Bulk invites complete! Sent: ${successes}, Failed: ${failures}`);
+
+            // If we uploaded a CSV, generate the updated CSV download
+            if (bulkTab === "upload" && originalCsvRows.length > 0 && emailColumnName) {
+                // Map results back to original rows
+                const resultMap = new Map(results.map((r: any) => [r.email.toLowerCase(), r.inviteLink || ""]));
+                
+                // We need to add the invite link to the correct column
+                // Let's look for "Invite links" or "Invite link" or create it
+                const headers = Object.keys(originalCsvRows[0]);
+                let inviteLinkHeader = headers.find(h => h.toLowerCase().trim() === "invite links" || h.toLowerCase().trim() === "invite link");
+                if (!inviteLinkHeader) {
+                    inviteLinkHeader = "Invite links";
+                }
+
+                const updatedRows = originalCsvRows.map(row => {
+                    const rowEmail = row[emailColumnName]?.trim().toLowerCase();
+                    const inviteLink = rowEmail ? (resultMap.get(rowEmail) || "") : "";
+                    return {
+                        ...row,
+                        [inviteLinkHeader]: inviteLink
+                    };
+                });
+
+                // Generate new CSV text
+                const updatedCsvText = Papa.unparse(updatedRows);
+                
+                // Create a blob and download it
+                const blob = new Blob([updatedCsvText], { type: "text/csv;charset=utf-8;" });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.setAttribute("href", url);
+                link.setAttribute("download", `invites_updated_${new Date().toISOString().split('T')[0]}.csv`);
+                link.style.visibility = "hidden";
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+
+            // Clear inputs on success
+            setBulkEmailsText("");
+            setBulkFile(null);
+            // Reset file input if exists
+            const fileInput = document.getElementById("bulk-file-input") as HTMLInputElement;
+            if (fileInput) fileInput.value = "";
+
+            // Refresh user list
+            fetchUsers();
+        } catch (err: any) {
+            setError(err.message || "An error occurred during bulk invite processing.");
+        } finally {
+            setBulkProcessing(false);
+            setBulkProgress("");
         }
     };
 
@@ -410,6 +575,166 @@ export default function AdminUsersPage() {
                             >
                                 Copy Link
                             </button>
+                        </div>
+                    )}
+                </section>
+
+                {/* Bulk Onboarding Section */}
+                <section className="card glass animate-fade-in" style={{ marginTop: "1.5rem" }}>
+                    <h3 className="heading h4">Bulk Invite Team Members</h3>
+                    <p className="text-secondary" style={{ fontSize: "0.875rem", marginBottom: "1.5rem" }}>
+                        Onboard multiple Workers/Tasters simultaneously. Automatic invite emails will be sent.
+                    </p>
+
+                    <div className={styles.tabContainer}>
+                        <button
+                            type="button"
+                            className={`${styles.tabButton} ${bulkTab === "paste" ? styles.tabButtonActive : ""}`}
+                            onClick={() => setBulkTab("paste")}
+                        >
+                            Paste Emails
+                        </button>
+                        <button
+                            type="button"
+                            className={`${styles.tabButton} ${bulkTab === "upload" ? styles.tabButtonActive : ""}`}
+                            onClick={() => setBulkTab("upload")}
+                        >
+                            Upload CSV File
+                        </button>
+                    </div>
+
+                    <form onSubmit={handleBulkInvite} className={styles.bulkForm}>
+                        <div style={{ display: "flex", gap: "1.5rem", flexWrap: "wrap" }}>
+                            <div className={styles.inputGroup} style={{ flex: "1", minWidth: "200px" }}>
+                                <label>Role</label>
+                                <select
+                                    className="input"
+                                    value={bulkRole}
+                                    onChange={e => setBulkRole(e.target.value)}
+                                >
+                                    <option value="WORKER">Worker (Taster)</option>
+                                    {currentUser?.role === "ADMIN" && (
+                                        <option value="MARKET_MANAGER">Market Manager</option>
+                                    )}
+                                </select>
+                            </div>
+
+                            {(bulkRole === "WORKER" || bulkRole === "MARKET_MANAGER") && (
+                                <div className={styles.inputGroup} style={{ flex: "1.5", minWidth: "200px" }}>
+                                    <label>{bulkRole === "WORKER" ? "Assigned Market" : "Managed Market"}</label>
+                                    <select
+                                        className="input"
+                                        value={bulkMarketId}
+                                        onChange={e => setBulkMarketId(e.target.value)}
+                                        required
+                                    >
+                                        <option value="">Select Market...</option>
+                                        {markets.map(m => (
+                                            <option key={m.id} value={m.id}>{m.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+
+                            <div className={styles.inputGroup} style={{ width: bulkRole === "WORKER" ? "120px" : "160px" }}>
+                                <label>{bulkRole === "WORKER" ? "Pay/Hr" : "Monthly Salary"}</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    className="input"
+                                    placeholder={bulkRole === "WORKER" ? "20.00" : "5000.00"}
+                                    value={bulkHourlyWage}
+                                    onChange={e => setBulkHourlyWage(e.target.value)}
+                                    required
+                                />
+                            </div>
+                        </div>
+
+                        {bulkTab === "paste" ? (
+                            <div className={styles.inputGroup}>
+                                <label>Email Addresses</label>
+                                <textarea
+                                    className="input"
+                                    rows={5}
+                                    placeholder="Enter email addresses separated by commas or newlines (e.g. worker1@example.com, worker2@example.com)"
+                                    value={bulkEmailsText}
+                                    onChange={e => setBulkEmailsText(e.target.value)}
+                                    style={{ fontFamily: "monospace", fontSize: "0.875rem", padding: "0.75rem" }}
+                                    required={bulkTab === "paste"}
+                                />
+                            </div>
+                        ) : (
+                            <div className={styles.inputGroup} style={{ border: "2px dashed #cbd5e1", padding: "2rem", borderRadius: "8px", textAlign: "center", background: "#f8fafc" }}>
+                                <label style={{ display: "block", marginBottom: "0.5rem", cursor: "pointer" }}>
+                                    <span style={{ display: "block", fontSize: "1.25rem", marginBottom: "0.5rem" }}>📁</span>
+                                    <strong>Click to upload</strong> or drag and drop a CSV file
+                                    <span style={{ display: "block", fontSize: "0.75rem", color: "#64748b", marginTop: "0.25rem" }}>
+                                        Must contain an email column (e.g. "E-mail 1 - Value" or "Email")
+                                    </span>
+                                </label>
+                                <input
+                                    id="bulk-file-input"
+                                    type="file"
+                                    accept=".csv"
+                                    onChange={e => setBulkFile(e.target.files?.[0] || null)}
+                                    style={{ display: "inline-block", marginTop: "1rem" }}
+                                    required={bulkTab === "upload"}
+                                />
+                                {bulkFile && (
+                                    <div style={{ marginTop: "1rem", fontSize: "0.875rem", color: "#1e293b" }}>
+                                        Selected: <strong>{bulkFile.name}</strong> ({(bulkFile.size / 1024).toFixed(1)} KB)
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        <button
+                            type="submit"
+                            disabled={bulkProcessing}
+                            className="btn btn-primary"
+                            style={{ height: "46px", marginTop: "0.5rem" }}
+                        >
+                            {bulkProcessing ? bulkProgress || "Processing..." : "Generate & Send Bulk Invites"}
+                        </button>
+                    </form>
+
+                    {bulkResults && bulkResults.length > 0 && (
+                        <div className="card" style={{ marginTop: "1.5rem", padding: "1rem", background: "#f8fafc", border: "1px solid #e2e8f0", overflowX: "auto" }}>
+                            <h4 style={{ margin: "0 0 1rem 0", fontSize: "0.9rem", color: "#0f172a" }}>Onboarding Results</h4>
+                            <table style={{ width: "100%", fontSize: "0.75rem", borderCollapse: "collapse", textAlign: "left" }}>
+                                <thead>
+                                    <tr style={{ borderBottom: "1px solid #cbd5e1" }}>
+                                        <th style={{ padding: "0.5rem" }}>Email</th>
+                                        <th style={{ padding: "0.5rem" }}>Status</th>
+                                        <th style={{ padding: "0.5rem" }}>Invite Link</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {bulkResults.map((r, i) => (
+                                        <tr key={i} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                                            <td style={{ padding: "0.5rem", fontWeight: "500" }}>{r.email}</td>
+                                            <td style={{ padding: "0.5rem" }}>
+                                                {r.success ? (
+                                                    <span style={{ color: "#16a34a", fontWeight: "bold" }}>
+                                                        ✓ Created {r.emailSent ? "(Email Sent)" : "(No Email)"}
+                                                    </span>
+                                                ) : (
+                                                    <span style={{ color: "#dc2626", fontWeight: "bold" }}>
+                                                        ✗ Failed: {r.error}
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td style={{ padding: "0.5rem", fontFamily: "monospace", wordBreak: "break-all" }}>
+                                                {r.inviteLink ? (
+                                                    <a href={r.inviteLink} target="_blank" rel="noopener noreferrer" style={{ color: "#2563eb", textDecoration: "underline" }}>
+                                                        {r.inviteLink}
+                                                    </a>
+                                                ) : "—"}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
                     )}
                 </section>

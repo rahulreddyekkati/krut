@@ -59,7 +59,9 @@ export async function POST(request: NextRequest) {
             },
         });
 
-        const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/invite/${token}`;
+        const host = request.headers.get("x-forwarded-host") || request.headers.get("host") || "localhost:3000";
+        const protocol = host.includes("localhost") ? "http" : "https";
+        const inviteLink = `${protocol}://${host}/invite/${token}`;
 
         // Look up market name for personalized email
         let marketName = "Dallas";

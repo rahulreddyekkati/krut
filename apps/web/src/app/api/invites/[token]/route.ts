@@ -27,7 +27,7 @@ export async function GET(
             role: invite.role,
             invitedBy: invite.sender.name
         });
-    } catch (error: any) {
-        return NextResponse.json({ error: "Internal server error", message: error.message, stack: error.stack }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }

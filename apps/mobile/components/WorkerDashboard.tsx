@@ -4,7 +4,13 @@ import { useAuth } from '../providers/AuthProvider';
 import { fetchWithAuth } from '../utils/apiClient';
 import { router } from 'expo-router';
 import * as Location from 'expo-location';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNotificationCount } from '../hooks/useNotificationCount';
+import {
+  startBackgroundLocationTracking,
+  stopBackgroundLocationTracking,
+  ASYNC_STORE_ASSIGNMENT_KEY,
+} from '../tasks/locationTask';
 
 const CIRCLE_SIZE = Dimensions.get('window').width * 0.44;
 const GEOFENCE_BREAK_THRESHOLD_SECS = 15 * 60; // 15 minutes cumulative outside
@@ -61,6 +67,24 @@ export default function HomeTab() {
       checkPendingRecaps();
     }
   }, [token]);
+
+  // When activeAssignment changes, sync it to AsyncStorage for the background task
+  useEffect(() => {
+    if (activeAssignment?.clockIn && !activeAssignment?.clockOut) {
+      // Worker is clocked in — persist assignment for background task
+      const store = activeAssignment.job?.store;
+      const bgAssignment = {
+        id: activeAssignment.id,
+        store: store?.latitude != null && store?.longitude != null && store?.radius != null
+          ? { latitude: store.latitude, longitude: store.longitude, radius: store.radius }
+          : null,
+      };
+      AsyncStorage.setItem(ASYNC_STORE_ASSIGNMENT_KEY, JSON.stringify(bgAssignment)).catch(() => {});
+    } else {
+      // Not clocked in — clear persisted assignment so background task doesn't fire
+      AsyncStorage.removeItem(ASYNC_STORE_ASSIGNMENT_KEY).catch(() => {});
+    }
+  }, [activeAssignment]);
 
   // Keep refs in sync with activeAssignment
   useEffect(() => {
@@ -187,6 +211,14 @@ export default function HomeTab() {
         });
 
         if (res.ok) {
+          // Start background location tracking now that the worker is clocked in
+          const store = activeAssignment.job?.store;
+          startBackgroundLocationTracking({
+            id: activeAssignment.id,
+            store: store?.latitude != null && store?.longitude != null && store?.radius != null
+              ? { latitude: store.latitude, longitude: store.longitude, radius: store.radius }
+              : null,
+          }).catch(() => {});
           await loadTodayShift();
         } else {
           const data = await res.json().catch(() => ({}));
@@ -215,6 +247,8 @@ export default function HomeTab() {
           body: JSON.stringify({ action, assignmentId: activeAssignment.id })
         });
         if (res.ok) {
+          // Stop background location tracking now that the shift has ended
+          stopBackgroundLocationTracking().catch(() => {});
           const shiftDate = activeAssignment.date
             ? new Date(activeAssignment.date).toISOString().split('T')[0]
             : new Date().toISOString().split('T')[0];

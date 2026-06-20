@@ -4,11 +4,17 @@ import { SignJWT, jwtVerify } from "jose";
 
 const getKey = () => new TextEncoder().encode(process.env.JWT_SECRET ?? "");
 
-export async function encrypt(payload: any): Promise<string> {
+/**
+ * encrypt(payload, expiresIn?)
+ * Signs a JWT with the given payload.
+ * - Web sessions: default 24h rolling expiry
+ * - Mobile sessions: pass "180d" so workers stay logged in for 6 months
+ */
+export async function encrypt(payload: any, expiresIn: string = "24h"): Promise<string> {
     return new SignJWT(payload)
         .setProtectedHeader({ alg: "HS256" })
         .setIssuedAt()
-        .setExpirationTime("24h")
+        .setExpirationTime(expiresIn)
         .sign(getKey());
 }
 

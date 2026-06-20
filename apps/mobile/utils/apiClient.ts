@@ -14,7 +14,8 @@ export async function fetchWithAuth(endpoint: string, options: RequestInit = {})
   // Identifies this as the mobile app — used by clock-in API to reject web-browser requests
   headers.set("x-app-client", "mobile-app");
 
-  if (token) {
+  // Only attach Authorization if we have a real token (not null/undefined/empty)
+  if (token && token !== "null" && token !== "undefined") {
     headers.set("Authorization", `Bearer ${token}`);
   }
   headers.set("Content-Type", "application/json");

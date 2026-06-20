@@ -19,11 +19,13 @@
       "buildNumber": "6",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Kruto Tastes uses your location to verify you are at the assigned store before clocking in.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "Kruto Tastes uses your location to verify you are at the assigned store before clocking in.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Kruto Tastes uses your location continuously in the background to enforce geofence rules while you are clocked in to a shift.",
+        "NSLocationAlwaysUsageDescription": "Kruto Tastes needs your location in the background to automatically manage break times when you leave or return to your assigned store.",
         "NSCameraUsageDescription": "Kruto Tastes uses your camera to take photos of receipts for shift recaps.",
         "NSPhotoLibraryUsageDescription": "Kruto Tastes accesses your photo library to attach receipt images to shift recaps.",
         "NSPhotoLibraryAddUsageDescription": "Kruto Tastes saves receipt photos to your photo library.",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIBackgroundModes": ["location", "fetch"]
       }
     },
     "android": {
@@ -33,7 +35,14 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -41,6 +50,15 @@
     "plugins": [
       ["expo-router", { "root": "./app" }],
       "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Kruto Tastes uses your location continuously while clocked in to enforce geofence rules and manage break times.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true
+        }
+      ],
+      "expo-task-manager",
       [
         "expo-notifications",
         {

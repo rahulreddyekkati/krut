@@ -3,6 +3,7 @@ import { Platform } from "react-native";
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
 import { getToken, saveToken, deleteToken } from "../utils/tokenManager";
+import { stopBackgroundLocationTracking } from "../tasks/locationTask";
 
 Notifications.setNotificationHandler({
     handleNotification: async () => ({
@@ -11,7 +12,6 @@ Notifications.setNotificationHandler({
         shouldSetBadge: true,
     }),
 });
-
 
 interface UserInfo {
   id: string;
@@ -32,7 +32,15 @@ function decodeJwtPayload(token: string): UserInfo | null {
   try {
     const parts = token.split(".");
     if (parts.length !== 3) return null;
-    const payload = JSON.parse(atob(parts[1]));
+    // atob may not be available on all RN versions; fall back gracefully
+    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const json = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+    const payload = JSON.parse(json);
     if (payload.user) {
       return {
         id: payload.user.id,
@@ -45,6 +53,19 @@ function decodeJwtPayload(token: string): UserInfo | null {
   } catch (e) {
     console.error("Failed to decode JWT", e);
     return null;
+  }
+}
+
+function isTokenExpired(token: string): boolean {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return true;
+    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const payload = JSON.parse(atob(base64));
+    if (!payload.exp) return false; // no expiry set — treat as valid
+    return Date.now() >= payload.exp * 1000;
+  } catch {
+    return true;
   }
 }
 
@@ -63,9 +84,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async function loadToken() {
       try {
         const storedToken = await getToken();
-        setToken(storedToken);
         if (storedToken) {
-          registerPushToken(storedToken).catch(() => {});
+          // Reject the token immediately if it's expired — don't wait for a 401
+          if (isTokenExpired(storedToken)) {
+            console.warn("[AuthProvider] Stored token is expired — clearing");
+            await deleteToken();
+          } else {
+            setToken(storedToken);
+            registerPushToken(storedToken).catch(() => {});
+          }
         }
       } catch (e) {
         console.error("Failed to load token", e);
@@ -83,6 +110,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    // Stop any running background location task before clearing credentials
+    stopBackgroundLocationTracking().catch(() => {});
     await deleteToken();
     setToken(null);
   };
@@ -117,6 +146,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${authToken}`,
+        "x-app-client": "mobile-app",
       },
       body: JSON.stringify({ token: pushToken }),
     });

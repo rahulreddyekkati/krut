@@ -23,7 +23,10 @@ export default function Login() {
     try {
       const res = await fetch(`${API_BASE_URL}/auth/login`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-app-client": "mobile-app",
+        },
         body: JSON.stringify({ email, password })
       });
 

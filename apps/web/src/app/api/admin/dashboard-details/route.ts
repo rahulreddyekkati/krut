@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
                     },
                     assignments: {
                         include: {
-                            worker: { select: { name: true } }
+                            worker: { select: { id: true, name: true } }
                         },
                         where: dateParam ? {
                             OR: [
@@ -73,14 +73,31 @@ export async function GET(request: NextRequest) {
                 orderBy: { createdAt: "desc" }
             });
 
-            const data = jobs.map((job: any) => ({
-                id: job.id,
-                storeName: job.store.name,
-                startTime: job.startTimeStr || "--",
-                endTime: job.endTimeStr || "--",
-                marketName: job.store.market?.name || "—",
-                assignedWorker: [...new Set(job.assignments.map((a: any) => a.worker?.name).filter(Boolean))].join(", ") || "Unassigned"
-            }));
+            const data = jobs.flatMap((job: any) =>
+                job.assignments.length > 0
+                    ? job.assignments.map((a: any) => ({
+                        id: job.id,
+                        assignmentId: a.id,
+                        workerId: a.workerId,
+                        storeName: job.store.name,
+                        startTime: a.customStartTimeStr || job.startTimeStr || "--",
+                        endTime: a.customEndTimeStr || job.endTimeStr || "--",
+                        marketName: job.store.market?.name || "—",
+                        assignedWorker: a.worker?.name || "Unassigned",
+                        hasCustomTimes: !!(a.customStartTimeStr || a.customEndTimeStr),
+                    }))
+                    : [{
+                        id: job.id,
+                        assignmentId: null,
+                        workerId: null,
+                        storeName: job.store.name,
+                        startTime: job.startTimeStr || "--",
+                        endTime: job.endTimeStr || "--",
+                        marketName: job.store.market?.name || "—",
+                        assignedWorker: "Unassigned",
+                        hasCustomTimes: false,
+                    }]
+            );
 
             return NextResponse.json({ data });
         }

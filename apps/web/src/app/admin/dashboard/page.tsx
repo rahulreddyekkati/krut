@@ -20,6 +20,10 @@ export default function AdminDashboardPage() {
     const [detailData, setDetailData] = useState<any[]>([]);
     const [detailLoading, setDetailLoading] = useState(false);
     const [sendingNotification, setSendingNotification] = useState<string | null>(null);
+    const [editingShift, setEditingShift] = useState<any>(null);
+    const [editTimes, setEditTimes] = useState({ startTime: "", endTime: "" });
+    const [editSaving, setEditSaving] = useState(false);
+    const [editError, setEditError] = useState("");
 
     const fetchStats = async (date: string) => {
         setLoading(true);
@@ -65,6 +69,39 @@ export default function AdminDashboardPage() {
         } else {
             setActiveDetail(type);
             fetchDetailData(type);
+        }
+    };
+
+    const handleOpenShiftEdit = (row: any) => {
+        setEditingShift(row);
+        setEditTimes({ startTime: row.startTime === "--" ? "" : row.startTime, endTime: row.endTime === "--" ? "" : row.endTime });
+        setEditError("");
+    };
+
+    const handleSaveShiftEdit = async () => {
+        if (!editingShift?.assignmentId || !editingShift?.workerId) return;
+        setEditSaving(true);
+        try {
+            const res = await fetch(`/api/users/${editingShift.workerId}/assignments`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    assignmentId: editingShift.assignmentId,
+                    customStartTimeStr: editTimes.startTime || null,
+                    customEndTimeStr: editTimes.endTime || null,
+                }),
+            });
+            if (res.ok) {
+                setEditingShift(null);
+                fetchDetailData("jobs");
+            } else {
+                const d = await res.json();
+                setEditError(d.error || "Failed to save");
+            }
+        } catch {
+            setEditError("An unexpected error occurred");
+        } finally {
+            setEditSaving(false);
         }
     };
 
@@ -197,6 +234,7 @@ export default function AdminDashboardPage() {
                                             <th style={thStyle}>End Time</th>
                                             <th style={thStyle}>Market</th>
                                             <th style={thStyle}>Assigned To</th>
+                                            <th style={thStyle}>Edit</th>
                                         </tr>
                                     )}
                                     {activeDetail === "active" && (
@@ -210,13 +248,31 @@ export default function AdminDashboardPage() {
                                     )}
                                 </thead>
                                 <tbody>
-                                    {activeDetail === "jobs" && detailData.map((row: any) => (
-                                        <tr key={row.id}>
+                                    {activeDetail === "jobs" && detailData.map((row: any, i: number) => (
+                                        <tr key={`${row.id}-${i}`}>
                                             <td style={tdStyle}>{row.storeName}</td>
-                                            <td style={tdStyle}>{row.startTime}</td>
-                                            <td style={tdStyle}>{row.endTime}</td>
+                                            <td style={tdStyle}>
+                                                {row.startTime}
+                                                {row.hasCustomTimes && <span style={{ marginLeft: "0.35rem", fontSize: "0.65rem", color: "#6366f1", fontWeight: 700 }}>★</span>}
+                                            </td>
+                                            <td style={tdStyle}>
+                                                {row.endTime}
+                                                {row.hasCustomTimes && <span style={{ marginLeft: "0.35rem", fontSize: "0.65rem", color: "#6366f1", fontWeight: 700 }}>★</span>}
+                                            </td>
                                             <td style={tdStyle}>{row.marketName}</td>
                                             <td style={tdStyle}>{row.assignedWorker}</td>
+                                            <td style={tdStyle}>
+                                                {row.assignmentId ? (
+                                                    <button
+                                                        onClick={() => handleOpenShiftEdit(row)}
+                                                        style={{ background: "#6366f1", color: "white", border: "none", borderRadius: "6px", padding: "0.25rem 0.75rem", fontSize: "0.8rem", cursor: "pointer", fontWeight: 600 }}
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                ) : (
+                                                    <span style={{ color: "#9ca3af", fontSize: "0.8rem" }}>—</span>
+                                                )}
+                                            </td>
                                         </tr>
                                     ))}
                                     {activeDetail === "active" && detailData.map((row: any) => (
@@ -235,6 +291,57 @@ export default function AdminDashboardPage() {
                     )}
                 </div>
             )}
+        {editingShift && (
+            <div
+                onClick={() => setEditingShift(null)}
+                style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center" }}
+            >
+                <div
+                    onClick={e => e.stopPropagation()}
+                    className="card glass"
+                    style={{ width: "100%", maxWidth: "420px", padding: "1.75rem", borderRadius: "1rem" }}
+                >
+                    <h3 className="heading h4" style={{ marginBottom: "0.25rem" }}>Edit Shift Times</h3>
+                    <p style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "1.5rem" }}>
+                        {editingShift.assignedWorker} · {editingShift.storeName}
+                    </p>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+                        <div>
+                            <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, marginBottom: "0.375rem" }}>Start Time</label>
+                            <input
+                                type="time"
+                                className="input"
+                                value={editTimes.startTime}
+                                onChange={e => setEditTimes(t => ({ ...t, startTime: e.target.value }))}
+                            />
+                        </div>
+                        <div>
+                            <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, marginBottom: "0.375rem" }}>End Time</label>
+                            <input
+                                type="time"
+                                className="input"
+                                value={editTimes.endTime}
+                                onChange={e => setEditTimes(t => ({ ...t, endTime: e.target.value }))}
+                            />
+                        </div>
+                    </div>
+
+                    {editError && <div className="alert alert-danger" style={{ marginBottom: "1rem", fontSize: "0.875rem" }}>{editError}</div>}
+
+                    <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
+                        <button onClick={() => setEditingShift(null)} style={{ background: "#f3f4f6", color: "#374151", border: "none", borderRadius: "8px", padding: "0.5rem 1rem", fontWeight: 600, cursor: "pointer" }}>Cancel</button>
+                        <button
+                            onClick={handleSaveShiftEdit}
+                            disabled={editSaving || !editTimes.startTime || !editTimes.endTime}
+                            className="btn btn-primary"
+                        >
+                            {editSaving ? "Saving…" : "Save Changes"}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
         </div>
     );
 }

@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { handleApiError } from "@/lib/apiError";
 import { sendPushToUser } from "@/lib/notifications";
+import { sendShiftAssignedEmail } from "@/lib/mailer";
 
 export async function POST(
     request: NextRequest,
@@ -14,7 +15,10 @@ export async function POST(
 
         const shiftRequest = await prisma.shiftRequest.findUnique({
             where: { id: requestId },
-            include: { job: { include: { store: true } } }
+            include: {
+                job: { include: { store: true } },
+                worker: { select: { email: true } }
+            }
         });
 
         if (!shiftRequest || shiftRequest.status !== "PENDING") {
@@ -106,6 +110,16 @@ export async function POST(
 
         for (const n of pushQueue) {
             sendPushToUser(n.userId, n.title, n.message).catch(() => {});
+        }
+
+        if (shiftRequest.worker?.email) {
+            sendShiftAssignedEmail(
+                shiftRequest.worker.email,
+                shiftRequest.job.store.name,
+                dateLabel,
+                shiftRequest.job.startTimeStr,
+                shiftRequest.job.endTimeStr
+            ).catch(() => {});
         }
 
         return NextResponse.json({ success: true });

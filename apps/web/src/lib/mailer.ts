@@ -1,5 +1,102 @@
 import nodemailer from "nodemailer";
 
+function createTransporter() {
+    const host = process.env.SMTP_HOST;
+    const port = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 587;
+    const user = process.env.SMTP_USER;
+    const pass = process.env.SMTP_PASSWORD;
+    if (!host || !user || !pass) return null;
+    return nodemailer.createTransport({ host, port, secure: port === 465, auth: { user, pass } });
+}
+
+export async function sendShiftAssignedEmail(
+    email: string,
+    storeName: string,
+    dateLabel: string,
+    startTime: string,
+    endTime: string
+): Promise<boolean> {
+    const transporter = createTransporter();
+    const from = process.env.SMTP_FROM || '"Kruto Tastes" <noreply@krutotastes.com>';
+    if (!transporter) {
+        console.warn("⚠️ SMTP not configured. Skipping shift assigned email.");
+        return false;
+    }
+    try {
+        const subject = `New Shift Assigned: ${storeName}`;
+        const textBody = `Hello!\n\nYou have been assigned a new shift at ${storeName} on ${dateLabel}, ${startTime} – ${endTime}.\n\nOpen the Kruto Tastes app to view your shift details.\n\nThe Kruto Tastes Team`;
+        const htmlBody = `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 32px 24px; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px;">
+                <div style="text-align: center; margin-bottom: 28px;">
+                    <span style="font-size: 28px; font-weight: 800; letter-spacing: -0.025em; color: #0f172a; text-transform: uppercase;">Kruto Tastes</span>
+                </div>
+                <p style="color: #0f172a; font-size: 18px; font-weight: 600; margin-top: 0; margin-bottom: 16px;">New Shift Assigned</p>
+                <p style="color: #334155; font-size: 15px; line-height: 24px; margin-top: 0; margin-bottom: 24px;">
+                    You have been assigned a shift at <strong style="color: #0f172a;">${storeName}</strong> on <strong style="color: #0f172a;">${dateLabel}</strong>.
+                </p>
+                <div style="background-color: #f0fdf4; border-left: 4px solid #22c55e; padding: 14px 16px; border-radius: 4px; margin-bottom: 24px;">
+                    <p style="color: #166534; font-size: 15px; font-weight: 600; margin: 0;">🕐 ${startTime} – ${endTime}</p>
+                </div>
+                <p style="color: #334155; font-size: 15px; line-height: 24px; margin-top: 0; margin-bottom: 24px;">
+                    Open the Kruto Tastes app to view your full shift details.
+                </p>
+                <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; color: #64748b; font-size: 14px;">
+                    <p style="margin: 0 0 4px 0;">Thank you,</p>
+                    <p style="margin: 0; font-weight: 600; color: #475569;">The Kruto Tastes Team</p>
+                </div>
+            </div>`;
+        await transporter.sendMail({ from, to: email, subject, text: textBody, html: htmlBody });
+        return true;
+    } catch (error) {
+        console.error(`❌ Failed to send shift assigned email to ${email}:`, error);
+        return false;
+    }
+}
+
+export async function sendShiftTimeChangedEmail(
+    email: string,
+    storeName: string,
+    dateLabel: string,
+    newStartTime: string,
+    newEndTime: string
+): Promise<boolean> {
+    const transporter = createTransporter();
+    const from = process.env.SMTP_FROM || '"Kruto Tastes" <noreply@krutotastes.com>';
+    if (!transporter) {
+        console.warn("⚠️ SMTP not configured. Skipping shift time changed email.");
+        return false;
+    }
+    try {
+        const subject = `Shift Update: Time Changed at ${storeName}`;
+        const textBody = `Hello!\n\nYour shift at ${storeName} on ${dateLabel} has been updated.\n\nNew times: ${newStartTime} – ${newEndTime}\n\nOpen the Kruto Tastes app to view your updated shift details.\n\nThe Kruto Tastes Team`;
+        const htmlBody = `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 32px 24px; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px;">
+                <div style="text-align: center; margin-bottom: 28px;">
+                    <span style="font-size: 28px; font-weight: 800; letter-spacing: -0.025em; color: #0f172a; text-transform: uppercase;">Kruto Tastes</span>
+                </div>
+                <p style="color: #0f172a; font-size: 18px; font-weight: 600; margin-top: 0; margin-bottom: 16px;">Shift Time Updated</p>
+                <p style="color: #334155; font-size: 15px; line-height: 24px; margin-top: 0; margin-bottom: 24px;">
+                    Your shift at <strong style="color: #0f172a;">${storeName}</strong> on <strong style="color: #0f172a;">${dateLabel}</strong> has been updated with new times.
+                </p>
+                <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 14px 16px; border-radius: 4px; margin-bottom: 24px;">
+                    <p style="color: #92400e; font-size: 15px; font-weight: 600; margin: 0;">🕐 New times: ${newStartTime} – ${newEndTime}</p>
+                </div>
+                <p style="color: #334155; font-size: 15px; line-height: 24px; margin-top: 0; margin-bottom: 24px;">
+                    Please open the Kruto Tastes app to confirm your updated schedule.
+                </p>
+                <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; color: #64748b; font-size: 14px;">
+                    <p style="margin: 0 0 4px 0;">Thank you,</p>
+                    <p style="margin: 0; font-weight: 600; color: #475569;">The Kruto Tastes Team</p>
+                </div>
+            </div>`;
+        await transporter.sendMail({ from, to: email, subject, text: textBody, html: htmlBody });
+        return true;
+    } catch (error) {
+        console.error(`❌ Failed to send shift time changed email to ${email}:`, error);
+        return false;
+    }
+}
+
 export async function sendInviteEmail(
     email: string,
     inviteLink: string,

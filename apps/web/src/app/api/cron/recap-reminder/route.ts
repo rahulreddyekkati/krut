@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     const now = new Date();
     const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
     const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    const oneHourAgoThrottled = new Date(now.getTime() - 50 * 60 * 1000); // 50 mins buffer to prevent double-sends within same hour
+    const oneHourAgoThrottled = new Date(now.getTime() - 110 * 60 * 1000); // 110 mins buffer to prevent double-sends within the 2-hour cron window
 
     // Find all assignments pending recap that clocked out between 1hr and 24hrs ago
     const pending = await prisma.jobAssignment.findMany({

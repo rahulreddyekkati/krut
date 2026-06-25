@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { sendPushToUser } from "@/lib/notifications";
+import { sendShiftAssignedEmail } from "@/lib/mailer";
 
 export async function POST(request: NextRequest) {
     try {
@@ -76,6 +77,11 @@ export async function POST(request: NextRequest) {
 
         for (const n of pushQueue) {
             sendPushToUser(n.userId, n.title, n.message).catch(() => {});
+        }
+
+        if (worker.email) {
+            const dateLabel = date ? new Date(date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : "Recurring";
+            sendShiftAssignedEmail(worker.email, job.store.name, dateLabel, job.startTimeStr, job.endTimeStr).catch(() => {});
         }
 
         return NextResponse.json({ success: true });

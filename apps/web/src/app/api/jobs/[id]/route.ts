@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { sendShiftTimeChangedEmail } from "@/lib/mailer";
 
 const TIME_RE = /^\d{2}:\d{2}$/;
 
@@ -32,10 +33,32 @@ export async function PATCH(
             return NextResponse.json({ error: "Unauthorized: Job outside your market" }, { status: 403 });
         }
 
-        const updated = await prisma.job.update({
-            where: { id },
-            data: { startTimeStr, endTimeStr },
-        });
+        const [updated, activeAssignments] = await Promise.all([
+            prisma.job.update({
+                where: { id },
+                data: { startTimeStr, endTimeStr },
+                include: { store: { select: { name: true } } }
+            }),
+            prisma.jobAssignment.findMany({
+                where: { jobId: id, status: { in: ["ASSIGNED", "IN_PROGRESS"] } },
+                include: { worker: { select: { email: true } } }
+            })
+        ]);
+
+        for (const assignment of activeAssignments) {
+            if (assignment.worker?.email) {
+                const dateLabel = assignment.date
+                    ? new Date(assignment.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
+                    : "Recurring";
+                sendShiftTimeChangedEmail(
+                    assignment.worker.email,
+                    updated.store.name,
+                    dateLabel,
+                    startTimeStr,
+                    endTimeStr
+                ).catch(() => {});
+            }
+        }
 
         return NextResponse.json(updated);
     } catch (error) {

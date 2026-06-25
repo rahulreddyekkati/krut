@@ -3,6 +3,8 @@ import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { getCurrentCycleDates, getPreviousCycleDates, getDatesForWeekdays } from "@/lib/cycles";
 import { ensureCurrentCycleAssignments } from "@/lib/recurringShifts";
+import { sendPushToUser } from "@/lib/notifications";
+import { sendShiftAssignedEmail, sendShiftTimeChangedEmail } from "@/lib/mailer";
 
 // GET /api/users/[id]/assignments - Fetch shifts for a worker
 export async function GET(
@@ -87,6 +89,23 @@ export async function POST(
                 created.push(assignment);
             }
 
+            if (created.length > 0) {
+                const [worker, job] = await Promise.all([
+                    prisma.user.findUnique({ where: { id }, select: { email: true } }),
+                    prisma.job.findUnique({ where: { id: jobId }, include: { store: { select: { name: true } } } })
+                ]);
+                if (job) {
+                    const dateLabel = created[0].date
+                        ? new Date(created[0].date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
+                        : "Recurring";
+                    const pushMsg = `You have been assigned a shift at ${job.store.name} on ${dateLabel}.`;
+                    sendPushToUser(id, "New Shift Assigned", pushMsg).catch(() => {});
+                    if (worker?.email) {
+                        sendShiftAssignedEmail(worker.email, job.store.name, dateLabel, job.startTimeStr, job.endTimeStr).catch(() => {});
+                    }
+                }
+            }
+
             return NextResponse.json({
                 success: true,
                 created,
@@ -109,6 +128,18 @@ export async function POST(
             const assignment = await prisma.jobAssignment.create({
                 data: { workerId: id, jobId, date: dateObj, isRecurring: false }
             });
+            const [worker, job] = await Promise.all([
+                prisma.user.findUnique({ where: { id }, select: { email: true } }),
+                prisma.job.findUnique({ where: { id: jobId }, include: { store: { select: { name: true } } } })
+            ]);
+            if (job) {
+                const dateLabel = dateObj.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+                const pushMsg = `You have been assigned a shift at ${job.store.name} on ${dateLabel}.`;
+                sendPushToUser(id, "New Shift Assigned", pushMsg).catch(() => {});
+                if (worker?.email) {
+                    sendShiftAssignedEmail(worker.email, job.store.name, dateLabel, job.startTimeStr, job.endTimeStr).catch(() => {});
+                }
+            }
             return NextResponse.json({ success: true, count: 1, created: [assignment], skipped: [] });
         }
 
@@ -177,6 +208,26 @@ export async function PATCH(
                 }
             })
         ]);
+
+        const assignmentWithDetails = await prisma.jobAssignment.findUnique({
+            where: { id: assignmentId },
+            include: {
+                worker: { select: { email: true } },
+                job: { include: { store: { select: { name: true } } } }
+            }
+        });
+        if (assignmentWithDetails?.worker?.email && customStartTimeStr && customEndTimeStr) {
+            const dateLabel = assignmentWithDetails.date
+                ? new Date(assignmentWithDetails.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
+                : "Recurring";
+            sendShiftTimeChangedEmail(
+                assignmentWithDetails.worker.email,
+                assignmentWithDetails.job.store.name,
+                dateLabel,
+                customStartTimeStr,
+                customEndTimeStr
+            ).catch(() => {});
+        }
 
         return NextResponse.json({ success: true, assignment: updated });
     } catch (error: any) {

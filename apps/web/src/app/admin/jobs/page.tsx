@@ -38,6 +38,9 @@ export default function AdminJobsPage() {
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
     const [selectedMarket, setSelectedMarket] = useState<string>("all");
+    const [editingJob, setEditingJob] = useState<Job | null>(null);
+    const [editTimes, setEditTimes] = useState({ startTime: "", endTime: "" });
+    const [editSaving, setEditSaving] = useState(false);
 
     const [formData, setFormData] = useState({
         title: "",
@@ -161,6 +164,36 @@ export default function AdminJobsPage() {
         const h = Math.floor(mins / 60);
         const m = mins % 60;
         return m > 0 ? `${h}h ${m}m` : `${h}h`;
+    };
+
+    const handleOpenEdit = (job: Job) => {
+        setEditingJob(job);
+        setEditTimes({ startTime: job.startTimeStr, endTime: job.endTimeStr });
+        setError("");
+    };
+
+    const handleSaveEdit = async () => {
+        if (!editingJob) return;
+        setEditSaving(true);
+        try {
+            const res = await fetch(`/api/jobs/${editingJob.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ startTimeStr: editTimes.startTime, endTimeStr: editTimes.endTime }),
+            });
+            if (res.ok) {
+                setEditingJob(null);
+                setSuccess("Shift times updated.");
+                fetchData();
+            } else {
+                const d = await res.json();
+                setError(d.error || "Failed to update shift times");
+            }
+        } catch {
+            setError("An unexpected error occurred");
+        } finally {
+            setEditSaving(false);
+        }
     };
 
     const handleDeleteJob = async (id: string, name: string) => {
@@ -363,14 +396,15 @@ export default function AdminJobsPage() {
                             <th>End Time</th>
                             <th>Shift Duration</th>
                             <th>Bonus</th>
+                            <th>Edit</th>
                             <th>Delete</th>
                         </tr>
                     </thead>
                     <tbody>
                         {loading ? (
-                            <tr><td colSpan={9} className="text-center" style={{ padding: "3rem" }}>Loading jobs...</td></tr>
+                            <tr><td colSpan={10} className="text-center" style={{ padding: "3rem" }}>Loading jobs...</td></tr>
                         ) : filteredJobs.length === 0 ? (
-                            <tr><td colSpan={9} className="text-center" style={{ padding: "3rem" }}>No jobs found.</td></tr>
+                            <tr><td colSpan={10} className="text-center" style={{ padding: "3rem" }}>No jobs found.</td></tr>
                         ) : (
                             filteredJobs.map(job => (
                                 <tr key={job.id} className="animate-fade-in">
@@ -386,6 +420,15 @@ export default function AdminJobsPage() {
                                     <td>{job.bonus > 0 ? `$${job.bonus.toFixed(2)}` : "–"}</td>
                                     <td>
                                         <button
+                                            onClick={() => handleOpenEdit(job)}
+                                            className="btn"
+                                            style={{ background: "#6366f1", color: "white", padding: "0.25rem 0.75rem", fontSize: "0.8rem" }}
+                                        >
+                                            Edit
+                                        </button>
+                                    </td>
+                                    <td>
+                                        <button
                                             onClick={() => handleDeleteJob(job.id, job.title)}
                                             className="btn"
                                             style={{ background: "#ef4444", color: "white", padding: "0.25rem 0.75rem", fontSize: "0.8rem" }}
@@ -399,6 +442,63 @@ export default function AdminJobsPage() {
                     </tbody>
                 </table>
             </div>
+
+            {editingJob && (
+                <div
+                    onClick={() => setEditingJob(null)}
+                    style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center" }}
+                >
+                    <div
+                        onClick={e => e.stopPropagation()}
+                        className="card glass"
+                        style={{ width: "100%", maxWidth: "420px", padding: "1.75rem", borderRadius: "1rem" }}
+                    >
+                        <h3 className="heading h4" style={{ marginBottom: "0.25rem" }}>Edit Shift Times</h3>
+                        <p style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "1.5rem" }}>{editingJob.title}</p>
+
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+                            <div>
+                                <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, marginBottom: "0.375rem" }}>Start Time</label>
+                                <input
+                                    type="time"
+                                    className="input"
+                                    value={editTimes.startTime}
+                                    onChange={e => setEditTimes(t => ({ ...t, startTime: e.target.value }))}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, marginBottom: "0.375rem" }}>End Time</label>
+                                <input
+                                    type="time"
+                                    className="input"
+                                    value={editTimes.endTime}
+                                    onChange={e => setEditTimes(t => ({ ...t, endTime: e.target.value }))}
+                                />
+                            </div>
+                        </div>
+
+                        {editTimes.startTime && editTimes.endTime && (
+                            <p style={{ fontSize: "0.8125rem", color: "#6b7280", marginBottom: "1.25rem" }}>
+                                Duration: <strong>{calcDuration(editTimes.startTime, editTimes.endTime)}</strong>
+                                {" "}({to12hr(editTimes.startTime)} – {to12hr(editTimes.endTime)})
+                            </p>
+                        )}
+
+                        {error && <div className="alert alert-danger" style={{ marginBottom: "1rem", fontSize: "0.875rem" }}>{error}</div>}
+
+                        <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
+                            <button onClick={() => setEditingJob(null)} className="btn" style={{ background: "#f3f4f6", color: "#374151" }}>Cancel</button>
+                            <button
+                                onClick={handleSaveEdit}
+                                disabled={editSaving || !editTimes.startTime || !editTimes.endTime}
+                                className="btn btn-primary"
+                            >
+                                {editSaving ? "Saving…" : "Save Changes"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -4,7 +4,7 @@ import { PrismaLibSQL } from "@prisma/adapter-libsql";
 import { createClient } from "@libsql/client";
 
 const prismaClientSingleton = () => {
-    const tursoUrl = process.env.TURSO_DATABASE_URL;
+    const tursoUrl = process.env.TURSO_DATABASE_URL || process.env.ORIGINAL_DATABASE_URL;
 
     if (tursoUrl && (tursoUrl.startsWith("libsql://") || tursoUrl.startsWith("https://"))) {
         const libsql = createClient({

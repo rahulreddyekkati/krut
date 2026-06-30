@@ -29,7 +29,8 @@ export async function GET(request: NextRequest) {
                 store: { select: { name: true, address: true } },
                 market: { select: { name: true } },
                 assignments: {
-                    include: {
+                    select: {
+                        status: true,
                         worker: { select: { id: true, name: true, email: true } }
                     }
                 },

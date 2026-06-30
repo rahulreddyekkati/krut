@@ -41,6 +41,7 @@ model User {
   notifications    Notification[]
   sentInvites      Invite[]       @relation("InviteSender")
   chatThreads      ChatThread[]
+  passwordResetOTPs PasswordResetOTP[]
 
   // Audit trail of admin actions affecting payroll
   auditLogs     AuditLog[]
@@ -309,6 +310,18 @@ model Invite {
   // onDelete: Restrict — preserve audit of who sent the invite
   sender    User     @relation("InviteSender", fields: [senderId], references: [id], onDelete: Restrict)
   senderId  String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model PasswordResetOTP {
+  id        String   @id @default(cuid())
+  userId    String
+  // onDelete: Cascade — OTP records are meaningless without the user
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  otpHash   String   // bcrypt hash of the 6-digit code — never store/log plaintext
+  attempts  Int      @default(0)
+  consumed  Boolean  @default(false)
   expiresAt DateTime
   createdAt DateTime @default(now())
 }

@@ -78,6 +78,17 @@
     border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
+.forgotLink {
+    text-align: center;
+    font-size: 0.875rem;
+    color: var(--primary);
+    text-decoration: none;
+}
+
+.forgotLink:hover {
+    text-decoration: underline;
+}
+
 .footer {
     text-align: center;
     margin-top: 1rem;

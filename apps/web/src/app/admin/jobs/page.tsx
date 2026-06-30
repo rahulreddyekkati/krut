@@ -14,7 +14,7 @@ interface Job {
     store: { name: string; address: string };
     marketId: string;
     market: { name: string };
-    assignments: Array<{ worker: { name: string; email: string } }>;
+    assignments: Array<{ status: string; worker: { name: string; email: string } }>;
 }
 
 interface Market {
@@ -41,6 +41,7 @@ export default function AdminJobsPage() {
     const [editingJob, setEditingJob] = useState<Job | null>(null);
     const [editTimes, setEditTimes] = useState({ startTime: "", endTime: "" });
     const [editSaving, setEditSaving] = useState(false);
+    const [editInProgressWorkers, setEditInProgressWorkers] = useState<string[]>([]);
 
     const [formData, setFormData] = useState({
         title: "",
@@ -169,6 +170,12 @@ export default function AdminJobsPage() {
     const handleOpenEdit = (job: Job) => {
         setEditingJob(job);
         setEditTimes({ startTime: job.startTimeStr, endTime: job.endTimeStr });
+        setEditInProgressWorkers(
+            job.assignments
+                .filter(a => a.status === "IN_PROGRESS")
+                .map(a => a.worker?.name)
+                .filter(Boolean) as string[]
+        );
         setError("");
     };
 
@@ -455,6 +462,13 @@ export default function AdminJobsPage() {
                     >
                         <h3 className="heading h4" style={{ marginBottom: "0.25rem" }}>Edit Shift Times</h3>
                         <p style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "1.5rem" }}>{editingJob.title}</p>
+
+                        {editInProgressWorkers.length > 0 && (
+                            <div style={{ background: "#fffbeb", border: "1px solid #f59e0b", borderRadius: "8px", padding: "0.75rem 1rem", marginBottom: "1rem", fontSize: "0.875rem", color: "#92400e" }}>
+                                <strong>⚠️ {editInProgressWorkers.join(", ")} {editInProgressWorkers.length === 1 ? "is" : "are"} currently clocked in.</strong>
+                                <br />Changing the end time will affect their auto-clockout.
+                            </div>
+                        )}
 
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
                             <div>

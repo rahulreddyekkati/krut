@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import styles from "./login.module.css";
 
 export default function LoginPage() {
@@ -85,6 +86,10 @@ export default function LoginPage() {
                     <button type="submit" disabled={loading} className="btn btn-primary w-full">
                         {loading ? "Signing in..." : "Sign In"}
                     </button>
+
+                    <Link href="/forgot-password" className={styles.forgotLink}>
+                        Forgot password?
+                    </Link>
                 </form>
 
                 <div className={styles.footer}>

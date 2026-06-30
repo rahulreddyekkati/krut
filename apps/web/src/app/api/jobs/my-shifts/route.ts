@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { getCurrentCycleDates, getCycleDisplayName } from "@/lib/cycles";
+import { getCurrentCycleDates, getPreviousCycleDates, getCycleDisplayName } from "@/lib/cycles";
 import { resolveTimezone, getLocalDayBoundsUTC } from "@/lib/timezone";
 import { ensureCurrentCycleAssignments } from "@/lib/recurringShifts";
 
@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
         const tz = resolveTimezone(request);
         const { start: dbTodayStart } = getLocalDayBoundsUTC(tz);
         const cycle = getCurrentCycleDates();
+        const prevCycle = getPreviousCycleDates();
 
         // Assignments in the current cycle (not AVAILABLE — those are released shifts)
         const currentCycle = await prisma.jobAssignment.findMany({
@@ -55,6 +56,24 @@ export async function GET(request: NextRequest) {
             orderBy: { date: "asc" }
         });
 
+        // Completed/recap-pending shifts from the previous cycle — kept visible for one extra cycle
+        const previousCompleted = await prisma.jobAssignment.findMany({
+            where: {
+                workerId: session.user.id,
+                date: { gte: prevCycle.start, lte: prevCycle.end },
+                status: { in: ["COMPLETED", "RECAP_PENDING"] }
+            },
+            include: {
+                job: {
+                    include: {
+                        store: { select: { name: true, address: true, latitude: true, longitude: true, radius: true } },
+                        market: { select: { name: true } }
+                    }
+                }
+            },
+            orderBy: { date: "asc" }
+        });
+
         // Pending release requests so UI can show "Requested" badge
         const pendingReleases = await prisma.releaseRequest.findMany({
             where: { workerId: session.user.id, status: "PENDING" },
@@ -67,6 +86,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({
             currentCycle,
             upcoming,
+            previousCompleted,
             cycleStart: cycle.start.toISOString(),
             cycleEnd: cycle.end.toISOString(),
             cycleLabel: getCycleDisplayName(cycle),

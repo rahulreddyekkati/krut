@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
                             some: {
                                 OR: [
                                     { date: { gte: new Date(startStr), lte: new Date(endStr) } },
-                                    { isRecurring: true, dayOfWeek }
+                                    { isRecurring: true }
                                 ]
                             }
                         }
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
                         where: dateParam ? {
                             OR: [
                                 { date: { gte: new Date(dateParam + "T00:00:00Z"), lte: new Date(dateParam + "T23:59:59Z") } },
-                                { isRecurring: true, dayOfWeek }
+                                { isRecurring: true }
                             ]
                         } : {}
                     }
@@ -73,9 +73,37 @@ export async function GET(request: NextRequest) {
                 orderBy: { createdAt: "desc" }
             });
 
-            const data = jobs.flatMap((job: any) =>
-                job.assignments.length > 0
-                    ? job.assignments.map((a: any) => ({
+            const dayStart = dateParam ? new Date(`${dateParam}T00:00:00Z`) : null;
+            const dayEnd   = dateParam ? new Date(`${dateParam}T23:59:59Z`) : null;
+
+            const data = jobs.flatMap((job: any) => {
+                let assignments = job.assignments as any[];
+
+                if (dateParam && dayStart && dayEnd && dayOfWeek !== null) {
+                    // Keep only assignments relevant to the selected date:
+                    // 1. Exact date match (specific-date or already-materialized recurring)
+                    // 2. Recurring assignments whose stored date falls on the same weekday
+                    //    (covers next-cycle patterns before auto-rollover creates the records)
+                    const relevant = assignments.filter((a: any) => {
+                        if (!a.date) return false;
+                        const d = new Date(a.date);
+                        if (d >= dayStart && d <= dayEnd) return true;
+                        if (a.isRecurring && d.getUTCDay() === dayOfWeek) return true;
+                        return false;
+                    });
+
+                    // Deduplicate by workerId so recurring patterns don't show the same worker N times
+                    const seen = new Set<string>();
+                    assignments = relevant.filter((a: any) => {
+                        const key = a.workerId || a.id;
+                        if (seen.has(key)) return false;
+                        seen.add(key);
+                        return true;
+                    });
+                }
+
+                return assignments.length > 0
+                    ? assignments.map((a: any) => ({
                         id: job.id,
                         assignmentId: a.id,
                         workerId: a.workerId,
@@ -96,8 +124,8 @@ export async function GET(request: NextRequest) {
                         marketName: job.store.market?.name || "—",
                         assignedWorker: "Unassigned",
                         hasCustomTimes: false,
-                    }]
-            );
+                    }];
+            });
 
             return NextResponse.json({ data });
         }

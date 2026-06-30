@@ -143,7 +143,7 @@ export default function RecapsScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.headerBtn}>
+        <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.navigate('/(tabs)/')} style={styles.headerBtn}>
           <Text style={styles.headerIcon}>←</Text>
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>

@@ -7,7 +7,9 @@ import ShiftCard from '../../components/ShiftCard';
 
 export default function MyShiftsTab() {
   const { token, signOut, user } = useAuth();
+  const [previousCompleted, setPreviousCompleted] = useState<any[]>([]);
   const [currentCycle, setCurrentCycle] = useState<any[]>([]);
+  const [upcomingShifts, setUpcomingShifts] = useState<any[]>([]);
   const [cycleLabel, setCycleLabel] = useState<string | null>(null);
   const [pendingReleaseIds, setPendingReleaseIds] = useState<string[]>([]);
   const [fetching, setFetching] = useState(true);
@@ -22,9 +24,15 @@ export default function MyShiftsTab() {
       const res = await fetchWithAuth('/jobs/my-shifts');
       const data = await res.json();
       if (!data.error) {
+        setPreviousCompleted(data.previousCompleted || []);
         setCurrentCycle(data.currentCycle || []);
         setCycleLabel(data.cycleLabel || null);
         setPendingReleaseIds(data.pendingReleaseAssignmentIds || []);
+        const cycleEndDate = data.cycleEnd ? new Date(data.cycleEnd) : null;
+        const nextCycle = (data.upcoming || []).filter(
+          (a: any) => a.date && cycleEndDate && new Date(a.date) > cycleEndDate
+        );
+        setUpcomingShifts(nextCycle);
       }
     } catch (e) {
       console.log("Failed fetching shifts", e);
@@ -89,7 +97,7 @@ export default function MyShiftsTab() {
         <ActivityIndicator style={{ marginTop: 40 }} size="large" color="#6366F1" />
       ) : (
         <FlatList
-          data={currentCycle}
+          data={[...previousCompleted, ...currentCycle, ...upcomingShifts].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           refreshControl={<RefreshControl refreshing={fetching} onRefresh={loadShifts} />}

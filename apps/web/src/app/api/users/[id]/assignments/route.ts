@@ -84,7 +84,7 @@ export async function POST(
                     continue;
                 }
                 const assignment = await prisma.jobAssignment.create({
-                    data: { workerId: id, jobId, date: d, isRecurring: true }
+                    data: { workerId: id, jobId, date: d, isRecurring: true, dayOfWeek: d.getUTCDay() }
                 });
                 created.push(assignment);
             }

@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.krutotastes.app",
-      "buildNumber": "7",
+      "buildNumber": "8",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Kruto Tastes uses your location to verify you are at the assigned store before clocking in.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Kruto Tastes uses your location continuously in the background to enforce geofence rules while you are clocked in to a shift.",
@@ -30,7 +30,7 @@
     },
     "android": {
       "package": "com.krutotastes.app",
-      "versionCode": 11,
+      "versionCode": 12,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"

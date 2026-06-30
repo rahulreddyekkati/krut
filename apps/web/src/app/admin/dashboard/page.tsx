@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import PendingRecapsTable from "@/components/admin/PendingRecapsTable";
+import { to12hr } from "@/lib/timeFormat";
 
 type DetailType = "jobs" | "active" | "recaps" | null;
 
@@ -252,11 +253,11 @@ export default function AdminDashboardPage() {
                                         <tr key={`${row.id}-${i}`}>
                                             <td style={tdStyle}>{row.storeName}</td>
                                             <td style={tdStyle}>
-                                                {row.startTime}
+                                                {to12hr(row.startTime)}
                                                 {row.hasCustomTimes && <span style={{ marginLeft: "0.35rem", fontSize: "0.65rem", color: "#6366f1", fontWeight: 700 }}>★</span>}
                                             </td>
                                             <td style={tdStyle}>
-                                                {row.endTime}
+                                                {to12hr(row.endTime)}
                                                 {row.hasCustomTimes && <span style={{ marginLeft: "0.35rem", fontSize: "0.65rem", color: "#6366f1", fontWeight: 700 }}>★</span>}
                                             </td>
                                             <td style={tdStyle}>{row.marketName}</td>

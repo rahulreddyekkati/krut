@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { to12hr } from "@/lib/timeFormat";
 
 export default function ReleasedShiftsPage() {
     const [assignments, setAssignments] = useState<any[]>([]);
@@ -86,7 +87,7 @@ export default function ReleasedShiftsPage() {
                                             {a.job?.store?.name} · {dateStr}
                                         </p>
                                         <p style={{ color: "#6b7280", fontSize: "0.875rem", margin: "0 0 0.25rem" }}>
-                                            {a.job?.startTimeStr} – {a.job?.endTimeStr} · {a.job?.market?.name}
+                                            {to12hr(a.job?.startTimeStr)} – {to12hr(a.job?.endTimeStr)} · {a.job?.market?.name}
                                         </p>
                                         <p style={{ color: "#b45309", fontSize: "0.8rem", margin: 0 }}>
                                             Released by: {a.worker?.name}

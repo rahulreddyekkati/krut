@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { to12hr } from "@/lib/timeFormat";
 
 type Tab = "release-requests" | "assign-requests";
 
@@ -78,7 +79,7 @@ export default function ShiftReleaseApprovalsPage() {
                     <span><strong>Store:</strong> {req.job.store.name}</span>
                     <span><strong>Market:</strong> {req.job.market.name}</span>
                     <span><strong>Date:</strong> {req.date ? new Date(req.date).toLocaleDateString() : "Recurring Default"}</span>
-                    <span><strong>Time:</strong> {req.job.startTimeStr} - {req.job.endTimeStr}</span>
+                    <span><strong>Time:</strong> {to12hr(req.job.startTimeStr)} – {to12hr(req.job.endTimeStr)}</span>
                 </div>
             </div>
             <div style={{ display: "flex", gap: "0.5rem" }}>

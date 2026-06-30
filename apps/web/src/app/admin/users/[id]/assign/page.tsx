@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { to12hr } from "@/lib/timeFormat";
 
 type Tab = "current" | "special" | "requested";
 
@@ -265,11 +266,16 @@ export default function AssignJobPage() {
                             const groupList = Array.from(groups.values())
                                 .sort((a, b) => a.weekday - b.weekday);
 
-                            if (groupList.length === 0) {
+                            // Specific-date (non-recurring) assignments within or upcoming from current cycle
+                            const specificShifts = assignments
+                                .filter(a => a.date && !a.isRecurring && new Date(a.date) >= cycleStart)
+                                .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+                            if (groupList.length === 0 && specificShifts.length === 0) {
                                 return (
                                     <div style={{ textAlign: "center", padding: "5rem 1rem", background: "white", borderRadius: "16px", border: "1px dashed #d1d5db" }}>
                                         <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>📅</div>
-                                        <h3 style={{ fontSize: "1.125rem", fontWeight: 600, color: "#111827", marginBottom: "0.5rem" }}>No recurring shifts assigned yet</h3>
+                                        <h3 style={{ fontSize: "1.125rem", fontWeight: 600, color: "#111827", marginBottom: "0.5rem" }}>No shifts assigned yet</h3>
                                         <p style={{ color: "#6b7280", margin: 0 }}>Get started by assigning a job to this worker.</p>
                                     </div>
                                 );
@@ -285,7 +291,7 @@ export default function AssignJobPage() {
                                                 </div>
                                                 <div style={{ fontWeight: 600, color: "#111827" }}>{group.job?.title}</div>
                                                 <div style={{ fontSize: "0.8125rem", color: "#6b7280" }}>
-                                                    {group.job?.startTimeStr} – {group.job?.endTimeStr}
+                                                    {to12hr(group.job?.startTimeStr)} – {to12hr(group.job?.endTimeStr)}
                                                     {group.job?.store?.name ? ` · ${group.job.store.name}` : ""}
                                                 </div>
                                                 <div style={{ fontSize: "0.75rem", color: "#9ca3af", marginTop: "0.25rem" }}>
@@ -304,6 +310,39 @@ export default function AssignJobPage() {
                                             </button>
                                         </div>
                                     ))}
+                                    {specificShifts.length > 0 && (
+                                        <>
+                                            {groupList.length > 0 && (
+                                                <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.05em", paddingTop: "0.5rem" }}>
+                                                    One-Off Shifts
+                                                </div>
+                                            )}
+                                            {specificShifts.map((a: any) => (
+                                                <div key={a.id} style={{ background: "white", padding: "1.25rem", borderRadius: "16px", border: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                                    <div>
+                                                        <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#f59e0b", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.35rem" }}>
+                                                            {new Date(a.date).toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "UTC" })}
+                                                        </div>
+                                                        <div style={{ fontWeight: 600, color: "#111827" }}>{a.job?.title}</div>
+                                                        <div style={{ fontSize: "0.8125rem", color: "#6b7280" }}>
+                                                            {to12hr(a.job?.startTimeStr)} – {to12hr(a.job?.endTimeStr)}
+                                                            {a.job?.store?.name ? ` · ${a.job.store.name}` : ""}
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        style={{ color: "#ef4444", fontSize: "0.75rem", fontWeight: 600, background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: "8px", padding: "0.4rem 0.9rem", cursor: "pointer" }}
+                                                        onClick={async () => {
+                                                            if (!confirm("Remove this one-off shift?")) return;
+                                                            const res = await fetch(`/api/users/${userId}/assignments?id=${a.id}`, { method: "DELETE" });
+                                                            if (res.ok) fetchAssignments();
+                                                        }}
+                                                    >
+                                                        Remove
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </>
+                                    )}
                                 </div>
                             );
                         })()}
@@ -330,7 +369,7 @@ export default function AssignJobPage() {
                                             {new Date(a.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' })}
                                             </div>
                                             <div style={{ fontWeight: 600, color: "#111827" }}>{a.job.title}</div>
-                                            <div style={{ fontSize: "0.8125rem", color: "#6b7280" }}>{a.job.startTimeStr} – {a.job.endTimeStr}</div>
+                                            <div style={{ fontSize: "0.8125rem", color: "#6b7280" }}>{to12hr(a.job.startTimeStr)} – {to12hr(a.job.endTimeStr)}</div>
                                             {a.clockIn && (
                                                 <div style={{ fontSize: "0.75rem", color: "var(--success)", fontWeight: 500, marginTop: "0.25rem" }}>
                                                     ✓ Worked: {a.workedHours || 0}h
@@ -485,7 +524,7 @@ export default function AssignJobPage() {
                                     <option value="">{selectedStoreId ? "Choose a job..." : "Choose a job (select a store to filter)..."}</option>
                                     {filteredJobs.map(job => (
                                             <option key={job.id} value={job.id}>
-                                                {job.title} ({job.startTimeStr} – {job.endTimeStr}){job.store ? ` — ${job.store.name}` : ''}
+                                                {job.title} ({to12hr(job.startTimeStr)} – {to12hr(job.endTimeStr)}){job.store ? ` — ${job.store.name}` : ''}
                                             </option>
                                         ))}
                                 </select>

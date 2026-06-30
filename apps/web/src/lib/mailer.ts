@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { to12hr } from "@/lib/timeFormat";
 
 function createTransporter() {
     const host = process.env.SMTP_HOST;
@@ -61,8 +62,10 @@ export async function sendShiftAssignedEmail(
         return false;
     }
     try {
+        const start12 = to12hr(startTime);
+        const end12 = to12hr(endTime);
         const subject = `New Shift Assigned: ${storeName}`;
-        const textBody = `Hello!\n\nYou have been assigned a new shift at ${storeName} on ${dateLabel}, ${startTime} – ${endTime}.\n\nOpen the Kruto Tastes app to view your shift details.\n\nThe Kruto Tastes Team`;
+        const textBody = `Hello!\n\nYou have been assigned a new shift at ${storeName} on ${dateLabel}, ${start12} – ${end12}.\n\nOpen the Kruto Tastes app to view your shift details.\n\nThe Kruto Tastes Team`;
         const htmlBody = `
             <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 32px 24px; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px;">
                 <div style="text-align: center; margin-bottom: 28px;">
@@ -73,7 +76,7 @@ export async function sendShiftAssignedEmail(
                     You have been assigned a shift at <strong style="color: #0f172a;">${storeName}</strong> on <strong style="color: #0f172a;">${dateLabel}</strong>.
                 </p>
                 <div style="background-color: #f0fdf4; border-left: 4px solid #22c55e; padding: 14px 16px; border-radius: 4px; margin-bottom: 24px;">
-                    <p style="color: #166534; font-size: 15px; font-weight: 600; margin: 0;">🕐 ${startTime} – ${endTime}</p>
+                    <p style="color: #166534; font-size: 15px; font-weight: 600; margin: 0;">🕐 ${start12} – ${end12}</p>
                 </div>
                 <p style="color: #334155; font-size: 15px; line-height: 24px; margin-top: 0; margin-bottom: 24px;">
                     Open the Kruto Tastes app to view your full shift details.
@@ -105,8 +108,10 @@ export async function sendShiftTimeChangedEmail(
         return false;
     }
     try {
+        const newStart12 = to12hr(newStartTime);
+        const newEnd12 = to12hr(newEndTime);
         const subject = `Shift Update: Time Changed at ${storeName}`;
-        const textBody = `Hello!\n\nYour shift at ${storeName} on ${dateLabel} has been updated.\n\nNew times: ${newStartTime} – ${newEndTime}\n\nOpen the Kruto Tastes app to view your updated shift details.\n\nThe Kruto Tastes Team`;
+        const textBody = `Hello!\n\nYour shift at ${storeName} on ${dateLabel} has been updated.\n\nNew times: ${newStart12} – ${newEnd12}\n\nOpen the Kruto Tastes app to view your updated shift details.\n\nThe Kruto Tastes Team`;
         const htmlBody = `
             <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 32px 24px; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px;">
                 <div style="text-align: center; margin-bottom: 28px;">
@@ -117,7 +122,7 @@ export async function sendShiftTimeChangedEmail(
                     Your shift at <strong style="color: #0f172a;">${storeName}</strong> on <strong style="color: #0f172a;">${dateLabel}</strong> has been updated with new times.
                 </p>
                 <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 14px 16px; border-radius: 4px; margin-bottom: 24px;">
-                    <p style="color: #92400e; font-size: 15px; font-weight: 600; margin: 0;">🕐 New times: ${newStartTime} – ${newEndTime}</p>
+                    <p style="color: #92400e; font-size: 15px; font-weight: 600; margin: 0;">🕐 New times: ${newStart12} – ${newEnd12}</p>
                 </div>
                 <p style="color: #334155; font-size: 15px; line-height: 24px; margin-top: 0; margin-bottom: 24px;">
                     Please open the Kruto Tastes app to confirm your updated schedule.

@@ -12,6 +12,12 @@ const WEEKDAYS = [
   { label: 'Wed', value: 3 }, { label: 'Thu', value: 4 }, { label: 'Fri', value: 5 }, { label: 'Sat', value: 6 },
 ];
 
+const fmt12 = (t?: string) => {
+  if (!t || !t.includes(':')) return t || '';
+  const [h, m] = t.split(':').map(Number);
+  return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+};
+
 export default function UsersScreen() {
   const [users, setUsers] = useState<any[]>([]);
   const [markets, setMarkets] = useState<any[]>([]);
@@ -556,7 +562,7 @@ export default function UsersScreen() {
                       <TouchableOpacity key={j.id} style={styles.modalItem}
                         onPress={() => { setSelectedJobId(j.id); setAssignView('main'); }}>
                         <Text style={[styles.modalItemText, selectedJobId === j.id && styles.modalItemActive]}>
-                          {j.store?.name || 'Store'} • {j.startTimeStr}–{j.endTimeStr}
+                          {j.store?.name || 'Store'} • {fmt12(j.startTimeStr)}–{fmt12(j.endTimeStr)}
                         </Text>
                         {j.store?.market?.name && (
                           <Text style={{ fontSize: 12, color: '#9CA3AF', textAlign: 'center', marginTop: 2 }}>{j.store.market.name}</Text>
@@ -603,7 +609,7 @@ export default function UsersScreen() {
                 <TouchableOpacity style={styles.selectBtn} onPress={() => setAssignView('jobPicker')}>
                   <Text style={styles.selectText}>
                     {selectedJob
-                      ? `${selectedJob.store?.name || 'Store'} • ${selectedJob.startTimeStr}–${selectedJob.endTimeStr}`
+                      ? `${selectedJob.store?.name || 'Store'} • ${fmt12(selectedJob.startTimeStr)}–${fmt12(selectedJob.endTimeStr)}`
                       : 'Select a job...'}
                   </Text>
                 </TouchableOpacity>

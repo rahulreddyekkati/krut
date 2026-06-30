@@ -253,17 +253,16 @@ export async function DELETE(
         const jobId = searchParams.get("jobId");
         const weekdayParam = searchParams.get("weekday");
 
-        // ── Pattern bulk-delete: remove all future ASSIGNED recurring shifts ──────
+        // ── Pattern bulk-delete: remove all future / unworked recurring shifts ──────
         if (jobId && weekdayParam !== null) {
             const weekday = parseInt(weekdayParam, 10);
-            const today = new Date(); today.setUTCHours(0, 0, 0, 0);
 
-            // Only delete future ASSIGNED shifts — never touch completed history
+            // Find all matching assignments that are still in ASSIGNED status (meaning they are either
+            // in the future or are past unworked shifts). Deleting these is safe and removes the pattern.
             const candidates = await prisma.jobAssignment.findMany({
                 where: {
                     workerId: id,
                     jobId,
-                    date: { gte: today },
                     status: "ASSIGNED"
                 },
                 select: { id: true, date: true }
@@ -272,31 +271,30 @@ export async function DELETE(
                 .filter(a => a.date && new Date(a.date).getUTCDay() === weekday)
                 .map(a => a.id);
 
-            // Mark previous cycle's matching records as non-recurring so auto-rollover
-            // does not recreate this pattern next cycle
-            const prevCycle = getPreviousCycleDates();
-            const prevCandidates = await prisma.jobAssignment.findMany({
+            // Find any other matching recurring assignments (e.g. past worked shifts) in any cycle,
+            // and mark them as non-recurring (isRecurring: false) so the pattern does not roll over.
+            const recurringCandidates = await prisma.jobAssignment.findMany({
                 where: {
                     workerId: id,
                     jobId,
-                    isRecurring: true,
-                    date: { gte: prevCycle.start, lte: prevCycle.end }
+                    isRecurring: true
                 },
                 select: { id: true, date: true }
             });
-            const prevMatchIds = prevCandidates
+            const toUpdateIds = recurringCandidates
                 .filter(a => a.date && new Date(a.date).getUTCDay() === weekday)
-                .map(a => a.id);
+                .map(a => a.id)
+                .filter(id => !toDeleteIds.includes(id));
 
             await prisma.jobAssignment.deleteMany({ where: { id: { in: toDeleteIds } } });
-            if (prevMatchIds.length > 0) {
+            if (toUpdateIds.length > 0) {
                 await prisma.jobAssignment.updateMany({
-                    where: { id: { in: prevMatchIds } },
+                    where: { id: { in: toUpdateIds } },
                     data: { isRecurring: false }
                 });
             }
 
-            return NextResponse.json({ success: true, deleted: toDeleteIds.length });
+            return NextResponse.json({ success: true, deleted: toDeleteIds.length, updated: toUpdateIds.length });
         }
 
         // ── Single delete (one-off / special shifts) ──────────────────────────────

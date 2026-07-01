@@ -239,15 +239,16 @@ export default function AssignJobPage() {
                         {(() => {
                             const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
                             const now = new Date();
-                            const day = now.getDate();
-                            const year = now.getFullYear();
-                            const month = now.getMonth();
+                            // Use UTC to match how assignment dates are stored in the DB
+                            const day = now.getUTCDate();
+                            const year = now.getUTCFullYear();
+                            const month = now.getUTCMonth();
                             const cycleStart = day <= 15
-                                ? new Date(year, month, 1, 0, 0, 0, 0)
-                                : new Date(year, month, 16, 0, 0, 0, 0);
+                                ? new Date(Date.UTC(year, month, 1))
+                                : new Date(Date.UTC(year, month, 16));
                             const cycleEnd = day <= 15
-                                ? new Date(year, month, 15, 23, 59, 59, 999)
-                                : new Date(year, month + 1, 0, 23, 59, 59, 999);
+                                ? new Date(Date.UTC(year, month, 15, 23, 59, 59, 999))
+                                : new Date(Date.UTC(year, month + 1, 0, 23, 59, 59, 999));
 
                             // Group only isRecurring assignments by (jobId, weekday derived from date)
                             const groups = new Map<string, { jobId: string; weekday: number; job: any; count: number }>();
@@ -325,7 +326,7 @@ export default function AssignJobPage() {
                                                         </div>
                                                         <div style={{ fontWeight: 600, color: "#111827" }}>{a.job?.title}</div>
                                                         <div style={{ fontSize: "0.8125rem", color: "#6b7280" }}>
-                                                            {to12hr(a.job?.startTimeStr)} – {to12hr(a.job?.endTimeStr)}
+                                                            {to12hr(a.customStartTimeStr ?? a.job?.startTimeStr)} – {to12hr(a.customEndTimeStr ?? a.job?.endTimeStr)}
                                                             {a.job?.store?.name ? ` · ${a.job.store.name}` : ""}
                                                         </div>
                                                     </div>
@@ -369,7 +370,7 @@ export default function AssignJobPage() {
                                             {new Date(a.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' })}
                                             </div>
                                             <div style={{ fontWeight: 600, color: "#111827" }}>{a.job.title}</div>
-                                            <div style={{ fontSize: "0.8125rem", color: "#6b7280" }}>{to12hr(a.job.startTimeStr)} – {to12hr(a.job.endTimeStr)}</div>
+                                            <div style={{ fontSize: "0.8125rem", color: "#6b7280" }}>{to12hr(a.customStartTimeStr ?? a.job.startTimeStr)} – {to12hr(a.customEndTimeStr ?? a.job.endTimeStr)}</div>
                                             {a.clockIn && (
                                                 <div style={{ fontSize: "0.75rem", color: "var(--success)", fontWeight: 500, marginTop: "0.25rem" }}>
                                                     ✓ Worked: {a.workedHours || 0}h

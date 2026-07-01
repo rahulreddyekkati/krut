@@ -48,6 +48,10 @@ model User {
 
   expoPushToken String?
 
+  // Live location status — updated by the background location task while worker is clocked in
+  inStore        Boolean?
+  lastLocationAt DateTime?
+
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }

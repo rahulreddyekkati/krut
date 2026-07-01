@@ -235,6 +235,7 @@ export default function AdminDashboardPage() {
                                             <th style={thStyle}>End Time</th>
                                             <th style={thStyle}>Market</th>
                                             <th style={thStyle}>Assigned To</th>
+                                            <th style={thStyle}>Break Time</th>
                                             <th style={thStyle}>Edit</th>
                                         </tr>
                                     )}
@@ -262,6 +263,7 @@ export default function AdminDashboardPage() {
                                             </td>
                                             <td style={tdStyle}>{row.marketName}</td>
                                             <td style={tdStyle}>{row.assignedWorker}</td>
+                                            <td style={tdStyle}>{row.breakTimeMinutes > 0 ? `${row.breakTimeMinutes}m` : "—"}</td>
                                             <td style={tdStyle}>
                                                 {row.assignmentId ? (
                                                     <button

@@ -77,14 +77,32 @@ export async function GET(request: NextRequest) {
             const dayEnd   = dateParam ? new Date(`${dateParam}T23:59:59Z`) : null;
 
             const data = jobs.flatMap((job: any) => {
-                let assignments = job.assignments as any[];
+                const allAssignments = job.assignments as any[];
+
+                // Jobs with no assignments at all are genuinely open — show as Unassigned
+                if (allAssignments.length === 0) {
+                    return [{
+                        id: job.id,
+                        assignmentId: null,
+                        workerId: null,
+                        storeName: job.store.name,
+                        startTime: job.startTimeStr || "--",
+                        endTime: job.endTimeStr || "--",
+                        marketName: job.store.market?.name || "—",
+                        assignedWorker: "Unassigned",
+                        hasCustomTimes: false,
+                        breakTimeMinutes: 0,
+                    }];
+                }
+
+                let assignments = allAssignments;
 
                 if (dateParam && dayStart && dayEnd && dayOfWeek !== null) {
                     // Keep only assignments relevant to the selected date:
                     // 1. Exact date match (specific-date or already-materialized recurring)
                     // 2. Recurring assignments whose stored date falls on the same weekday
                     //    (covers next-cycle patterns before auto-rollover creates the records)
-                    const relevant = assignments.filter((a: any) => {
+                    const relevant = allAssignments.filter((a: any) => {
                         if (!a.date) return false;
                         const d = new Date(a.date);
                         if (d >= dayStart && d <= dayEnd) return true;
@@ -100,31 +118,23 @@ export async function GET(request: NextRequest) {
                         seen.add(key);
                         return true;
                     });
+
+                    // Has assignments but none match today — skip entirely (don't show as Unassigned)
+                    if (assignments.length === 0) return [];
                 }
 
-                return assignments.length > 0
-                    ? assignments.map((a: any) => ({
-                        id: job.id,
-                        assignmentId: a.id,
-                        workerId: a.workerId,
-                        storeName: job.store.name,
-                        startTime: a.customStartTimeStr || job.startTimeStr || "--",
-                        endTime: a.customEndTimeStr || job.endTimeStr || "--",
-                        marketName: job.store.market?.name || "—",
-                        assignedWorker: a.worker?.name || "Unassigned",
-                        hasCustomTimes: !!(a.customStartTimeStr || a.customEndTimeStr),
-                    }))
-                    : [{
-                        id: job.id,
-                        assignmentId: null,
-                        workerId: null,
-                        storeName: job.store.name,
-                        startTime: job.startTimeStr || "--",
-                        endTime: job.endTimeStr || "--",
-                        marketName: job.store.market?.name || "—",
-                        assignedWorker: "Unassigned",
-                        hasCustomTimes: false,
-                    }];
+                return assignments.map((a: any) => ({
+                    id: job.id,
+                    assignmentId: a.id,
+                    workerId: a.workerId,
+                    storeName: job.store.name,
+                    startTime: a.customStartTimeStr || job.startTimeStr || "--",
+                    endTime: a.customEndTimeStr || job.endTimeStr || "--",
+                    marketName: job.store.market?.name || "—",
+                    assignedWorker: a.worker?.name || "Unassigned",
+                    hasCustomTimes: !!(a.customStartTimeStr || a.customEndTimeStr),
+                    breakTimeMinutes: a.breakTimeMinutes ?? 0,
+                }));
             });
 
             return NextResponse.json({ data });

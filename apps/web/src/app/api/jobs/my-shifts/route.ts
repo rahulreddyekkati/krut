@@ -83,10 +83,23 @@ export async function GET(request: NextRequest) {
             .map(r => r.assignmentId)
             .filter(Boolean) as string[];
 
+        // Pre-resolve custom times into job.startTimeStr/endTimeStr so the mobile app
+        // (which reads shift.job.startTimeStr) shows the correct per-worker time
+        // without requiring a new mobile release.
+        const resolveEffectiveTimes = (assignments: any[]) =>
+            assignments.map(a => ({
+                ...a,
+                job: a.job ? {
+                    ...a.job,
+                    startTimeStr: a.customStartTimeStr ?? a.job.startTimeStr,
+                    endTimeStr:   a.customEndTimeStr   ?? a.job.endTimeStr,
+                } : a.job,
+            }));
+
         return NextResponse.json({
-            currentCycle,
-            upcoming,
-            previousCompleted,
+            currentCycle:      resolveEffectiveTimes(currentCycle),
+            upcoming:          resolveEffectiveTimes(upcoming),
+            previousCompleted: resolveEffectiveTimes(previousCompleted),
             cycleStart: cycle.start.toISOString(),
             cycleEnd: cycle.end.toISOString(),
             cycleLabel: getCycleDisplayName(cycle),

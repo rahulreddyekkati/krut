@@ -18,6 +18,7 @@
 
 import * as TaskManager from "expo-task-manager";
 import * as Location from "expo-location";
+import * as Notifications from "expo-notifications";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getToken } from "../utils/tokenManager";
 import { Alert } from "react-native";
@@ -86,7 +87,26 @@ TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }: any) =>
     const API_BASE_URL =
       process.env.EXPO_PUBLIC_API_BASE_URL ?? "https://krut-6zbd.vercel.app/api";
 
+    // Fire-and-forget in/out status to server (foundation for admin live-location view)
+    fetch(`${API_BASE_URL}/location/status`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, "x-app-client": "mobile-app" },
+      body: JSON.stringify({ inStore: !isOutside }),
+    }).catch(() => {});
+
     if (isOutside) {
+      // First tick outside — notify worker that break timer will start in 15 min
+      if (outsideSecs === 0) {
+        Notifications.scheduleNotificationAsync({
+          content: {
+            title: "You've left the store",
+            body: `Break timer will start in 15 minutes if you don't return to ${store.name || "your store"}.`,
+            sound: true,
+          },
+          trigger: null, // fire immediately
+        }).catch(() => {});
+      }
+
       // Assume ~30s between location updates (OS delivers best-effort)
       outsideSecs += 30;
       await AsyncStorage.setItem(ASYNC_STORE_OUTSIDE_SECS_KEY, String(outsideSecs));
@@ -104,6 +124,15 @@ TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }: any) =>
         });
         if (res.ok) {
           await AsyncStorage.setItem(ASYNC_STORE_ON_AUTO_BREAK_KEY, "true");
+          // Notify worker that break has started
+          Notifications.scheduleNotificationAsync({
+            content: {
+              title: "Break time started",
+              body: "Break time is now being recorded.",
+              sound: true,
+            },
+            trigger: null,
+          }).catch(() => {});
         }
       }
     } else {
@@ -124,6 +153,15 @@ TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }: any) =>
         });
         if (res.ok) {
           await AsyncStorage.setItem(ASYNC_STORE_ON_AUTO_BREAK_KEY, "false");
+          // Notify worker that break timer stopped
+          Notifications.scheduleNotificationAsync({
+            content: {
+              title: "Break timer stopped",
+              body: `Welcome back at ${store.name || "the store"}.`,
+              sound: true,
+            },
+            trigger: null,
+          }).catch(() => {});
         }
       }
     }

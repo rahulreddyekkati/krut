@@ -86,6 +86,10 @@ export default function Login() {
             <Text style={styles.buttonText}>Sign In</Text>
           )}
         </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => router.push('/forgot-password')} style={{ marginTop: 16, alignItems: 'center' }}>
+          <Text style={styles.forgotText}>Forgot password?</Text>
+        </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
   );
@@ -151,5 +155,10 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     textAlign: 'center',
     fontWeight: '500',
-  }
+  },
+  forgotText: {
+    color: '#6366F1',
+    fontSize: 14,
+    fontWeight: '500',
+  },
 });

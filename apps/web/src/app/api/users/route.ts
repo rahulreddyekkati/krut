@@ -75,8 +75,7 @@ export async function GET() {
                     const [eh, em] = job.endTimeStr.split(":").map(Number);
                     let durationMins = (eh * 60 + em) - (sh * 60 + sm);
                     if (durationMins < 0) durationMins += 24 * 60;
-                    // Only count recurring shifts toward assigned hours; specific-date one-offs are not part of the committed weekly schedule
-                    if (assignment.isRecurring) assignedHours += durationMins / 60;
+                    assignedHours += durationMins / 60;
 
                     if (typeof assignment.workedHours === 'number') {
                         workedHours += assignment.workedHours;

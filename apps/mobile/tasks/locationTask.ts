@@ -20,6 +20,7 @@ import * as TaskManager from "expo-task-manager";
 import * as Location from "expo-location";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getToken } from "../utils/tokenManager";
+import { Alert } from "react-native";
 
 export const BACKGROUND_LOCATION_TASK = "kruto-background-location";
 
@@ -136,12 +137,29 @@ TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }: any) =>
  *
  * Starts the background location task.  Call this when the worker clocks in.
  * Saves the active assignment info to AsyncStorage so the task can reference it.
- */
 export async function startBackgroundLocationTracking(assignment: {
   id: string;
   store: { latitude: number; longitude: number; radius: number } | null;
 }) {
   try {
+    // Show prominent disclosure to user before requesting OS permission
+    const userAgreed = await new Promise<boolean>((resolve) => {
+      Alert.alert(
+        "Location Access in Background Required",
+        "Kruto Tastes collects location data in the background to verify you are at your assigned store during active shifts and automatically manage break times when you enter or leave the venue.\n\nTo enable this feature, please choose 'Allow Always' in the next prompt.",
+        [
+          { text: "No, Thank You", style: "cancel", onPress: () => resolve(false) },
+          { text: "Accept & Continue", onPress: () => resolve(true) }
+        ],
+        { cancelable: false }
+      );
+    });
+
+    if (!userAgreed) {
+      console.warn("[BG Location] User declined background location prominent disclosure.");
+      return false;
+    }
+
     // Request "always" permission — the user will see the iOS prompt
     const { status } = await Location.requestBackgroundPermissionsAsync();
     if (status !== "granted") {

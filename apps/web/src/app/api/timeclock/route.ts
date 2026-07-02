@@ -168,6 +168,17 @@ export async function GET(request: NextRequest) {
             }
         }
 
+        if (activeAssignment && activeAssignment.job) {
+            activeAssignment = {
+                ...activeAssignment,
+                job: {
+                    ...activeAssignment.job,
+                    startTimeStr: activeAssignment.customStartTimeStr ?? activeAssignment.job.startTimeStr,
+                    endTimeStr:   activeAssignment.customEndTimeStr   ?? activeAssignment.job.endTimeStr,
+                }
+            };
+        }
+
         return NextResponse.json({ activeAssignment });
     } catch (error) {
         return handleApiError(error);

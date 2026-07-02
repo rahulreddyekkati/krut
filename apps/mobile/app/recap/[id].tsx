@@ -5,7 +5,6 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import * as ImageManipulator from 'expo-image-manipulator';
 import { fetchWithAuth } from '../../utils/apiClient';
 import { useAuth } from '../../providers/AuthProvider';
 import SignatureScreen from 'react-native-signature-canvas';
@@ -94,28 +93,41 @@ export default function SubmitRecap() {
     setSkuData(prev => prev.map((row, i) => i === index ? { ...row, [field]: value } : row));
   };
 
-  const RECEIPT_IMAGE_MAX_DIMENSION = 1440; // long-edge px
-  const RECEIPT_IMAGE_COMPRESS_QUALITY = 0.5; // additional JPEG compression after resize
-  // Keep in sync with MAX_TOTAL_RECEIPT_BASE64_BYTES in apps/web/src/lib/validate.ts
-  const MAX_TOTAL_RECEIPT_BASE64_BYTES = 3.5 * 1024 * 1024; // 3.5MB combined, leaves headroom under Vercel's ~4.5MB body cap
-
-  /**
-   * Resize + recompress a picked/captured photo so the base64-encoded payload
-   * stays small enough for the combined multi-photo request to fit under
-   * Vercel's ~4.5MB body limit. Returns a data:image/jpeg;base64,... URI.
-   */
-  const compressReceiptImage = async (uri: string): Promise<string> => {
-    const result = await ImageManipulator.manipulateAsync(
-      uri,
-      [{ resize: { width: RECEIPT_IMAGE_MAX_DIMENSION } }],
-      { compress: RECEIPT_IMAGE_COMPRESS_QUALITY, format: ImageManipulator.SaveFormat.JPEG, base64: true }
-    );
-    return `data:image/jpeg;base64,${result.base64}`;
-  };
+  // Quick fix that works on the app already installed on phones (no native rebuild required):
+  // ask the camera/picker for a heavily compressed JPEG directly, then silently drop anything
+  // still too large instead of showing a technical error. Keep in sync with the caps in
+  // apps/web/src/lib/validate.ts.
+  const RECEIPT_IMAGE_QUALITY = 0.35;
+  const MAX_RECEIPT_IMAGE_BYTES = 3 * 1024 * 1024; // 3MB per photo
+  const MAX_TOTAL_RECEIPT_BASE64_BYTES = 4 * 1024 * 1024; // 4MB combined, leaves headroom under Vercel's ~4.5MB body cap
+  const PHOTO_TOO_LARGE_MESSAGE = 'That photo is too big to attach. Please retake it and try again.';
 
   const getBase64ByteSize = (dataUri: string): number => {
     const base64Data = dataUri.split(',').pop() || dataUri;
     return Math.ceil((base64Data.length * 3) / 4);
+  };
+
+  // Adds only the photos that fit; silently skips (with one friendly alert) any that don't,
+  // so a worker never has to understand file sizes to finish their recap.
+  const addReceiptImages = (uris: string[]) => {
+    setReceiptImages(prev => {
+      let runningTotal = prev.reduce((sum, img) => sum + getBase64ByteSize(img), 0);
+      const accepted: string[] = [];
+      let rejected = false;
+      for (const uri of uris) {
+        const size = getBase64ByteSize(uri);
+        if (size > MAX_RECEIPT_IMAGE_BYTES || runningTotal + size > MAX_TOTAL_RECEIPT_BASE64_BYTES) {
+          rejected = true;
+          continue;
+        }
+        accepted.push(uri);
+        runningTotal += size;
+      }
+      if (rejected) {
+        Alert.alert('Photo Too Large', PHOTO_TOO_LARGE_MESSAGE);
+      }
+      return [...prev, ...accepted];
+    });
   };
 
   const pickReceiptImage = async () => {
@@ -127,15 +139,11 @@ export default function SubmitRecap() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
-      quality: 0.7,
+      quality: RECEIPT_IMAGE_QUALITY,
+      base64: true,
     });
     if (!result.canceled && result.assets) {
-      try {
-        const compressed = await Promise.all(result.assets.map(a => compressReceiptImage(a.uri)));
-        setReceiptImages(prev => [...prev, ...compressed]);
-      } catch {
-        Alert.alert('Image Error', 'One or more photos could not be processed. Please try again.');
-      }
+      addReceiptImages(result.assets.map(a => `data:image/jpeg;base64,${a.base64}`));
     }
   };
 
@@ -145,14 +153,9 @@ export default function SubmitRecap() {
       Alert.alert('Permission Required', 'Please allow camera access.');
       return;
     }
-    const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
+    const result = await ImagePicker.launchCameraAsync({ quality: RECEIPT_IMAGE_QUALITY, base64: true });
     if (!result.canceled && result.assets) {
-      try {
-        const compressed = await Promise.all(result.assets.map(a => compressReceiptImage(a.uri)));
-        setReceiptImages(prev => [...prev, ...compressed]);
-      } catch {
-        Alert.alert('Image Error', 'The photo could not be processed. Please try again.');
-      }
+      addReceiptImages(result.assets.map(a => `data:image/jpeg;base64,${a.base64}`));
     }
   };
 
@@ -160,17 +163,6 @@ export default function SubmitRecap() {
     if (!rushLevel) {
       Alert.alert('Missing Info', 'Please select the rush level.');
       return;
-    }
-
-    if (receiptImages.length > 0) {
-      const totalReceiptBytes = receiptImages.reduce((sum, img) => sum + getBase64ByteSize(img), 0);
-      if (totalReceiptBytes > MAX_TOTAL_RECEIPT_BASE64_BYTES) {
-        Alert.alert(
-          'Photos Too Large',
-          'Your receipt photos are too large to submit together. Please remove a photo or retake one, then try again.'
-        );
-        return;
-      }
     }
 
     setLoading(true);
@@ -212,19 +204,14 @@ export default function SubmitRecap() {
         Alert.alert('Success', 'Your recap has been submitted!', [
           { text: 'OK', onPress: () => router.replace('/(tabs)') }
         ]);
+      } else if (data.issues?.some((i: any) => i.field === 'receiptUrl')) {
+        Alert.alert('Photo Too Large', PHOTO_TOO_LARGE_MESSAGE);
       } else {
         const detail = data.issues?.[0]?.message || data.error || 'Failed to submit recap';
         Alert.alert('Error', detail);
       }
     } catch {
-      if (receiptImages.length > 1) {
-        Alert.alert(
-          'Network Error',
-          'Please check your connection and try again. If this keeps happening, try submitting with fewer or smaller receipt photos.'
-        );
-      } else {
-        Alert.alert('Network Error', 'Please check your connection and try again.');
-      }
+      Alert.alert('Network Error', 'Please check your connection and try again.');
     } finally {
       setLoading(false);
     }

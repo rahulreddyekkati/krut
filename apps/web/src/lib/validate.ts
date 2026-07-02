@@ -130,8 +130,8 @@ const skuItemSchema = z.object({
     }
 });
 
-const MAX_BASE64_BYTES = 2 * 1024 * 1024; // 2MB per image
-const MAX_TOTAL_RECEIPT_BASE64_BYTES = 3.5 * 1024 * 1024; // 3.5MB combined — keep in sync with mobile client's pre-submit check
+const MAX_BASE64_BYTES = 3 * 1024 * 1024; // 3MB per image — keep in sync with the mobile client's per-photo cap
+const MAX_TOTAL_RECEIPT_BASE64_BYTES = 4 * 1024 * 1024; // 4MB combined — keep in sync with mobile client's combined cap
 
 function getBase64ByteSize(dataUri: string): number {
     const base64Data = dataUri.split(",").pop() || dataUri;
@@ -182,7 +182,7 @@ export const recapSchema = z.object({
                 const total = sizes.reduce((sum, s) => sum + s, 0);
                 return total <= MAX_TOTAL_RECEIPT_BASE64_BYTES;
             },
-            { message: "Receipt images must each be under 2MB, and 3.5MB combined" }
+            { message: "One or more receipt photos are too large" }
         ),
     inventoryData: z.record(z.string(), z.any()).optional(),
 });

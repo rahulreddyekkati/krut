@@ -202,7 +202,7 @@ export default function RecapDetailPage() {
                 </div>
                 <div style={rowStyle}>
                     <span style={labelStyle}>Date</span>
-                    <span style={valueStyle}>{recap.shiftDate ? new Date(recap.shiftDate).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : "--"}</span>
+                    <span style={valueStyle}>{recap.shiftDate ? new Date(recap.shiftDate).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : "--"}</span>
                 </div>
                 <div style={rowStyle}>
                     <span style={labelStyle}>Clock In</span>

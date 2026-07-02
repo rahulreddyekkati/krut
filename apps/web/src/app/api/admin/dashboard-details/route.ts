@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
                 include: {
                     store: {
                         include: {
-                            market: { select: { name: true } }
+                            market: { select: { id: true, name: true } }
                         }
                     },
                     assignments: {
@@ -92,6 +92,9 @@ export async function GET(request: NextRequest) {
                         assignedWorker: "Unassigned",
                         hasCustomTimes: false,
                         breakTimeMinutes: 0,
+                        marketId: job.store.market?.id || null,
+                        storeId: job.storeId,
+                        jobId: job.id,
                     }];
                 }
 
@@ -134,6 +137,9 @@ export async function GET(request: NextRequest) {
                     assignedWorker: a.worker?.name || "Unassigned",
                     hasCustomTimes: !!(a.customStartTimeStr || a.customEndTimeStr),
                     breakTimeMinutes: a.breakTimeMinutes ?? 0,
+                    marketId: job.store.market?.id || null,
+                    storeId: job.storeId,
+                    jobId: job.id,
                 }));
             });
 

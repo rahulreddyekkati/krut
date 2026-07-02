@@ -162,6 +162,17 @@ export default function SubmitRecap() {
       return;
     }
 
+    if (receiptImages.length > 0) {
+      const totalReceiptBytes = receiptImages.reduce((sum, img) => sum + getBase64ByteSize(img), 0);
+      if (totalReceiptBytes > MAX_TOTAL_RECEIPT_BASE64_BYTES) {
+        Alert.alert(
+          'Photos Too Large',
+          'Your receipt photos are too large to submit together. Please remove a photo or retake one, then try again.'
+        );
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       const inventoryData: Record<string, any> = {};
@@ -206,7 +217,14 @@ export default function SubmitRecap() {
         Alert.alert('Error', detail);
       }
     } catch {
-      Alert.alert('Network Error', 'Please check your connection and try again.');
+      if (receiptImages.length > 1) {
+        Alert.alert(
+          'Network Error',
+          'Please check your connection and try again. If this keeps happening, try submitting with fewer or smaller receipt photos.'
+        );
+      } else {
+        Alert.alert('Network Error', 'Please check your connection and try again.');
+      }
     } finally {
       setLoading(false);
     }

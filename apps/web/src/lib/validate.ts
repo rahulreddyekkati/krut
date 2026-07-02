@@ -130,7 +130,13 @@ const skuItemSchema = z.object({
     }
 });
 
-const MAX_BASE64_BYTES = 2 * 1024 * 1024; // 2MB
+const MAX_BASE64_BYTES = 2 * 1024 * 1024; // 2MB per image
+const MAX_TOTAL_RECEIPT_BASE64_BYTES = 3.5 * 1024 * 1024; // 3.5MB combined — keep in sync with mobile client's pre-submit check
+
+function getBase64ByteSize(dataUri: string): number {
+    const base64Data = dataUri.split(",").pop() || dataUri;
+    return Math.ceil((base64Data.length * 3) / 4);
+}
 
 export const recapSchema = z.object({
     jobId: z.string().min(1, "jobId is required"),
@@ -155,12 +161,28 @@ export const recapSchema = z.object({
         .refine(
             (val) => {
                 if (!val) return true;
-                // Check base64 payload size
-                const base64Data = val.split(",").pop() || val;
-                const sizeBytes = Math.ceil((base64Data.length * 3) / 4);
-                return sizeBytes <= MAX_BASE64_BYTES;
+
+                // receiptUrl is a JSON-stringified array of data-URI images; fall back to
+                // treating it as a single legacy data-URI string for backward compatibility.
+                let images: string[];
+                try {
+                    const parsed = JSON.parse(val);
+                    images = Array.isArray(parsed) && parsed.every((v) => typeof v === "string")
+                        ? parsed
+                        : [val];
+                } catch {
+                    images = [val];
+                }
+
+                if (images.length === 0) return true;
+
+                const sizes = images.map(getBase64ByteSize);
+                if (sizes.some((s) => s > MAX_BASE64_BYTES)) return false;
+
+                const total = sizes.reduce((sum, s) => sum + s, 0);
+                return total <= MAX_TOTAL_RECEIPT_BASE64_BYTES;
             },
-            { message: "Receipt image must be under 2MB" }
+            { message: "Receipt images must each be under 2MB, and 3.5MB combined" }
         ),
     inventoryData: z.record(z.string(), z.any()).optional(),
 });

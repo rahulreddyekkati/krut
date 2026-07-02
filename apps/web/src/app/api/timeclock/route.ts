@@ -53,6 +53,7 @@ export async function GET(request: NextRequest) {
                         { date: { gte: todayUTCMidnight, lt: tomorrowUTCMidnight } },
                         {
                             isRecurring: true,
+                            date: null,
                             dayOfWeek: zonedNow.getDay()
                         }
                     ]

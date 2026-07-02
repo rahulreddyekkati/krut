@@ -3,8 +3,10 @@ import prisma from "@/lib/prisma";
 import { ensureCurrentCycleAssignments } from "@/lib/recurringShifts";
 
 export async function GET(request: NextRequest) {
-    const secret = request.headers.get("x-cron-secret");
-    if (secret !== process.env.CRON_SECRET) {
+    const authHeader = request.headers.get("authorization");
+    const legacySecret = request.headers.get("x-cron-secret");
+    const bearerSecret = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+    if (process.env.CRON_SECRET !== bearerSecret && process.env.CRON_SECRET !== legacySecret) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

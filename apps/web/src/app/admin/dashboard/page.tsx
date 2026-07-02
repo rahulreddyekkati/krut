@@ -25,6 +25,10 @@ export default function AdminDashboardPage() {
     const [editTimes, setEditTimes] = useState({ startTime: "", endTime: "" });
     const [editSaving, setEditSaving] = useState(false);
     const [editError, setEditError] = useState("");
+    const [modalWorkers, setModalWorkers] = useState<any[]>([]);
+    const [modalStores, setModalStores] = useState<any[]>([]);
+    const [selectedWorkerId, setSelectedWorkerId] = useState("");
+    const [selectedStoreId, setSelectedStoreId] = useState("");
 
     const fetchStats = async (date: string) => {
         setLoading(true);
@@ -73,24 +77,59 @@ export default function AdminDashboardPage() {
         }
     };
 
-    const handleOpenShiftEdit = (row: any) => {
+    const handleOpenShiftEdit = async (row: any) => {
         setEditingShift(row);
         setEditTimes({ startTime: row.startTime === "--" ? "" : row.startTime, endTime: row.endTime === "--" ? "" : row.endTime });
+        setSelectedWorkerId(row.workerId || "");
+        setSelectedStoreId(row.storeId || "");
         setEditError("");
+
+        // Fetch workers and stores for this market
+        const [workersRes, storesRes] = await Promise.all([
+            fetch("/api/users/workers"),
+            fetch(`/api/stores${row.marketId ? `?marketId=${row.marketId}` : ""}`)
+        ]);
+        if (workersRes.ok) {
+            const data = await workersRes.json();
+            const workers = Array.isArray(data) ? data : (data.workers || []);
+            setModalWorkers(row.marketId ? workers.filter((w: any) => w.marketId === row.marketId) : workers);
+        }
+        if (storesRes.ok) {
+            setModalStores(await storesRes.json());
+        }
     };
 
     const handleSaveShiftEdit = async () => {
-        if (!editingShift?.assignmentId || !editingShift?.workerId) return;
+        if (!editingShift?.assignmentId) return;
         setEditSaving(true);
         try {
-            const res = await fetch(`/api/users/${editingShift.workerId}/assignments`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
+            const workerChanged = selectedWorkerId && selectedWorkerId !== editingShift.workerId;
+            const storeChanged  = selectedStoreId  && selectedStoreId  !== editingShift.storeId;
+            const timeChanged   = editTimes.startTime || editTimes.endTime;
+
+            // Use the new full-reassignment endpoint if worker or store changed
+            const useReassignEndpoint = workerChanged || storeChanged;
+            const url = useReassignEndpoint
+                ? `/api/admin/assignments/${editingShift.assignmentId}`
+                : `/api/users/${editingShift.workerId}/assignments`;
+
+            const body = useReassignEndpoint
+                ? {
+                    newWorkerId: workerChanged ? selectedWorkerId : undefined,
+                    storeId:     storeChanged  ? selectedStoreId  : undefined,
+                    startTimeStr: editTimes.startTime || undefined,
+                    endTimeStr:   editTimes.endTime   || undefined,
+                }
+                : {
                     assignmentId: editingShift.assignmentId,
                     customStartTimeStr: editTimes.startTime || null,
-                    customEndTimeStr: editTimes.endTime || null,
-                }),
+                    customEndTimeStr:   editTimes.endTime   || null,
+                };
+
+            const res = await fetch(url, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body),
             });
             if (res.ok) {
                 setEditingShift(null);
@@ -304,11 +343,41 @@ export default function AdminDashboardPage() {
                     className="card glass"
                     style={{ width: "100%", maxWidth: "420px", padding: "1.75rem", borderRadius: "1rem" }}
                 >
-                    <h3 className="heading h4" style={{ marginBottom: "0.25rem" }}>Edit Shift Times</h3>
+                    <h3 className="heading h4" style={{ marginBottom: "0.25rem" }}>Edit Shift</h3>
                     <p style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "1.5rem" }}>
-                        {editingShift.assignedWorker} · {editingShift.storeName}
+                        {editingShift.storeName} · {editingShift.marketName}
                     </p>
 
+                    {/* Worker */}
+                    <div style={{ marginBottom: "1rem" }}>
+                        <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, marginBottom: "0.375rem" }}>Assigned Worker</label>
+                        <select
+                            className="input"
+                            value={selectedWorkerId}
+                            onChange={e => setSelectedWorkerId(e.target.value)}
+                        >
+                            <option value="">— Unassigned —</option>
+                            {modalWorkers.map((w: any) => (
+                                <option key={w.id} value={w.id}>{w.name || w.email}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Store */}
+                    <div style={{ marginBottom: "1rem" }}>
+                        <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, marginBottom: "0.375rem" }}>Store</label>
+                        <select
+                            className="input"
+                            value={selectedStoreId}
+                            onChange={e => setSelectedStoreId(e.target.value)}
+                        >
+                            {modalStores.map((s: any) => (
+                                <option key={s.id} value={s.id}>{s.name}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Times */}
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
                         <div>
                             <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, marginBottom: "0.375rem" }}>Start Time</label>
@@ -336,7 +405,7 @@ export default function AdminDashboardPage() {
                         <button onClick={() => setEditingShift(null)} style={{ background: "#f3f4f6", color: "#374151", border: "none", borderRadius: "8px", padding: "0.5rem 1rem", fontWeight: 600, cursor: "pointer" }}>Cancel</button>
                         <button
                             onClick={handleSaveShiftEdit}
-                            disabled={editSaving || !editTimes.startTime || !editTimes.endTime}
+                            disabled={editSaving}
                             className="btn btn-primary"
                         >
                             {editSaving ? "Saving…" : "Save Changes"}

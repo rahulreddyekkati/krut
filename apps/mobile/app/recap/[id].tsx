@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { fetchWithAuth } from '../../utils/apiClient';
 import { useAuth } from '../../providers/AuthProvider';
 import SignatureScreen from 'react-native-signature-canvas';
@@ -93,6 +94,30 @@ export default function SubmitRecap() {
     setSkuData(prev => prev.map((row, i) => i === index ? { ...row, [field]: value } : row));
   };
 
+  const RECEIPT_IMAGE_MAX_DIMENSION = 1440; // long-edge px
+  const RECEIPT_IMAGE_COMPRESS_QUALITY = 0.5; // additional JPEG compression after resize
+  // Keep in sync with MAX_TOTAL_RECEIPT_BASE64_BYTES in apps/web/src/lib/validate.ts
+  const MAX_TOTAL_RECEIPT_BASE64_BYTES = 3.5 * 1024 * 1024; // 3.5MB combined, leaves headroom under Vercel's ~4.5MB body cap
+
+  /**
+   * Resize + recompress a picked/captured photo so the base64-encoded payload
+   * stays small enough for the combined multi-photo request to fit under
+   * Vercel's ~4.5MB body limit. Returns a data:image/jpeg;base64,... URI.
+   */
+  const compressReceiptImage = async (uri: string): Promise<string> => {
+    const result = await ImageManipulator.manipulateAsync(
+      uri,
+      [{ resize: { width: RECEIPT_IMAGE_MAX_DIMENSION } }],
+      { compress: RECEIPT_IMAGE_COMPRESS_QUALITY, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+    );
+    return `data:image/jpeg;base64,${result.base64}`;
+  };
+
+  const getBase64ByteSize = (dataUri: string): number => {
+    const base64Data = dataUri.split(',').pop() || dataUri;
+    return Math.ceil((base64Data.length * 3) / 4);
+  };
+
   const pickReceiptImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -103,10 +128,14 @@ export default function SubmitRecap() {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
       quality: 0.7,
-      base64: true,
     });
     if (!result.canceled && result.assets) {
-      setReceiptImages(prev => [...prev, ...result.assets.map(a => `data:image/jpeg;base64,${a.base64}`)]);
+      try {
+        const compressed = await Promise.all(result.assets.map(a => compressReceiptImage(a.uri)));
+        setReceiptImages(prev => [...prev, ...compressed]);
+      } catch {
+        Alert.alert('Image Error', 'One or more photos could not be processed. Please try again.');
+      }
     }
   };
 
@@ -116,9 +145,14 @@ export default function SubmitRecap() {
       Alert.alert('Permission Required', 'Please allow camera access.');
       return;
     }
-    const result = await ImagePicker.launchCameraAsync({ quality: 0.7, base64: true });
+    const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
     if (!result.canceled && result.assets) {
-      setReceiptImages(prev => [...prev, ...result.assets.map(a => `data:image/jpeg;base64,${a.base64}`)]);
+      try {
+        const compressed = await Promise.all(result.assets.map(a => compressReceiptImage(a.uri)));
+        setReceiptImages(prev => [...prev, ...compressed]);
+      } catch {
+        Alert.alert('Image Error', 'The photo could not be processed. Please try again.');
+      }
     }
   };
 

@@ -218,7 +218,15 @@ export async function POST(request: NextRequest) {
 
             // Block clock-in if worker has any unsubmitted recaps
             const pendingRecap = await prisma.jobAssignment.findFirst({
-                where: { workerId: user.id, status: "RECAP_PENDING", id: { not: assignmentId } },
+                where: {
+                    workerId: user.id,
+                    status: "RECAP_PENDING",
+                    id: { not: assignmentId },
+                    OR: [
+                        { recap: { is: null } },
+                        { recap: { status: "REJECTED" } }
+                    ]
+                },
                 include: { job: { include: { store: { select: { name: true } } } } }
             });
             if (pendingRecap) {

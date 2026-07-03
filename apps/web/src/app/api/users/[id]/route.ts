@@ -50,7 +50,8 @@ export async function PATCH(
 
         const { id } = await context.params;
         const body = await request.json();
-        const { role, status, hourlyWage, name, email, marketId, managedMarketId, manualWorkedHours } = body;
+        const { role, status, hourlyWage, name, email: rawEmail, marketId, managedMarketId, manualWorkedHours } = body;
+        const email = typeof rawEmail === "string" ? rawEmail.trim().toLowerCase() : rawEmail;
 
         const updateData = {
             role,

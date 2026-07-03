@@ -1001,7 +1001,7 @@ export default function WorkerDashboard({
                                 </div>
                                 <div className={styles.recapShiftRow}>
                                     <span className={styles.recapLabel}>Date</span>
-                                    <span className={styles.recapValue}>{selectedRecapData ? new Date(selectedRecapData.shiftDate).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                                    <span className={styles.recapValue}>{selectedRecapData ? new Date(selectedRecapData.shiftDate).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</span>
                                 </div>
                                 <div className={styles.recapShiftRow}>
                                     <span className={styles.recapLabel}>Clock In</span>

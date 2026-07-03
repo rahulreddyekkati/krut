@@ -50,7 +50,7 @@ export async function POST(
 
         const storeName = recap.job.store?.name || "the store";
         const shiftDate = recap.job?.date 
-            ? new Date(recap.job.date).toLocaleDateString() 
+            ? new Date(recap.job.date).toLocaleDateString(undefined, { timeZone: "UTC" })
             : "your recent shift";
 
         const workerPush = { userId: assignment.worker.id, title: "Recap Approved", message: `Your recap for ${storeName} on ${shiftDate} has been approved.` };

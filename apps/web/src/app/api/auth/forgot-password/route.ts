@@ -11,7 +11,8 @@ const OTP_TTL_MS = 10 * 60 * 1000;
 
 export async function POST(request: NextRequest) {
     try {
-        const { email } = validate(forgotPasswordSchema, await request.json());
+        const { email: rawEmail } = validate(forgotPasswordSchema, await request.json());
+        const email = rawEmail.trim().toLowerCase();
 
         const user = await prisma.user.findUnique({ where: { email } });
 

@@ -92,7 +92,7 @@ export default function RecapsScreen() {
   const handleSendReminder = async (assignment: any) => {
     try {
         const title = "Recap Reminder";
-        const message = `Please submit your recap for your shift at ${assignment.storeName} on ${new Date(assignment.shiftDate).toLocaleDateString()}. It has been ${assignment.hoursOverdue} hours since you clocked out.`;
+        const message = `Please submit your recap for your shift at ${assignment.storeName} on ${new Date(assignment.shiftDate).toLocaleDateString(undefined, { timeZone: 'UTC' })}. It has been ${assignment.hoursOverdue} hours since you clocked out.`;
         
         const res = await fetchWithAuth('/notifications', {
             method: "POST",
@@ -241,7 +241,7 @@ export default function RecapsScreen() {
                         <View style={styles.statsRow}>
                             <View style={styles.statCell}>
                                 <Text style={styles.statLabel}>SHIFT DATE</Text>
-                                <Text style={styles.statValue}>{a.shiftDate ? new Date(a.shiftDate).toLocaleDateString() : '—'}</Text>
+                                <Text style={styles.statValue}>{a.shiftDate ? new Date(a.shiftDate).toLocaleDateString(undefined, { timeZone: 'UTC' }) : '—'}</Text>
                             </View>
                             <TouchableOpacity 
                                 style={[styles.reminderBtn, isSent && styles.reminderBtnSent]} 

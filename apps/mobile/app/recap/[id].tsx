@@ -46,6 +46,7 @@ export default function SubmitRecap() {
   const [managerUnavailable, setManagerUnavailable] = useState(false);
   const [showSignaturePad, setShowSignaturePad] = useState(false);
   const [managerSignature, setManagerSignature] = useState<string | null>(null);
+  const signatureRef = useRef<any>(null);
 
   const [loading, setLoading] = useState(false);
   const [shiftInfo, setShiftInfo] = useState<any>(null);
@@ -246,6 +247,7 @@ export default function SubmitRecap() {
           Ask the store manager to sign below
         </Text>
         <SignatureScreen
+          ref={signatureRef}
           onOK={(sig: string) => {
             setManagerSignature(sig);
             setShowSignaturePad(false);
@@ -255,9 +257,22 @@ export default function SubmitRecap() {
           clearText="Clear"
           confirmText="Save"
           webStyle={`.m-signature-pad { box-shadow: none; border: 1px solid #E5E7EB; border-radius: 12px; }
-            .m-signature-pad--footer { background: #F9FAFB; }
-            .m-signature-pad--footer .button { background: #6366F1; color: white; border-radius: 8px; }`}
+            .m-signature-pad--footer { display: none; }`}
         />
+        <View style={{ flexDirection: 'row', gap: 10, padding: 20, paddingBottom: 32 }}>
+          <TouchableOpacity
+            style={[styles.skipBtn, { flex: 1, borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 12 }]}
+            onPress={() => signatureRef.current?.clearSignature()}
+          >
+            <Text style={styles.skipBtnText}>Clear</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.submitBtn, { flex: 1, marginBottom: 0 }]}
+            onPress={() => signatureRef.current?.readSignature()}
+          >
+            <Text style={styles.submitBtnText}>Submit</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }

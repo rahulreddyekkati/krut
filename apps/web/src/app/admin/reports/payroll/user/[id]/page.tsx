@@ -66,7 +66,7 @@ export default async function UserPayrollDetailsPage(props: {
 
         return {
             id: assignment.id,
-            date: assignment.date ? assignment.date.toLocaleDateString() : "--",
+            date: assignment.date ? assignment.date.toLocaleDateString(undefined, { timeZone: "UTC" }) : "--",
             store: assignment.job.store.name,
             market: assignment.job.store.market?.name || "--",
             hours: workedH.toFixed(2),

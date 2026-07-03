@@ -49,7 +49,7 @@ export async function POST(
         }
 
         const dateLabel = releaseRequest.date
-            ? new Date(releaseRequest.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
+            ? new Date(releaseRequest.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" })
             : "Unknown date";
 
         let marketWorkerIds: string[] = [];

@@ -76,7 +76,7 @@ export default function ReleasedShiftsPage() {
                 <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                     {assignments.map(a => {
                         const dateStr = a.date
-                            ? new Date(a.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
+                            ? new Date(a.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" })
                             : "—";
                         const marketWorkers = workers.filter(w => w.marketId === a.job?.market?.id);
                         return (

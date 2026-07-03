@@ -62,7 +62,7 @@ export async function GET(
             sumWorked += worked;
             sumReimb += reimb;
 
-            csvContent += `${assignment.date ? assignment.date.toLocaleDateString() : "--"},"${assignment.job.store.name.replace(/"/g, '""')}",${worked.toFixed(2)},${reimb.toFixed(2)},${shiftPay.toFixed(2)},${totalPay.toFixed(2)}\n`;
+            csvContent += `${assignment.date ? assignment.date.toLocaleDateString(undefined, { timeZone: "UTC" }) : "--"},"${assignment.job.store.name.replace(/"/g, '""')}",${worked.toFixed(2)},${reimb.toFixed(2)},${shiftPay.toFixed(2)},${totalPay.toFixed(2)}\n`;
         }
 
         csvContent += `\nTotal,,-,${sumWorked.toFixed(2)},${sumReimb.toFixed(2)},${(sumWorked * hourlyWage).toFixed(2)},${((sumWorked * hourlyWage) + sumReimb).toFixed(2)}\n`;

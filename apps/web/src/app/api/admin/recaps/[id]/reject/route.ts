@@ -39,7 +39,7 @@ export async function POST(
 
         const storeName = recap.job.store?.name || "the store";
         const shiftDate = recap.job?.date 
-            ? new Date(recap.job.date).toLocaleDateString() 
+            ? new Date(recap.job.date).toLocaleDateString(undefined, { timeZone: "UTC" })
             : "your recent shift";
 
         await prisma.$transaction(async (tx: any) => {

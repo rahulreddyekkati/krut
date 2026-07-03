@@ -50,7 +50,57 @@ export async function GET(request: NextRequest) {
             whereJob = { store: { marketId } };
         }
 
-        const totalJobs = await prisma.job.count({ where: { ...whereJob, ...dateFilter } });
+        let totalJobs = 0;
+        if (dateParam) {
+            const jobs = await prisma.job.findMany({
+                where: { ...whereJob, ...dateFilter },
+                include: {
+                    assignments: {
+                        where: {
+                            OR: [
+                                { date: { gte: new Date(dateParam + "T00:00:00Z"), lte: new Date(dateParam + "T23:59:59Z") } },
+                                { isRecurring: true }
+                            ]
+                        }
+                    }
+                }
+            });
+
+            const dayStart = new Date(`${dateParam}T00:00:00Z`);
+            const dayEnd   = new Date(`${dateParam}T23:59:59Z`);
+            const dayOfWeek = dayStart.getUTCDay();
+
+            const flat = jobs.flatMap((job: any) => {
+                const allAssignments = job.assignments as any[];
+
+                if (allAssignments.length === 0) {
+                    return [job]; // Genuinely open job
+                }
+
+                const relevant = allAssignments.filter((a: any) => {
+                    if (!a.date) return false;
+                    const d = new Date(a.date);
+                    if (d >= dayStart && d <= dayEnd) return true;
+                    if (a.isRecurring && d.getUTCDay() === dayOfWeek) return true;
+                    return false;
+                });
+
+                const seen = new Set<string>();
+                const assignments = relevant.filter((a: any) => {
+                    const key = a.workerId || a.id;
+                    if (seen.has(key)) return false;
+                    seen.add(key);
+                    return true;
+                });
+
+                if (assignments.length === 0) return [];
+                return assignments;
+            });
+
+            totalJobs = flat.length;
+        } else {
+            totalJobs = await prisma.job.count({ where: whereJob });
+        }
 
         // Active Workers: anyone currently clocked in (no clock-out yet), regardless of date
         const activeWorkers = await prisma.jobAssignment.count({

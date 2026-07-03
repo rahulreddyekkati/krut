@@ -10,7 +10,8 @@ const GENERIC_ERROR = "Invalid or expired code";
 
 export async function POST(request: NextRequest) {
     try {
-        const { email, otp } = validate(verifyOtpSchema, await request.json());
+        const { email: rawEmail, otp } = validate(verifyOtpSchema, await request.json());
+        const email = rawEmail.trim().toLowerCase();
 
         const user = await prisma.user.findUnique({ where: { email } });
         if (!user) throw new AppError(GENERIC_ERROR, 400);

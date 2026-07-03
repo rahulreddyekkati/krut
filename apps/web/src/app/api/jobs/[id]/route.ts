@@ -48,7 +48,7 @@ export async function PATCH(
         for (const assignment of activeAssignments) {
             if (assignment.worker?.email) {
                 const dateLabel = assignment.date
-                    ? new Date(assignment.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
+                    ? new Date(assignment.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" })
                     : "Recurring";
                 sendShiftTimeChangedEmail(
                     assignment.worker.email,

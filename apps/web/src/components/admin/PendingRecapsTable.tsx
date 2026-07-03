@@ -105,7 +105,7 @@ export default function PendingRecapsTable({ recaps }: { recaps: any[] }) {
 
                         // Use same assignment ID or worker ID as key if assignment ID isn't directly exposed
                         const rowKey = row.id || row.workerId;
-                        const shiftDateStr = row.shiftDate ? new Date(row.shiftDate).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) : '—';
+                        const shiftDateStr = row.shiftDate ? new Date(row.shiftDate).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }) : '—';
 
                         return (
                             <tr key={rowKey}>

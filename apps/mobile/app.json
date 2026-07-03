@@ -3,7 +3,11 @@
     "name": "Kruto Tastes",
     "slug": "kruto-tastes",
     "scheme": "workforce-os",
-    "version": "1.0.4",
+    "version": "1.0.5",
+    "runtimeVersion": { "policy": "appVersion" },
+    "updates": {
+      "url": "https://u.expo.dev/74b77b94-ceb2-4183-8b7e-245c768aeee3"
+    },
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -16,7 +20,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.krutotastes.app",
-      "buildNumber": "10",
+      "buildNumber": "11",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Kruto Tastes uses your location to verify you are at the assigned store before clocking in.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Kruto Tastes uses your location continuously in the background to enforce geofence rules while you are clocked in to a shift.",
@@ -30,7 +34,7 @@
     },
     "android": {
       "package": "com.krutotastes.app",
-      "versionCode": 14,
+      "versionCode": 15,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"

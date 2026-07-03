@@ -78,7 +78,7 @@ export default function ShiftReleaseApprovalsPage() {
                 <div style={{ color: "#4b5563", fontSize: "0.875rem", display: "flex", flexDirection: "column", gap: "0.25rem" }}>
                     <span><strong>Store:</strong> {req.job.store.name}</span>
                     <span><strong>Market:</strong> {req.job.market.name}</span>
-                    <span><strong>Date:</strong> {req.date ? new Date(req.date).toLocaleDateString() : "Recurring Default"}</span>
+                    <span><strong>Date:</strong> {req.date ? new Date(req.date).toLocaleDateString(undefined, { timeZone: "UTC" }) : "Recurring Default"}</span>
                     <span><strong>Time:</strong> {to12hr(req.job.startTimeStr)} – {to12hr(req.job.endTimeStr)}</span>
                 </div>
             </div>

@@ -8,7 +8,8 @@ import { validate, loginSchema } from "@/lib/validate";
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const { email, password } = validate(loginSchema, body);
+        const { email: rawEmail, password } = validate(loginSchema, body);
+        const email = rawEmail.trim().toLowerCase();
 
         const user = await prisma.user.findUnique({
             where: { email },

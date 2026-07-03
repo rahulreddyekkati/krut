@@ -98,7 +98,7 @@ export default function AdminRecapDetail() {
 
   const formatDate = (isoString?: string) => {
     if (!isoString) return '—';
-    return new Date(isoString).toLocaleDateString();
+    return new Date(isoString).toLocaleDateString(undefined, { timeZone: 'UTC' });
   };
 
   const getRushBadge = (level: string) => {

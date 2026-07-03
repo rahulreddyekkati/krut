@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
             }
 
             // Create success notification for the newly assigned worker
-            const assignedMsg = `You have been manually assigned a shift at ${job.store.name} on ${date ? new Date(date).toLocaleDateString() : "Recurring"}.`;
+            const assignedMsg = `You have been manually assigned a shift at ${job.store.name} on ${date ? new Date(date).toLocaleDateString(undefined, { timeZone: "UTC" }) : "Recurring"}.`;
             await tx.notification.create({
                 data: { userId: workerId, title: "Shift Manually Assigned", message: assignedMsg }
             });
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
         }
 
         if (worker.email) {
-            const dateLabel = date ? new Date(date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : "Recurring";
+            const dateLabel = date ? new Date(date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" }) : "Recurring";
             sendShiftAssignedEmail(worker.email, job.store.name, dateLabel, job.startTimeStr, job.endTimeStr).catch(() => {});
         }
 

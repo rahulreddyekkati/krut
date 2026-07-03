@@ -9,7 +9,8 @@ export async function POST(request: NextRequest) {
     try {
         const user = await requireAuth(request, ["ADMIN", "MARKET_MANAGER"]);
 
-        const { email, role, marketId, hourlyWage } = await request.json();
+        const { email: rawEmail, role, marketId, hourlyWage } = await request.json();
+        const email = typeof rawEmail === "string" ? rawEmail.trim().toLowerCase() : rawEmail;
 
         // Market Managers can only invite Workers
         if (user.role === "MARKET_MANAGER" && role !== "WORKER") {

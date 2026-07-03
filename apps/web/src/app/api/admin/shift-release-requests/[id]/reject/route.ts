@@ -32,7 +32,7 @@ export async function POST(
         });
 
         const rejectTitle = "Shift Release Rejected";
-        const rejectMessage = `Your request to release the shift at ${releaseRequest.job.store.name} on ${releaseRequest.date ? new Date(releaseRequest.date).toLocaleDateString() : "Recurring"} was not approved.`;
+        const rejectMessage = `Your request to release the shift at ${releaseRequest.job.store.name} on ${releaseRequest.date ? new Date(releaseRequest.date).toLocaleDateString(undefined, { timeZone: "UTC" }) : "Recurring"} was not approved.`;
 
         // Notify the worker
         await prisma.notification.create({

@@ -26,7 +26,7 @@ export async function POST(
         }
 
         const dateLabel = shiftRequest.date
-            ? new Date(shiftRequest.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
+            ? new Date(shiftRequest.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" })
             : "Unknown date";
 
         const pushQueue: Array<{ userId: string; title: string; message: string }> = [];

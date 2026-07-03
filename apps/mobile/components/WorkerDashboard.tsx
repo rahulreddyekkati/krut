@@ -239,29 +239,41 @@ export default function HomeTab() {
         setClockLoading(false);
       }
     } else {
-      // CLOCK_OUT
-      setClockLoading(true);
-      try {
-        const res = await fetchWithAuth('/timeclock', {
-          method: "POST",
-          body: JSON.stringify({ action, assignmentId: activeAssignment.id })
-        });
-        if (res.ok) {
-          // Stop background location tracking now that the shift has ended
-          stopBackgroundLocationTracking().catch(() => {});
-          const shiftDate = activeAssignment.date
-            ? new Date(activeAssignment.date).toISOString().split('T')[0]
-            : new Date().toISOString().split('T')[0];
-          router.push(`/recap/${activeAssignment.jobId}?date=${shiftDate}&assignmentId=${activeAssignment.id}`);
-        } else {
-          const data = await res.json();
-          Alert.alert("Clock out failed", data.error || "Failed to clock out.");
-        }
-      } catch (e) {
-        Alert.alert("Network error", "Please check your internet connection.");
-      } finally {
-        setClockLoading(false);
+      // CLOCK_OUT — confirm first since the clock circle is easy to tap by accident
+      Alert.alert(
+        'Clock Out?',
+        'Are you sure you want to clock out?',
+        [
+          { text: 'No', style: 'cancel' },
+          { text: 'Yes', onPress: performClockOut },
+        ]
+      );
+    }
+  };
+
+  const performClockOut = async () => {
+    if (!activeAssignment) return;
+    setClockLoading(true);
+    try {
+      const res = await fetchWithAuth('/timeclock', {
+        method: "POST",
+        body: JSON.stringify({ action: "CLOCK_OUT", assignmentId: activeAssignment.id })
+      });
+      if (res.ok) {
+        // Stop background location tracking now that the shift has ended
+        stopBackgroundLocationTracking().catch(() => {});
+        const shiftDate = activeAssignment.date
+          ? new Date(activeAssignment.date).toISOString().split('T')[0]
+          : new Date().toISOString().split('T')[0];
+        router.push(`/recap/${activeAssignment.jobId}?date=${shiftDate}&assignmentId=${activeAssignment.id}`);
+      } else {
+        const data = await res.json();
+        Alert.alert("Clock out failed", data.error || "Failed to clock out.");
       }
+    } catch (e) {
+      Alert.alert("Network error", "Please check your internet connection.");
+    } finally {
+      setClockLoading(false);
     }
   };
 

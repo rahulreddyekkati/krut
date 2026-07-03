@@ -96,7 +96,7 @@ export async function POST(
                 ]);
                 if (job) {
                     const dateLabel = created[0].date
-                        ? new Date(created[0].date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
+                        ? new Date(created[0].date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" })
                         : "Recurring";
                     const pushMsg = `You have been assigned a shift at ${job.store.name} on ${dateLabel}.`;
                     sendPushToUser(id, "New Shift Assigned", pushMsg).catch(() => {});
@@ -133,7 +133,7 @@ export async function POST(
                 prisma.job.findUnique({ where: { id: jobId }, include: { store: { select: { name: true } } } })
             ]);
             if (job) {
-                const dateLabel = dateObj.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+                const dateLabel = dateObj.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
                 const pushMsg = `You have been assigned a shift at ${job.store.name} on ${dateLabel}.`;
                 sendPushToUser(id, "New Shift Assigned", pushMsg).catch(() => {});
                 if (worker?.email) {
@@ -218,7 +218,7 @@ export async function PATCH(
         });
         if (assignmentWithDetails?.worker?.email && customStartTimeStr && customEndTimeStr) {
             const dateLabel = assignmentWithDetails.date
-                ? new Date(assignmentWithDetails.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
+                ? new Date(assignmentWithDetails.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" })
                 : "Recurring";
             sendShiftTimeChangedEmail(
                 assignmentWithDetails.worker.email,

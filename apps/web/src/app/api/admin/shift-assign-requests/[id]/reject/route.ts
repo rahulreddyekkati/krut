@@ -29,7 +29,7 @@ export async function POST(
         });
 
         const rejectTitle = "Shift Assign Rejected";
-        const rejectMessage = `Your request for the shift at ${shiftRequest.job.store.name} on ${shiftRequest.date ? new Date(shiftRequest.date).toLocaleDateString() : "Recurring"} was not approved.`;
+        const rejectMessage = `Your request for the shift at ${shiftRequest.job.store.name} on ${shiftRequest.date ? new Date(shiftRequest.date).toLocaleDateString(undefined, { timeZone: "UTC" }) : "Recurring"} was not approved.`;
 
         // Notify the worker
         await prisma.notification.create({

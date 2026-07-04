@@ -175,6 +175,7 @@ TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }: any) =>
  *
  * Starts the background location task.  Call this when the worker clocks in.
  * Saves the active assignment info to AsyncStorage so the task can reference it.
+ */
 export async function startBackgroundLocationTracking(assignment: {
   id: string;
   store: { latitude: number; longitude: number; radius: number } | null;
@@ -202,6 +203,14 @@ export async function startBackgroundLocationTracking(assignment: {
     const { status } = await Location.requestBackgroundPermissionsAsync();
     if (status !== "granted") {
       console.warn("[BG Location] Background permission not granted — falling back to foreground polling");
+      Alert.alert(
+        "Background Location Needed",
+        "To keep tracking breaks while the app is closed or your phone is locked, please set Kruto Tastes' location permission to 'Always' in Settings.",
+        [
+          { text: "Not Now", style: "cancel" },
+          { text: "Open Settings", onPress: () => Linking.openSettings() },
+        ]
+      );
       return false;
     }
 

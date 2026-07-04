@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
         // Robustness: If this is a recurring shift, check if the timestamps are from today.
         if (activeAssignment) {
             const endTimeStr = activeAssignment.job.endTimeStr || "23:59";
-            const startTimeStr = activeAssignment.job.startTimeStr || "00:00";
+            const startTimeStr = (activeAssignment as any).customStartTimeStr ?? activeAssignment.job.startTimeStr ?? "00:00";
             const [endH, endM] = endTimeStr.split(':').map(Number);
             const endTimeMins = endH * 60 + endM;
 
@@ -120,10 +120,9 @@ export async function GET(request: NextRequest) {
             const effEndTimeMins = effEndH * 60 + effEndM;
 
             if (activeAssignment.clockIn && !activeAssignment.clockOut && (isPastDay || nowTimeMins > effEndTimeMins + 10)) {
-                const autoClockOutDateStr = toLocalDateStr(
-                    activeAssignment.date ? new Date(activeAssignment.date) : new Date(activeAssignment.clockIn),
-                    tz
-                );
+                const autoClockOutDateStr = activeAssignment.date
+                    ? new Date(activeAssignment.date).toISOString().split('T')[0]
+                    : toLocalDateStr(new Date(activeAssignment.clockIn), tz);
                 const autoClockOut = localShiftEndToUTC(autoClockOutDateStr, startTimeStr, effectiveEndTimeStr, tz);
 
                 let finalClockOut = autoClockOut;
@@ -344,10 +343,10 @@ export async function POST(request: NextRequest) {
             let clockOutTime = new Date();
 
             // Cap clockOut at scheduled end time to prevent extra hours from late clock-outs (e.g. from home)
-            const startTimeStr = assignment.job.startTimeStr;
+            const startTimeStr = (assignment as any).customStartTimeStr ?? assignment.job.startTimeStr;
             const effectiveEndTimeStr = (assignment as any).customEndTimeStr ?? assignment.job.endTimeStr;
             const shiftDateStr = assignment.date
-                ? toLocalDateStr(new Date(assignment.date), tz)
+                ? new Date(assignment.date).toISOString().split('T')[0]
                 : toLocalDateStr(new Date(assignment.clockIn), tz);
             const scheduledEnd = localShiftEndToUTC(shiftDateStr, startTimeStr, effectiveEndTimeStr, tz);
 

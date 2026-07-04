@@ -30,11 +30,12 @@ export async function GET(request: NextRequest) {
     // Send 1-hour warning to workers whose shift ends in ~1 hour
     for (const assignment of stuck) {
         try {
+            const startTimeStr = (assignment as any).customStartTimeStr ?? assignment.job.startTimeStr;
             const endTimeStr = (assignment as any).customEndTimeStr ?? assignment.job.endTimeStr;
             const shiftDateStr = assignment.date
-                ? toLocalDateStr(new Date(assignment.date), TZ)
+                ? new Date(assignment.date).toISOString().split('T')[0]
                 : toLocalDateStr(new Date(assignment.clockIn!), TZ);
-            const scheduledEnd = localShiftEndToUTC(shiftDateStr, assignment.job.startTimeStr, endTimeStr, TZ);
+            const scheduledEnd = localShiftEndToUTC(shiftDateStr, startTimeStr, endTimeStr, TZ);
             const minutesUntilEnd = (scheduledEnd.getTime() - now.getTime()) / 60000;
 
             if (minutesUntilEnd >= 55 && minutesUntilEnd <= 65) {

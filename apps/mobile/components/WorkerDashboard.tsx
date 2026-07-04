@@ -4,6 +4,7 @@ import { useAuth } from '../providers/AuthProvider';
 import { fetchWithAuth } from '../utils/apiClient';
 import { router } from 'expo-router';
 import * as Location from 'expo-location';
+import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNotificationCount } from '../hooks/useNotificationCount';
 import {
@@ -56,7 +57,7 @@ export default function HomeTab() {
   const isClockedIn = !!(activeAssignment?.clockIn && !activeAssignment?.clockOut);
 
   // Geofence tracking refs (avoid stale closures inside interval)
-  const storeRef = useRef<{ latitude: number; longitude: number; radius: number } | null>(null);
+  const storeRef = useRef<{ latitude: number; longitude: number; radius: number; name?: string } | null>(null);
   const assignmentIdRef = useRef<string | null>(null);
   const outsideSecondsRef = useRef(0);
   const isOnAutoBreakRef = useRef(false);
@@ -102,7 +103,7 @@ export default function HomeTab() {
     const store = activeAssignment?.job?.store;
     storeRef.current =
       store?.latitude != null && store?.longitude != null && store?.radius != null
-        ? { latitude: store.latitude, longitude: store.longitude, radius: store.radius }
+        ? { latitude: store.latitude, longitude: store.longitude, radius: store.radius, name: store.name }
         : null;
     assignmentIdRef.current = activeAssignment?.id ?? null;
   }, [activeAssignment]);
@@ -130,6 +131,18 @@ export default function HomeTab() {
         const isOutside = dist > store.radius;
 
         if (isOutside) {
+          if (outsideSecondsRef.current === 0) {
+            // First tick outside — warn before the break timer actually starts
+            Notifications.scheduleNotificationAsync({
+              content: {
+                title: "You've left the store",
+                body: `Break timer will start in 15 minutes if you don't return to ${store.name || 'your store'}.`,
+                sound: true,
+              },
+              trigger: null,
+            }).catch(() => {});
+          }
+
           outsideSecondsRef.current += GEOFENCE_POLL_MS / 1000;
           if (outsideSecondsRef.current >= GEOFENCE_BREAK_THRESHOLD_SECS && !isOnAutoBreakRef.current) {
             const res = await fetchWithAuth('/timeclock', {
@@ -138,6 +151,10 @@ export default function HomeTab() {
             });
             if (res.ok) {
               isOnAutoBreakRef.current = true;
+              Notifications.scheduleNotificationAsync({
+                content: { title: 'Break time started', body: 'Break time is now being recorded.', sound: true },
+                trigger: null,
+              }).catch(() => {});
             }
           }
         } else {
@@ -149,6 +166,10 @@ export default function HomeTab() {
             });
             if (res.ok) {
               isOnAutoBreakRef.current = false;
+              Notifications.scheduleNotificationAsync({
+                content: { title: 'Break timer stopped', body: `Welcome back at ${store.name || 'the store'}.`, sound: true },
+                trigger: null,
+              }).catch(() => {});
             }
           }
         }

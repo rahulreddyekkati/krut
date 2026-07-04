@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
 
     for (const assignment of stuck) {
         try {
-            const startTimeStr = assignment.job.startTimeStr;
+            const startTimeStr = (assignment as any).customStartTimeStr ?? assignment.job.startTimeStr;
             const endTimeStr = (assignment as any).customEndTimeStr ?? assignment.job.endTimeStr;
 
             const shiftDateStr = assignment.date

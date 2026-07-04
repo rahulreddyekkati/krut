@@ -21,7 +21,7 @@ import * as Location from "expo-location";
 import * as Notifications from "expo-notifications";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getToken } from "../utils/tokenManager";
-import { Alert } from "react-native";
+import { Alert, Linking } from "react-native";
 
 export const BACKGROUND_LOCATION_TASK = "kruto-background-location";
 

@@ -343,7 +343,7 @@ export async function POST(request: NextRequest) {
 
             let clockOutTime = new Date();
 
-            // Cap clockOut at scheduled end time (+ 10 mins threshold) to prevent extra hours from late clock-outs (e.g. from home)
+            // Cap clockOut at scheduled end time to prevent extra hours from late clock-outs (e.g. from home)
             const startTimeStr = assignment.job.startTimeStr;
             const effectiveEndTimeStr = (assignment as any).customEndTimeStr ?? assignment.job.endTimeStr;
             const shiftDateStr = assignment.date
@@ -351,7 +351,7 @@ export async function POST(request: NextRequest) {
                 : toLocalDateStr(new Date(assignment.clockIn), tz);
             const scheduledEnd = localShiftEndToUTC(shiftDateStr, startTimeStr, effectiveEndTimeStr, tz);
 
-            if (clockOutTime.getTime() > scheduledEnd.getTime() + 10 * 60 * 1000) {
+            if (clockOutTime.getTime() > scheduledEnd.getTime()) {
                 clockOutTime = scheduledEnd;
             }
 

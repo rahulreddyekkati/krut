@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
             const endTimeStr = (assignment as any).customEndTimeStr ?? assignment.job.endTimeStr;
 
             const shiftDateStr = assignment.date
-                ? toLocalDateStr(new Date(assignment.date), TZ)
+                ? new Date(assignment.date).toISOString().split('T')[0]
                 : toLocalDateStr(new Date(assignment.clockIn!), TZ);
 
             // Compute when the shift should have ended in UTC

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Dimensions, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Dimensions, ScrollView, Alert, AppState } from 'react-native';
 import { useAuth } from '../providers/AuthProvider';
 import { fetchWithAuth } from '../utils/apiClient';
 import { router } from 'expo-router';
@@ -65,6 +65,17 @@ export default function HomeTab() {
     if (token) {
       loadTodayShift();
       checkPendingRecaps();
+
+      const subscription = AppState.addEventListener('change', (nextAppState) => {
+        if (nextAppState === 'active') {
+          loadTodayShift();
+          checkPendingRecaps();
+        }
+      });
+
+      return () => {
+        subscription.remove();
+      };
     }
   }, [token]);
 

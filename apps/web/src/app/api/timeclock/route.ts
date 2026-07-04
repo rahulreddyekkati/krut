@@ -341,14 +341,26 @@ export async function POST(request: NextRequest) {
                 throw new AppError("Must clock in first", 400);
             }
 
-            const now = new Date();
+            let clockOutTime = new Date();
+
+            // Cap clockOut at scheduled end time (+ 10 mins threshold) to prevent extra hours from late clock-outs (e.g. from home)
+            const startTimeStr = assignment.job.startTimeStr;
+            const effectiveEndTimeStr = (assignment as any).customEndTimeStr ?? assignment.job.endTimeStr;
+            const shiftDateStr = assignment.date
+                ? toLocalDateStr(new Date(assignment.date), tz)
+                : toLocalDateStr(new Date(assignment.clockIn), tz);
+            const scheduledEnd = localShiftEndToUTC(shiftDateStr, startTimeStr, effectiveEndTimeStr, tz);
+
+            if (clockOutTime.getTime() > scheduledEnd.getTime() + 10 * 60 * 1000) {
+                clockOutTime = scheduledEnd;
+            }
 
             // CRIT-09 + MAJ-07: Atomic $transaction with clockOut null guard
             const result = await prisma.$transaction(async (tx: any) => {
                 // Atomic guard — only proceed if clockOut is still null
                 const guard = await tx.jobAssignment.updateMany({
                     where: { id: assignmentId, clockOut: null },
-                    data: { clockOut: now, status: "RECAP_PENDING" }
+                    data: { clockOut: clockOutTime, status: "RECAP_PENDING" }
                 });
 
                 if (guard.count === 0) {
@@ -360,10 +372,10 @@ export async function POST(request: NextRequest) {
                     where: { assignmentId, endTime: null }
                 });
                 if (activeBreak) {
-                    const breakMins = (now.getTime() - activeBreak.startTime.getTime()) / 60000;
+                    const breakMins = (clockOutTime.getTime() - activeBreak.startTime.getTime()) / 60000;
                     await tx.break.update({
                         where: { id: activeBreak.id },
-                        data: { endTime: now, durationMins: breakMins }
+                        data: { endTime: clockOutTime, durationMins: breakMins }
                     });
                     await tx.jobAssignment.update({
                         where: { id: assignmentId },
@@ -373,7 +385,7 @@ export async function POST(request: NextRequest) {
 
                 // Re-fetch to get accurate breakTimeMinutes (including any just-closed break)
                 const fresh = await tx.jobAssignment.findUnique({ where: { id: assignmentId } });
-                const grossMinutes = (now.getTime() - assignment.clockIn!.getTime()) / 60000;
+                const grossMinutes = (clockOutTime.getTime() - assignment.clockIn!.getTime()) / 60000;
                 const breakMinutes = fresh?.breakTimeMinutes ?? 0;
                 const workedHours = parseFloat(Math.max(0, (grossMinutes - breakMinutes) / 60).toFixed(2));
 
@@ -395,7 +407,7 @@ export async function POST(request: NextRequest) {
                     }
                 });
 
-                return { clockOut: now, workedHours, workerId: assignment.workerId, storeName: assignment.job.store?.name || 'the store' };
+                return { clockOut: clockOutTime, workedHours, workerId: assignment.workerId, storeName: assignment.job.store?.name || 'the store' };
             });
 
             sendPushToUser(

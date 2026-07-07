@@ -174,9 +174,28 @@ export async function DELETE(
             return NextResponse.json({ error: "Unauthorized: Assignment outside your market" }, { status: 403 });
         }
 
-        // Delete the assignment
-        await prisma.jobAssignment.delete({
-            where: { id: assignmentId }
+        // Delete the assignment and all related records to satisfy SQLite foreign key constraints
+        await prisma.$transaction(async (tx) => {
+            // 1. Delete SKUs and Overtime requests associated with this assignment's recap
+            await tx.recapSKU.deleteMany({
+                where: { recap: { assignmentId } }
+            });
+            await tx.overtimeRequest.deleteMany({
+                where: { recap: { assignmentId } }
+            });
+
+            // 2. Delete Recap and Breaks associated with this assignment
+            await tx.recap.deleteMany({
+                where: { assignmentId }
+            });
+            await tx.break.deleteMany({
+                where: { assignmentId }
+            });
+
+            // 3. Delete the JobAssignment itself
+            await tx.jobAssignment.delete({
+                where: { id: assignmentId }
+            });
         });
 
         return NextResponse.json({ success: true });

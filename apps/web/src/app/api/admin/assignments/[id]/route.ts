@@ -67,10 +67,15 @@ export async function PATCH(
                 : null;
 
             if (!targetJob) {
-                // Auto-create a specific-date job for this store
+                // Auto-create a specific-date job for this store with a unique title
+                const dateSuffix = assignment.date
+                    ? new Date(assignment.date).toISOString().split('T')[0]
+                    : new Date().toISOString().split('T')[0];
+                const randomId = Math.random().toString(36).substring(2, 7);
+
                 targetJob = await prisma.job.create({
                     data: {
-                        title: `Shift - ${newStore.name}`,
+                        title: `Shift - ${newStore.name} - ${dateSuffix} - ${randomId}`,
                         storeId: newStore.id,
                         marketId: newStore.marketId,
                         startTimeStr: effectiveStartStr,
@@ -137,6 +142,42 @@ export async function PATCH(
                 sendShiftTimeChangedEmail(oldWorker.email, effectiveStoreName, dateLabel, effectiveStartStr, effectiveEndStr).catch(() => {});
             }
         }
+
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        return handleApiError(error);
+    }
+}
+
+// DELETE /api/admin/assignments/[id]
+export async function DELETE(
+    request: NextRequest,
+    context: { params: Promise<{ id: string }> }
+) {
+    try {
+        const user = await requireAuth(request, ["ADMIN", "MARKET_MANAGER"]);
+        const { id: assignmentId } = await context.params;
+
+        const assignment = await prisma.jobAssignment.findUnique({
+            where: { id: assignmentId },
+            include: {
+                job: { select: { marketId: true } }
+            }
+        });
+
+        if (!assignment) {
+            return NextResponse.json({ error: "Assignment not found" }, { status: 404 });
+        }
+
+        // Market Manager scope check
+        if (user.role === "MARKET_MANAGER" && assignment.job.marketId !== user.managedMarketId) {
+            return NextResponse.json({ error: "Unauthorized: Assignment outside your market" }, { status: 403 });
+        }
+
+        // Delete the assignment
+        await prisma.jobAssignment.delete({
+            where: { id: assignmentId }
+        });
 
         return NextResponse.json({ success: true });
     } catch (error) {

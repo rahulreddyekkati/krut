@@ -55,7 +55,7 @@ export async function GET(
 
         for (const assignment of user.jobs) {
             const worked = assignment.workedHours || 0;
-            const reimb = assignment.recap?.reimbursement || 0;
+            const reimb = (assignment.recap?.reimbursement || 0) + (assignment.job?.bonus || 0);
             const shiftPay = worked * hourlyWage;
             const totalPay = shiftPay + reimb;
 

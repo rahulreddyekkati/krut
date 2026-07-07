@@ -101,6 +101,11 @@ export async function GET(request: NextRequest) {
                         totalBottlesSold += sku.bottlesSold || 0;
                     });
                 }
+
+                // --- Job Bonus ---
+                if (assignment.clockIn && job.bonus) {
+                    totalReimbursements += job.bonus;
+                }
             });
 
             // Subtract releases

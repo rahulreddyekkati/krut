@@ -57,7 +57,7 @@ export default async function UserPayrollDetailsPage(props: {
 
     const shiftRows = user.jobs.map((assignment: any) => {
         const workedH = assignment.workedHours || 0;
-        const reimb = assignment.recap?.reimbursement || 0;
+        const reimb = (assignment.recap?.reimbursement || 0) + (assignment.job?.bonus || 0);
         const shiftPay = workedH * hourlyWage;
         const totalPay = shiftPay + reimb;
 

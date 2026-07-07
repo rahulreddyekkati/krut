@@ -145,6 +145,28 @@ export default function AdminDashboardPage() {
         }
     };
 
+    const handleDeleteAssignment = async (assignmentId: string, workerName: string) => {
+        if (!confirm(`Are you sure you want to delete the shift for ${workerName}? This will only remove this specific-date shift, not the recurring pattern.`)) {
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/admin/assignments/${assignmentId}`, {
+                method: "DELETE"
+            });
+
+            if (res.ok) {
+                fetchStats(selectedDate);
+                fetchDetailData("jobs");
+            } else {
+                const data = await res.json();
+                alert(data.error || "Failed to delete shift");
+            }
+        } catch {
+            alert("An unexpected error occurred while deleting the shift");
+        }
+    };
+
     const handleSendNotification = async (workerId: string, workerName: string) => {
         setSendingNotification(workerId);
         try {
@@ -275,7 +297,7 @@ export default function AdminDashboardPage() {
                                             <th style={thStyle}>Market</th>
                                             <th style={thStyle}>Assigned To</th>
                                             <th style={thStyle}>Break Time</th>
-                                            <th style={thStyle}>Edit</th>
+                                            <th style={thStyle}>Actions</th>
                                         </tr>
                                     )}
                                     {activeDetail === "active" && (
@@ -305,12 +327,20 @@ export default function AdminDashboardPage() {
                                             <td style={tdStyle}>{row.breakTimeMinutes > 0 ? `${row.breakTimeMinutes}m` : "—"}</td>
                                             <td style={tdStyle}>
                                                 {row.assignmentId ? (
-                                                    <button
-                                                        onClick={() => handleOpenShiftEdit(row)}
-                                                        style={{ background: "#6366f1", color: "white", border: "none", borderRadius: "6px", padding: "0.25rem 0.75rem", fontSize: "0.8rem", cursor: "pointer", fontWeight: 600 }}
-                                                    >
-                                                        Edit
-                                                    </button>
+                                                    <div style={{ display: "flex", gap: "0.5rem" }}>
+                                                        <button
+                                                            onClick={() => handleOpenShiftEdit(row)}
+                                                            style={{ background: "#6366f1", color: "white", border: "none", borderRadius: "6px", padding: "0.25rem 0.75rem", fontSize: "0.8rem", cursor: "pointer", fontWeight: 600 }}
+                                                        >
+                                                            Edit
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteAssignment(row.assignmentId, row.assignedWorker)}
+                                                            style={{ background: "#ef4444", color: "white", border: "none", borderRadius: "6px", padding: "0.25rem 0.75rem", fontSize: "0.8rem", cursor: "pointer", fontWeight: 600 }}
+                                                        >
+                                                            Delete
+                                                        </button>
+                                                    </div>
                                                 ) : (
                                                     <span style={{ color: "#9ca3af", fontSize: "0.8rem" }}>—</span>
                                                 )}

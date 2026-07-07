@@ -70,6 +70,16 @@ export async function GET(request: NextRequest) {
             const dayEnd   = new Date(`${dateParam}T23:59:59Z`);
             const dayOfWeek = dayStart.getUTCDay();
 
+            const queryDate = new Date(dateParam + "T00:00:00Z");
+            const qDay = queryDate.getUTCDate();
+            const qYear = queryDate.getUTCFullYear();
+            const qMonth = queryDate.getUTCMonth();
+            const queryCycleStart = qDay <= 15
+                ? new Date(Date.UTC(qYear, qMonth, 1, 0, 0, 0, 0))
+                : new Date(Date.UTC(qYear, qMonth, 16, 0, 0, 0, 0));
+            
+            const cycleHasStarted = queryCycleStart <= new Date();
+
             const flat = jobs.flatMap((job: any) => {
                 const allAssignments = job.assignments as any[];
 
@@ -81,7 +91,7 @@ export async function GET(request: NextRequest) {
                     if (!a.date) return false;
                     const d = new Date(a.date);
                     if (d >= dayStart && d <= dayEnd) return true;
-                    if (a.isRecurring && d.getUTCDay() === dayOfWeek) return true;
+                    if (a.isRecurring && !cycleHasStarted && d.getUTCDay() === dayOfWeek) return true;
                     return false;
                 });
 

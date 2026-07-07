@@ -162,7 +162,7 @@ export default function AssignJobPage() {
                         </h1>
                     </div>
                     <button
-                        onClick={() => window.close()}
+                        onClick={() => window.location.href = "/admin/users"}
                         style={{
                             background: "none",
                             border: "1px solid #d1d5db",

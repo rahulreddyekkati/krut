@@ -893,7 +893,7 @@ export default function AdminUsersPage() {
                                                         <>
                                                             <button
                                                                 type="button"
-                                                                onClick={() => window.open(`/admin/users/${user.id}/assign`, '_blank')}
+                                                                onClick={() => window.location.href = `/admin/users/${user.id}/assign`}
                                                                 className="btn btn-primary btn-sm"
                                                             >
                                                                 Add Job

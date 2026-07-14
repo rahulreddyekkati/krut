@@ -41,15 +41,15 @@ export async function GET(request: NextRequest) {
                 job: jobWhere
             },
             include: {
+                assignment: {
+                    include: {
+                        worker: { select: { id: true, name: true, email: true } }
+                    }
+                },
                 job: {
                     include: {
                         store: {
                             include: { market: { select: { name: true } } }
-                        },
-                        assignments: {
-                            include: {
-                                worker: { select: { id: true, name: true, email: true } }
-                            }
                         }
                     }
                 },
@@ -59,9 +59,8 @@ export async function GET(request: NextRequest) {
         });
 
         const data = recaps.map((r: any) => {
-            // Find an assignment that actually has clock times if possible
-            const assignmentWithTimes = r.job.assignments?.find((a: any) => a.clockIn || a.clockOut) || r.job.assignments?.[0];
-            const worker = assignmentWithTimes?.worker;
+            const assignment = r.assignment;
+            const worker = assignment?.worker;
 
             return {
                 id: r.id,
@@ -81,11 +80,11 @@ export async function GET(request: NextRequest) {
                 managerReview: r.managerReview,
                 skus: r.skus || [],
                 createdAt: r.createdAt,
-                shiftDate: assignmentWithTimes?.date,
+                shiftDate: assignment?.date,
                 startTime: r.job.startTimeStr,
                 endTime: r.job.endTimeStr,
-                clockIn: assignmentWithTimes?.clockIn,
-                clockOut: assignmentWithTimes?.clockOut
+                clockIn: assignment?.clockIn,
+                clockOut: assignment?.clockOut
             };
         });
 

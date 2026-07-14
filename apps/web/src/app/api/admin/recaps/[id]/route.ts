@@ -14,16 +14,16 @@ export async function GET(
         const recap = await (prisma.recap as any).findUnique({
             where: { id },
             include: {
+                assignment: {
+                    include: {
+                        worker: { select: { id: true, name: true, email: true } }
+                    }
+                },
                 job: {
                     include: {
                         store: {
                             include: {
                                 market: { select: { name: true } }
-                            }
-                        },
-                        assignments: {
-                            include: {
-                                worker: { select: { id: true, name: true, email: true } }
                             }
                         }
                     }
@@ -41,8 +41,8 @@ export async function GET(
             return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
         }
 
-        const assignmentWithTimes = recap.job.assignments?.find((a: any) => a.id === recap.assignmentId) || recap.job.assignments?.find((a: any) => a.clockIn || a.clockOut) || recap.job.assignments?.[0];
-        const worker = assignmentWithTimes?.worker;
+        const assignment = recap.assignment;
+        const worker = assignment?.worker;
 
         const data = {
             id: recap.id,
@@ -63,9 +63,9 @@ export async function GET(
             managerReview: recap.managerReview,
             skus: recap.skus || [],
             createdAt: recap.createdAt,
-            shiftDate: assignmentWithTimes?.date,
-            clockIn: assignmentWithTimes?.clockIn,
-            clockOut: assignmentWithTimes?.clockOut
+            shiftDate: assignment?.date,
+            clockIn: assignment?.clockIn,
+            clockOut: assignment?.clockOut
         };
 
         return NextResponse.json(data);

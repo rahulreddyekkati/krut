@@ -16,11 +16,19 @@ export async function GET(request: NextRequest) {
     const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     const oneHourAgoThrottled = new Date(now.getTime() - 110 * 60 * 1000); // 110 mins buffer to prevent double-sends within the 2-hour cron window
 
-    // Find all assignments pending recap that clocked out between 1hr and 24hrs ago
+    // Find all assignments pending recap that clocked out between 1hr and 24hrs ago.
+    // Submitting a recap doesn't move JobAssignment.status off "RECAP_PENDING" (only an
+    // admin approval does, via /admin/recaps/[id]/approve), so a worker who already
+    // submitted and is just waiting on admin review still matches status alone — exclude
+    // anyone who already has a recap on file, same check as /worker/pending-recaps.
     const pending = await prisma.jobAssignment.findMany({
         where: {
             status: "RECAP_PENDING",
-            clockOut: { gte: twentyFourHoursAgo, lte: oneHourAgo }
+            clockOut: { gte: twentyFourHoursAgo, lte: oneHourAgo },
+            OR: [
+                { recap: { is: null } },
+                { recap: { status: "REJECTED" } }
+            ]
         },
         select: {
             id: true,

@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system/legacy';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { fetchWithAuth } from '../../utils/apiClient';
 import { useAuth } from '../../providers/AuthProvider';
 import SignatureScreen from 'react-native-signature-canvas';
@@ -115,16 +115,21 @@ export default function SubmitRecap() {
     return Math.ceil((base64Data.length * 3) / 4);
   };
 
-  // expo-image-picker's own base64 field is unreliable on Android — under some conditions
-  // (large images, cloud-backed photos, multi-select) it comes back undefined, which used
-  // to silently produce "data:image/jpeg;base64,undefined" (blank preview, broken upload).
-  // Read the file directly off disk instead, which doesn't have that failure mode.
+  // Always transcode through ImageManipulator instead of trusting the picker's own output.
+  // This fixes two real, separate failure modes seen in production: expo-image-picker's
+  // base64 field coming back undefined on some Android devices (blank/broken upload), and
+  // iPhones sometimes returning the original HEIC bytes mislabeled as JPEG (image data is
+  // present but no browser other than Safari can decode it, so admins see a broken image).
+  // Re-encoding through the native image pipeline guarantees real, valid JPEG bytes either way.
   const readImageAsBase64Uri = async (asset: any): Promise<string> => {
-    if (asset.base64) {
-      return `data:image/jpeg;base64,${asset.base64}`;
-    }
-    const base64 = await FileSystem.readAsStringAsync(asset.uri, { encoding: 'base64' });
-    return `data:image/jpeg;base64,${base64}`;
+    const context = ImageManipulator.manipulate(asset.uri);
+    const rendered = await context.renderAsync();
+    const result = await rendered.saveAsync({
+      format: SaveFormat.JPEG,
+      compress: RECEIPT_IMAGE_QUALITY,
+      base64: true,
+    });
+    return `data:image/jpeg;base64,${result.base64}`;
   };
 
   // Adds only the photos that fit; silently skips (with one friendly alert) any that don't,
@@ -164,8 +169,6 @@ export default function SubmitRecap() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
-      quality: RECEIPT_IMAGE_QUALITY,
-      base64: true,
       selectionLimit: limit,
     });
     if (!result.canceled && result.assets) {
@@ -188,10 +191,7 @@ export default function SubmitRecap() {
       Alert.alert('Too Many Photos', TOO_MANY_IMAGES_MESSAGE);
       return;
     }
-    const result = await ImagePicker.launchCameraAsync({
-      quality: RECEIPT_IMAGE_QUALITY,
-      base64: true,
-    });
+    const result = await ImagePicker.launchCameraAsync({});
     if (!result.canceled && result.assets) {
       try {
         const uris = await Promise.all(result.assets.map(a => readImageAsBase64Uri(a)));

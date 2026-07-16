@@ -1,11 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 
 export default function RecapDetailPage() {
     const params = useParams();
+    const router = useRouter();
     const recapId = params.id as string;
+    // Fast client-side nav back to the list, with a cache-busting param so its fetch
+    // effect re-runs even though the App Router would otherwise reuse the cached page
+    // instance (see RecapsPageInner's refreshKey) — avoids a full page reload.
+    const goBackToList = () => router.push(`/admin/recaps?refresh=${Date.now()}`);
     const [recap, setRecap] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [managerReview, setManagerReview] = useState("");
@@ -153,7 +158,7 @@ export default function RecapDetailPage() {
             <div style={{ padding: "3rem", textAlign: "center", color: "#9ca3af" }}>
                 Recap not found.
                 <br />
-                <button onClick={() => { window.location.href = "/admin/recaps"; }} style={{ marginTop: "1rem", padding: "0.5rem 1.5rem", background: "#6366f1", color: "white", border: "none", borderRadius: "8px", cursor: "pointer" }}>
+                <button onClick={goBackToList} style={{ marginTop: "1rem", padding: "0.5rem 1.5rem", background: "#6366f1", color: "white", border: "none", borderRadius: "8px", cursor: "pointer" }}>
                     Back
                 </button>
             </div>
@@ -445,7 +450,7 @@ export default function RecapDetailPage() {
             {/* ── Action Buttons ── */}
             <div style={{ display: "flex", gap: "1rem", justifyContent: "flex-end", marginTop: "1.5rem" }}>
                 <button
-                    onClick={() => { window.location.href = "/admin/recaps"; }}
+                    onClick={goBackToList}
                     style={{
                         padding: "0.625rem 1.5rem",
                         background: "#f3f4f6",

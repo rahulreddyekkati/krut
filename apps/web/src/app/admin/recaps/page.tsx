@@ -1,9 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import PendingRecapsTable from "@/components/admin/PendingRecapsTable";
 
 export default function RecapsPage() {
+    return (
+        <Suspense fallback={null}>
+            <RecapsPageInner />
+        </Suspense>
+    );
+}
+
+function RecapsPageInner() {
+    // Changes every time we navigate back here from a recap detail page (see [id]/page.tsx),
+    // even though the App Router's client-side cache would otherwise reuse this page's mounted
+    // instance and skip re-fetching — including it in the fetch effects' deps forces a refetch
+    // via a fast client-side navigation instead of a full page reload.
+    const searchParams = useSearchParams();
+    const refreshKey = searchParams.get("refresh");
+
     const [activeTab, setActiveTab] = useState(0); // 0: Pending, 1: Incomplete, 2: Reviewed
     
     // Tab 1 Data
@@ -74,7 +90,7 @@ export default function RecapsPage() {
         if (activeTab === 0) fetchPending();
         if (activeTab === 1) fetchIncomplete();
         if (activeTab === 2) fetchReviewed(selectedDate);
-    }, [activeTab]);
+    }, [activeTab, refreshKey]);
 
     useEffect(() => {
         if (activeTab === 2) fetchReviewed(selectedDate);

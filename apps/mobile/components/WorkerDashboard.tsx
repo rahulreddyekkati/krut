@@ -1,5 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Dimensions, ScrollView, Alert, AppState } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../providers/AuthProvider';
 import { fetchWithAuth } from '../utils/apiClient';
 import { router } from 'expo-router';
@@ -79,6 +80,20 @@ export default function HomeTab() {
       };
     }
   }, [token]);
+
+  // AppState only covers OS-level background→foreground; it does NOT fire when
+  // navigating back to this tab in-app (e.g. tapping a notification and landing
+  // on Home via router.push). Since Expo Router keeps tab screens mounted,
+  // refetch on focus too so the pending-recap banner reflects state changes
+  // (like a recap rejection) that happened while the worker was elsewhere.
+  useFocusEffect(
+    useCallback(() => {
+      if (token) {
+        loadTodayShift();
+        checkPendingRecaps();
+      }
+    }, [token])
+  );
 
   // When activeAssignment changes, sync it to AsyncStorage for the background task
   useEffect(() => {

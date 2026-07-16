@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { handleApiError, AppError } from "@/lib/apiError";
-import { resolveTimezone, localTimeToUTC, toLocalDateStr } from "@/lib/timezone";
+import { resolveTimezone, localTimeToUTC, toLocalDateStr, toUTCLocalDateStr } from "@/lib/timezone";
 
 export async function POST(request: NextRequest) {
     try {
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
             // 2-hour minimum window check
             if (targetAssignment.date && targetAssignment.job.startTimeStr) {
                 const tz = resolveTimezone(request);
-                const dateStr = toLocalDateStr(new Date(targetAssignment.date), tz);
+                const dateStr = toUTCLocalDateStr(new Date(targetAssignment.date));
                 const shiftStart = localTimeToUTC(dateStr, targetAssignment.job.startTimeStr, tz);
                 const diffMs = shiftStart.getTime() - Date.now();
                 if (diffMs < 2 * 60 * 60 * 1000) {

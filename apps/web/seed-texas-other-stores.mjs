@@ -14,10 +14,11 @@ const adapter = new PrismaLibSQL(libsql);
 const prisma = new PrismaClient({ adapter });
 
 const stores = [
-  { name: "Total Wine 532",         address: "8889 West Gateway Boulevard, El Paso, TX 79925",           lat: 31.8479, lng: -106.5472 },
+  { name: "Total Wine 532",         address: "8889 West Gateway Boulevard, El Paso, TX 79925",           lat: 31.7695064, lng: -106.3684045 },
   { name: "Total Wine 533",         address: "5425 South Padre Island Dr #136, Corpus Christi, TX 78411", lat: 27.7300, lng: -97.3801 },
   { name: "Total Wine 537",         address: "1450 Texas Ave South, College Station, TX 77840",           lat: 30.6014, lng: -96.3148 },
   { name: "Total Wine 538",         address: "800 E Expressway 83 Suite 200, McAllen, TX 78503",          lat: 26.1924, lng: -98.2154 },
+  { name: "Total Wine 542",         address: "6038 Marsha Sharp Fwy W #100, Lubbock, TX 79407",          lat: 33.549839, lng: -101.949347 },
   { name: "WB Liquors 45 (Costco)", address: "6101 Gateway West Building 4, El Paso, TX 79925",           lat: 31.8318, lng: -106.5596 },
   { name: "WB Liquors 46 (Costco)", address: "6020 34th St Suite 200, Lubbock, TX 79404",                 lat: 33.5343, lng: -101.9277 },
 ];

@@ -168,3 +168,31 @@ export function toLocalDateStr(date: Date, timezone: string): string {
     const d = String(zoned.getDate()).padStart(2, "0");
     return `${y}-${m}-${d}`;
 }
+
+/**
+ * Get a date string in "YYYY-MM-DD" format from a Date,
+ * interpreting it in UTC (ideal for date-only calendar values stored as midnight UTC).
+ */
+export function toUTCLocalDateStr(date: Date): string {
+    const y = date.getUTCFullYear();
+    const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+    const d = String(date.getUTCDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+}
+
+/**
+ * Resolve the correct timezone for a given market name and store address.
+ */
+export function getMarketTimezone(marketName: string, storeAddress?: string): string {
+    const name = marketName.toLowerCase();
+    if (name.includes("california")) {
+        return "America/Los_Angeles";
+    }
+    if (name.includes("colorado")) {
+        return "America/Denver";
+    }
+    if (storeAddress && storeAddress.toLowerCase().includes("el paso")) {
+        return "America/Denver";
+    }
+    return "America/Chicago";
+}

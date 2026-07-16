@@ -5,6 +5,7 @@ import { getCurrentCycleDates, getPreviousCycleDates, getDatesForWeekdays } from
 import { ensureCurrentCycleAssignments } from "@/lib/recurringShifts";
 import { sendPushToUser } from "@/lib/notifications";
 import { sendShiftAssignedEmail, sendShiftTimeChangedEmail } from "@/lib/mailer";
+import { resolveTimezone, toLocalDateStr } from "@/lib/timezone";
 
 // GET /api/users/[id]/assignments - Fetch shifts for a worker
 export async function GET(
@@ -69,9 +70,15 @@ export async function POST(
         const skipped: { date: string; reason: string }[] = [];
 
         if (weekdays && Array.isArray(weekdays) && weekdays.length > 0) {
-            // Cycle-based: create one dated assignment per matching weekday in current cycle
+            // Cycle-based: create one dated assignment per matching weekday in current cycle,
+            // but never for a date that's already passed — otherwise assigning a recurring
+            // pattern mid-cycle backfills already-past days as bogus unclocked "Missed" shifts.
             const cycle = getCurrentCycleDates();
-            const dates = getDatesForWeekdays(weekdays, cycle.start, cycle.end);
+            const tz = resolveTimezone(request);
+            const todayStr = toLocalDateStr(new Date(), tz);
+            const todayUTCMidnight = new Date(todayStr + "T00:00:00.000Z");
+            const rangeStart = todayUTCMidnight > cycle.start ? todayUTCMidnight : cycle.start;
+            const dates = getDatesForWeekdays(weekdays, rangeStart, cycle.end);
 
             for (const d of dates) {
                 const dayStart = new Date(d); dayStart.setUTCHours(0, 0, 0, 0);

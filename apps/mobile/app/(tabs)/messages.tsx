@@ -1,5 +1,6 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Modal, Alert } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { router } from 'expo-router';
 import { fetchWithAuth } from '../../utils/apiClient';
 import { useAuth } from '../../providers/AuthProvider';
@@ -24,6 +25,14 @@ export default function MessagesScreen() {
   useEffect(() => {
     loadThreads();
   }, []);
+
+  // Refetch on focus too — router.push from the notifications screen doesn't
+  // remount this tab, so a stale thread list would otherwise hide new messages.
+  useFocusEffect(
+    useCallback(() => {
+      if (!currentThread) loadThreads();
+    }, [currentThread])
+  );
 
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {

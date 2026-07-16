@@ -34,9 +34,18 @@ export default function AdminUsersPage() {
     const [editingUserId, setEditingUserId] = useState<string | null>(null);
     const [editForm, setEditForm] = useState<any>({});
 
+    const getLastName = (fullName: string) => {
+        const parts = (fullName || "").trim().split(/\s+/);
+        return parts[parts.length - 1] || "";
+    };
+
     const filteredUsers = useMemo(() => {
-        if (selectedMarket === "all") return users;
-        return users.filter(u => u.marketId === selectedMarket || u.managedMarketId === selectedMarket);
+        const filtered = selectedMarket === "all"
+            ? users
+            : users.filter(u => u.marketId === selectedMarket || u.managedMarketId === selectedMarket);
+        return [...filtered].sort((a, b) =>
+            getLastName(a.name).localeCompare(getLastName(b.name), undefined, { sensitivity: "base" })
+        );
     }, [users, selectedMarket]);
 
     // Invite Form State
@@ -401,6 +410,7 @@ export default function AdminUsersPage() {
     const startEditing = (user: User) => {
         setEditingUserId(user.id);
         setEditForm({
+            name: user.name || "",
             role: user.role,
             hourlyWage: user.hourlyWage?.toString() || "",
             manualWorkedHours: user.workedHours?.toString() || "",
@@ -414,11 +424,16 @@ export default function AdminUsersPage() {
     };
 
     const handleSaveEdit = async (userId: string) => {
+        if (!editForm.name || !editForm.name.trim()) {
+            setError("Name cannot be empty");
+            return;
+        }
         try {
             const res = await fetch(`/api/users/${userId}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
+                    name: editForm.name.trim(),
                     role: editForm.role,
                     hourlyWage: editForm.hourlyWage ? parseFloat(editForm.hourlyWage) : null,
                     manualWorkedHours: editForm.manualWorkedHours ? parseFloat(editForm.manualWorkedHours) : null,
@@ -768,16 +783,28 @@ export default function AdminUsersPage() {
                                         <td>
                                             <div className={styles.userInfo} style={{ position: "relative" }}>
                                                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                                                    <strong>{user.name}</strong>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => startEditing(user)}
-                                                        className="btn btn-ghost btn-sm"
-                                                        style={{ padding: "2px", height: "auto" }}
-                                                        title="Edit User"
-                                                    >
-                                                        ✎
-                                                    </button>
+                                                    {isEditing ? (
+                                                        <input
+                                                            type="text"
+                                                            className="input input-sm"
+                                                            style={{ width: "160px" }}
+                                                            value={editForm.name}
+                                                            onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                                                        />
+                                                    ) : (
+                                                        <>
+                                                            <strong>{user.name}</strong>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => startEditing(user)}
+                                                                className="btn btn-ghost btn-sm"
+                                                                style={{ padding: "2px", height: "auto" }}
+                                                                title="Edit User"
+                                                            >
+                                                                ✎
+                                                            </button>
+                                                        </>
+                                                    )}
                                                 </div>
                                                 <span>{user.email}</span>
                                             </div>

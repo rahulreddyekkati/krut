@@ -1,7 +1,13 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import styles from "./reports.module.css";
 import Link from "next/link";
+
+const getLastName = (fullName: string) => {
+    const parts = fullName.trim().split(/\s+/);
+    return parts[parts.length - 1] || "";
+};
 
 interface PayrollMember {
     id: string;
@@ -24,6 +30,22 @@ interface PayrollTableProps {
 }
 
 export default function PayrollTable({ data, isLoading, startDate, endDate }: PayrollTableProps) {
+    const [sortDir, setSortDir] = useState<"asc" | "desc" | null>(null);
+
+    const sortedData = useMemo(() => {
+        if (!sortDir || !data) return data;
+        const copy = [...data];
+        copy.sort((a, b) => {
+            const cmp = getLastName(a.name).localeCompare(getLastName(b.name), undefined, { sensitivity: "base" });
+            return sortDir === "asc" ? cmp : -cmp;
+        });
+        return copy;
+    }, [data, sortDir]);
+
+    const toggleSort = () => {
+        setSortDir(prev => (prev === "asc" ? "desc" : "asc"));
+    };
+
     if (isLoading) {
         return (
             <div className={styles.loadingContainer}>
@@ -46,7 +68,9 @@ export default function PayrollTable({ data, isLoading, startDate, endDate }: Pa
             <table className={styles.payrollTable}>
                 <thead>
                     <tr>
-                        <th>USER</th>
+                        <th onClick={toggleSort} style={{ cursor: "pointer", userSelect: "none" }} title="Sort by last name">
+                            USER {sortDir === "asc" ? "▲" : sortDir === "desc" ? "▼" : ""}
+                        </th>
                         <th>ROLE</th>
                         <th>LOCATION/SCOPE</th>
                         <th>PAY/HR</th>
@@ -59,7 +83,7 @@ export default function PayrollTable({ data, isLoading, startDate, endDate }: Pa
                     </tr>
                 </thead>
                 <tbody>
-                    {data.map((member) => (
+                    {sortedData.map((member) => (
                         <tr key={member.id}>
                             <td>
                                 <div className={styles.userInfo}>

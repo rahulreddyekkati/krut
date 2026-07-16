@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
 import { fetchWithAuth } from '../../utils/apiClient';
 import { useAuth } from '../../providers/AuthProvider';
 import SignatureScreen from 'react-native-signature-canvas';
@@ -23,6 +24,8 @@ interface SkuRow {
   sold: string;
   storePrice: string;
   notCarried: boolean;
+  volume?: string;
+  unit?: string;
 }
 
 export default function SubmitRecap() {
@@ -84,6 +87,8 @@ export default function SubmitRecap() {
           sold: '',
           storePrice: '',
           notCarried: false,
+          volume: item.volume,
+          unit: item.unit,
         })));
       }
     } catch {}
@@ -98,37 +103,55 @@ export default function SubmitRecap() {
   // ask the camera/picker for a heavily compressed JPEG directly, then silently drop anything
   // still too large instead of showing a technical error. Keep in sync with the caps in
   // apps/web/src/lib/validate.ts.
-  const RECEIPT_IMAGE_QUALITY = 0.35;
+  const RECEIPT_IMAGE_QUALITY = 0.15;
   const MAX_RECEIPT_IMAGE_BYTES = 3 * 1024 * 1024; // 3MB per photo
-  const MAX_TOTAL_RECEIPT_BASE64_BYTES = 4 * 1024 * 1024; // 4MB combined, leaves headroom under Vercel's ~4.5MB body cap
+  const MAX_TOTAL_RECEIPT_BASE64_BYTES = 3 * 1024 * 1024; // 3MB combined, leaves headroom under Vercel's ~4.5MB body cap
   const PHOTO_TOO_LARGE_MESSAGE = 'That photo is too big to attach. Please retake it and try again.';
+  const MAX_RECEIPT_IMAGES = 5;
+  const TOO_MANY_IMAGES_MESSAGE = 'You can upload a maximum of 5 receipt photos. Please remove some photos before adding more.';
 
   const getBase64ByteSize = (dataUri: string): number => {
     const base64Data = dataUri.split(',').pop() || dataUri;
     return Math.ceil((base64Data.length * 3) / 4);
   };
 
+  // expo-image-picker's own base64 field is unreliable on Android — under some conditions
+  // (large images, cloud-backed photos, multi-select) it comes back undefined, which used
+  // to silently produce "data:image/jpeg;base64,undefined" (blank preview, broken upload).
+  // Read the file directly off disk instead, which doesn't have that failure mode.
+  const readImageAsBase64Uri = async (asset: any): Promise<string> => {
+    if (asset.base64) {
+      return `data:image/jpeg;base64,${asset.base64}`;
+    }
+    const base64 = await FileSystem.readAsStringAsync(asset.uri, { encoding: 'base64' });
+    return `data:image/jpeg;base64,${base64}`;
+  };
+
   // Adds only the photos that fit; silently skips (with one friendly alert) any that don't,
   // so a worker never has to understand file sizes to finish their recap.
   const addReceiptImages = (uris: string[]) => {
-    setReceiptImages(prev => {
-      let runningTotal = prev.reduce((sum, img) => sum + getBase64ByteSize(img), 0);
-      const accepted: string[] = [];
-      let rejected = false;
-      for (const uri of uris) {
-        const size = getBase64ByteSize(uri);
-        if (size > MAX_RECEIPT_IMAGE_BYTES || runningTotal + size > MAX_TOTAL_RECEIPT_BASE64_BYTES) {
-          rejected = true;
-          continue;
-        }
-        accepted.push(uri);
-        runningTotal += size;
+    if (receiptImages.length + uris.length > MAX_RECEIPT_IMAGES) {
+      Alert.alert('Too Many Photos', TOO_MANY_IMAGES_MESSAGE);
+      return;
+    }
+    let runningTotal = receiptImages.reduce((sum, img) => sum + getBase64ByteSize(img), 0);
+    const accepted: string[] = [];
+    let rejected = false;
+    for (const uri of uris) {
+      const size = getBase64ByteSize(uri);
+      if (size > MAX_RECEIPT_IMAGE_BYTES || runningTotal + size > MAX_TOTAL_RECEIPT_BASE64_BYTES) {
+        rejected = true;
+        continue;
       }
-      if (rejected) {
-        Alert.alert('Photo Too Large', PHOTO_TOO_LARGE_MESSAGE);
-      }
-      return [...prev, ...accepted];
-    });
+      accepted.push(uri);
+      runningTotal += size;
+    }
+    if (rejected) {
+      Alert.alert('Photo Too Large', PHOTO_TOO_LARGE_MESSAGE);
+    }
+    if (accepted.length > 0) {
+      setReceiptImages(prev => [...prev, ...accepted]);
+    }
   };
 
   const pickReceiptImage = async () => {
@@ -137,14 +160,21 @@ export default function SubmitRecap() {
       Alert.alert('Permission Required', 'Please allow access to your photo library.');
       return;
     }
+    const limit = Math.max(1, MAX_RECEIPT_IMAGES - receiptImages.length);
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
       quality: RECEIPT_IMAGE_QUALITY,
       base64: true,
+      selectionLimit: limit,
     });
     if (!result.canceled && result.assets) {
-      addReceiptImages(result.assets.map(a => `data:image/jpeg;base64,${a.base64}`));
+      try {
+        const uris = await Promise.all(result.assets.map(a => readImageAsBase64Uri(a)));
+        addReceiptImages(uris);
+      } catch (e: any) {
+        Alert.alert('Image Error', e.message || 'One or more photos could not be processed. Please try again.');
+      }
     }
   };
 
@@ -154,9 +184,21 @@ export default function SubmitRecap() {
       Alert.alert('Permission Required', 'Please allow camera access.');
       return;
     }
-    const result = await ImagePicker.launchCameraAsync({ quality: RECEIPT_IMAGE_QUALITY, base64: true });
+    if (receiptImages.length >= MAX_RECEIPT_IMAGES) {
+      Alert.alert('Too Many Photos', TOO_MANY_IMAGES_MESSAGE);
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      quality: RECEIPT_IMAGE_QUALITY,
+      base64: true,
+    });
     if (!result.canceled && result.assets) {
-      addReceiptImages(result.assets.map(a => `data:image/jpeg;base64,${a.base64}`));
+      try {
+        const uris = await Promise.all(result.assets.map(a => readImageAsBase64Uri(a)));
+        addReceiptImages(uris);
+      } catch (e: any) {
+        Alert.alert('Image Error', e.message || 'The photo could not be processed. Please try again.');
+      }
     }
   };
 

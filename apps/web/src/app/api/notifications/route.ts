@@ -7,8 +7,11 @@ export async function GET(request: NextRequest) {
     try {
         const user = await requireAuth(request);
 
+        const { searchParams } = new URL(request.url);
+        const includeAll = searchParams.get("all") === "true";
+
         const notifications = await prisma.notification.findMany({
-            where: { userId: user.id, read: false },
+            where: includeAll ? { userId: user.id } : { userId: user.id, read: false },
             orderBy: { createdAt: "desc" },
             take: 50
         });

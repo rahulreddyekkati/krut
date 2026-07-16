@@ -1,10 +1,16 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import * as XLSX from "xlsx";
 import styles from "./reports.module.css";
 import { getClosedCycles } from "@/lib/cycles";
 import PayrollTable from "./PayrollTable";
 import AnalyticsDashboard from "./AnalyticsDashboard";
+
+const getLastName = (fullName: string) => {
+    const parts = (fullName || "").trim().split(/\s+/);
+    return parts[parts.length - 1] || "";
+};
 
 export default function AdminReportsPage() {
     const [startDate, setStartDate] = useState("");
@@ -61,6 +67,49 @@ export default function AdminReportsPage() {
     const handleCycleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const val = e.target.value;
         setSelectedCycle(val);
+    };
+
+    const handleExportExcel = () => {
+        const rows = [...filteredPayrollData]
+            .sort((a, b) => getLastName(a.name).localeCompare(getLastName(b.name), undefined, { sensitivity: "base" }))
+            .map(member => ({
+                "Name": member.name,
+                "Role": member.role,
+                "Location/Scope": member.location,
+                "Pay/Hr": member.payHr,
+                "Worked (hrs)": member.worked,
+                "Assigned (hrs)": member.assigned,
+                "Reimbursement": member.reimb,
+                "Bottles Sold": member.role === "WORKER" ? member.bottlesSold : "N/A",
+                "Pay For Cycle": member.role === "WORKER" ? member.payForCycle : "N/A",
+            }));
+
+        const ws = XLSX.utils.json_to_sheet(rows);
+        ws['!cols'] = [
+            { wch: 22 }, { wch: 16 }, { wch: 20 }, { wch: 10 },
+            { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 13 }, { wch: 14 }
+        ];
+
+        // Apply currency formatting to Pay/Hr (D), Reimbursement (G), Pay For Cycle (I)
+        const currencyCols = ["D", "G", "I"];
+        const range = XLSX.utils.decode_range(ws['!ref'] || "A1");
+        for (let r = range.s.r + 1; r <= range.e.r; r++) {
+            for (const col of currencyCols) {
+                const cell = ws[`${col}${r + 1}`];
+                if (cell && typeof cell.v === "number") {
+                    cell.z = '"$"#,##0.00';
+                }
+            }
+        }
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Payroll");
+
+        const cycleLabel = selectedCycle && selectedCycle !== "manual"
+            ? selectedCycle.replace(/\s+/g, "")
+            : `${startDate}_to_${endDate}`;
+        const marketLabel = selectedMarket === "all" ? "AllMarkets" : selectedMarket.replace(/\s+/g, "");
+        XLSX.writeFile(wb, `Payroll_${marketLabel}_${cycleLabel}.xlsx`);
     };
 
     const fetchPayrollData = async () => {
@@ -188,7 +237,23 @@ export default function AdminReportsPage() {
                     <>
                         <PayrollTable data={filteredPayrollData} isLoading={isLoading} startDate={startDate} endDate={endDate} />
                         {!isLoading && filteredPayrollData.length > 0 && (
-                            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "1.5rem" }}>
+                            <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "1.5rem" }}>
+                                <button
+                                    onClick={handleExportExcel}
+                                    style={{
+                                        padding: "0.75rem 1.75rem",
+                                        backgroundColor: "#16a34a",
+                                        color: "white",
+                                        fontWeight: 700,
+                                        borderRadius: "10px",
+                                        border: "none",
+                                        cursor: "pointer",
+                                        fontSize: "0.9rem",
+                                        boxShadow: "0 1px 3px rgba(0,0,0,0.12)"
+                                    }}
+                                >
+                                    📊 Export to Excel
+                                </button>
                                 <a
                                     href={`/admin/reports/payroll/print?startDate=${startDate}&endDate=${endDate}&market=${selectedMarket}`}
                                     target="_blank"

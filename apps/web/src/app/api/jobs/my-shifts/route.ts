@@ -3,7 +3,7 @@ import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { getCurrentCycleDates, getPreviousCycleDates, getCycleDisplayName } from "@/lib/cycles";
 import { resolveTimezone, getLocalDayBoundsUTC } from "@/lib/timezone";
-import { ensureCurrentCycleAssignments } from "@/lib/recurringShifts";
+import { ensureCurrentCycleAssignments, ensureNextCyclePreview } from "@/lib/recurringShifts";
 
 export async function GET(request: NextRequest) {
     try {
@@ -13,6 +13,9 @@ export async function GET(request: NextRequest) {
         // Auto-rollover: non-blocking — don't let rollover errors break the shifts response
         try { await ensureCurrentCycleAssignments(session.user.id); } catch (e) {
             console.error("ensureCurrentCycleAssignments error:", e);
+        }
+        try { await ensureNextCyclePreview(session.user.id); } catch (e) {
+            console.error("ensureNextCyclePreview error:", e);
         }
 
         const tz = resolveTimezone(request);

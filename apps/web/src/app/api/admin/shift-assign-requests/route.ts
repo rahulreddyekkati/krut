@@ -1,7 +1,7 @@
 import { NextResponse, NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { resolveTimezone, localTimeToUTC, toLocalDateStr } from "@/lib/timezone";
+import { resolveTimezone, localTimeToUTC, toLocalDateStr, toUTCLocalDateStr } from "@/lib/timezone";
 
 export async function GET(request: NextRequest) {
     try {
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
         for (const req of requests) {
             const shiftDate = req.date ? new Date(req.date) : null;
             if (shiftDate && req.job.startTimeStr) {
-                const dateStr = toLocalDateStr(shiftDate, tz);
+                const dateStr = toUTCLocalDateStr(shiftDate);
                 const shiftStart = localTimeToUTC(dateStr, req.job.startTimeStr, tz);
                 
                 if (now > shiftStart) {

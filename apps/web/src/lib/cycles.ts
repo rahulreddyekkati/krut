@@ -19,6 +19,24 @@ export function getCurrentCycleDates(baseDate: Date = new Date()): CycleDates {
   }
 }
 
+export function getNextCycleDates(baseDate: Date = new Date()): CycleDates {
+  const year = baseDate.getFullYear();
+  const month = baseDate.getMonth();
+  const day = baseDate.getDate();
+
+  if (day <= 15) {
+    // Current is 1st-15th → next is 16th-end of this month
+    const start = new Date(year, month, 16, 0, 0, 0, 0);
+    const end = new Date(year, month + 1, 0, 23, 59, 59, 999);
+    return { start, end };
+  } else {
+    // Current is 16th-end → next is 1st-15th of next month
+    const start = new Date(year, month + 1, 1, 0, 0, 0, 0);
+    const end = new Date(year, month + 1, 15, 23, 59, 59, 999);
+    return { start, end };
+  }
+}
+
 export function getPreviousCycleDates(baseDate: Date = new Date()): CycleDates {
   const year = baseDate.getFullYear();
   const month = baseDate.getMonth();

@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 
 export default function RecapDetailPage() {
     const params = useParams();
-    const router = useRouter();
     const recapId = params.id as string;
     const [recap, setRecap] = useState<any>(null);
     const [loading, setLoading] = useState(true);
@@ -154,7 +153,7 @@ export default function RecapDetailPage() {
             <div style={{ padding: "3rem", textAlign: "center", color: "#9ca3af" }}>
                 Recap not found.
                 <br />
-                <button onClick={() => router.back()} style={{ marginTop: "1rem", padding: "0.5rem 1.5rem", background: "#6366f1", color: "white", border: "none", borderRadius: "8px", cursor: "pointer" }}>
+                <button onClick={() => { window.location.href = "/admin/recaps"; }} style={{ marginTop: "1rem", padding: "0.5rem 1.5rem", background: "#6366f1", color: "white", border: "none", borderRadius: "8px", cursor: "pointer" }}>
                     Back
                 </button>
             </div>
@@ -446,7 +445,7 @@ export default function RecapDetailPage() {
             {/* ── Action Buttons ── */}
             <div style={{ display: "flex", gap: "1rem", justifyContent: "flex-end", marginTop: "1.5rem" }}>
                 <button
-                    onClick={() => router.back()}
+                    onClick={() => { window.location.href = "/admin/recaps"; }}
                     style={{
                         padding: "0.625rem 1.5rem",
                         background: "#f3f4f6",

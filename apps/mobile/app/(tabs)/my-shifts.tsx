@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, FlatList, RefreshControl, TouchableOpacity, Alert } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../providers/AuthProvider';
 import { router } from 'expo-router';
 import { fetchWithAuth } from '../../utils/apiClient';
@@ -17,6 +18,14 @@ export default function MyShiftsTab() {
   useEffect(() => {
     if (token) loadShifts();
   }, [token]);
+
+  // Refetch on focus too — router.push from the notifications screen doesn't
+  // remount this tab, so a stale list would otherwise hide new/removed shifts.
+  useFocusEffect(
+    useCallback(() => {
+      if (token) loadShifts();
+    }, [token])
+  );
 
   const loadShifts = async () => {
     setFetching(true);

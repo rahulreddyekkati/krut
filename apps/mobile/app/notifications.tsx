@@ -46,13 +46,14 @@ export default function NotificationsScreen() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showAll, setShowAll] = useState(false);
   const { refetch: refetchCount } = useNotificationCount();
 
   const loadNotifications = useCallback(async (showRefresh = false) => {
     if (showRefresh) setRefreshing(true);
     else setLoading(true);
     try {
-      const res = await fetchWithAuth('/notifications');
+      const res = await fetchWithAuth(`/notifications${showAll ? '?all=true' : ''}`);
       if (res.ok) {
         const data = await res.json();
         setNotifications(Array.isArray(data) ? data : []);
@@ -63,7 +64,7 @@ export default function NotificationsScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [showAll]);
 
   useEffect(() => {
     loadNotifications();
@@ -76,7 +77,12 @@ export default function NotificationsScreen() {
         body: JSON.stringify({ ids }),
       });
       if (res.ok) {
-        setNotifications((prev) => prev.filter((n) => !ids.includes(n.id)));
+        // In the "Unread" view, a read item disappears; in "All" it stays but flips its dot off.
+        setNotifications((prev) =>
+          showAll
+            ? prev.map((n) => (ids.includes(n.id) ? { ...n, read: true } : n))
+            : prev.filter((n) => !ids.includes(n.id))
+        );
         refetchCount();
       }
     } catch {
@@ -116,7 +122,7 @@ export default function NotificationsScreen() {
           <Text style={styles.notifBody} numberOfLines={2}>{item.message}</Text>
           <Text style={styles.notifTime}>{getTimeAgo(item.createdAt)}</Text>
         </View>
-        <View style={styles.unreadDot} />
+        {!item.read && <View style={styles.unreadDot} />}
       </TouchableOpacity>
     );
   };
@@ -129,9 +135,9 @@ export default function NotificationsScreen() {
           <Text style={styles.backText}>‹ Back</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Notifications</Text>
-        {notifications.length > 0 ? (
+        {notifications.some((n) => !n.read) ? (
           <TouchableOpacity
-            onPress={() => markRead(notifications.map((n) => n.id))}
+            onPress={() => markRead(notifications.filter((n) => !n.read).map((n) => n.id))}
             style={styles.clearBtn}
           >
             <Text style={styles.clearAll}>Mark all read</Text>
@@ -141,13 +147,32 @@ export default function NotificationsScreen() {
         )}
       </View>
 
+      {/* Unread / All toggle — "All" keeps previously-read notifications (e.g. a past
+          recap rejection) browsable instead of them disappearing the moment they're tapped. */}
+      <View style={styles.toggleRow}>
+        <TouchableOpacity
+          style={[styles.toggleBtn, !showAll && styles.toggleBtnActive]}
+          onPress={() => setShowAll(false)}
+        >
+          <Text style={[styles.toggleText, !showAll && styles.toggleTextActive]}>Unread</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.toggleBtn, showAll && styles.toggleBtnActive]}
+          onPress={() => setShowAll(true)}
+        >
+          <Text style={[styles.toggleText, showAll && styles.toggleTextActive]}>All</Text>
+        </TouchableOpacity>
+      </View>
+
       {loading ? (
         <ActivityIndicator style={{ marginTop: 60 }} size="large" color="#6366F1" />
       ) : notifications.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyEmoji}>🔔</Text>
           <Text style={styles.emptyTitle}>You're all caught up!</Text>
-          <Text style={styles.emptyText}>No unread notifications right now.</Text>
+          <Text style={styles.emptyText}>
+            {showAll ? 'No notifications yet.' : 'No unread notifications right now.'}
+          </Text>
         </View>
       ) : (
         <FlatList
@@ -171,6 +196,27 @@ export default function NotificationsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FAFAFA' },
+
+  toggleRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+  },
+  toggleBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 16,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  toggleBtnActive: {
+    backgroundColor: '#EEF2FF',
+    borderColor: '#6366F1',
+  },
+  toggleText: { fontSize: 13, fontWeight: '600', color: '#6B7280' },
+  toggleTextActive: { color: '#6366F1' },
 
   header: {
     flexDirection: 'row',

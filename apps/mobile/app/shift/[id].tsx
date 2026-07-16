@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Dimensions } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
+import * as Location from 'expo-location';
 import { fetchWithAuth } from '../../utils/apiClient';
 
 const CIRCLE_SIZE = Dimensions.get('window').width * 0.52;
@@ -17,11 +18,29 @@ export default function ShiftDetails() {
   };
 
   const handleClockIn = async () => {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Location Required', 'Enable location access to clock in.');
+      return;
+    }
     setClockActionLoading(true);
     try {
+      let loc;
+      try {
+        loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      } catch {
+        Alert.alert('Location Error', 'Unable to get your current location. Try again.');
+        setClockActionLoading(false);
+        return;
+      }
+
       const res = await fetchWithAuth(`/jobs/${id}/clock-in`, {
         method: "POST",
-        body: JSON.stringify({ date })
+        body: JSON.stringify({
+          date,
+          latitude: loc.coords.latitude,
+          longitude: loc.coords.longitude
+        })
       });
       const data = await res.json();
       if (res.ok) {

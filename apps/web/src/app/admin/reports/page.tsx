@@ -158,13 +158,12 @@ export default function AdminReportsPage() {
                         <div className={styles.filtersContainer}>
                             {activeTab === "pay-reports" && (
                                 <>
-                                    <div className={styles.headerRow}>
+                                    <div className={styles.filterField}>
                                         <label className="text-secondary" style={{ fontSize: "0.85rem", fontWeight: 500 }}>Market</label>
                                         <select 
                                             className={styles.dateInput} 
                                             value={selectedMarket}
                                             onChange={(e) => setSelectedMarket(e.target.value)}
-                                            style={{ minWidth: "150px" }}
                                         >
                                             <option value="all">All Markets</option>
                                             {markets.map(market => (
@@ -174,13 +173,12 @@ export default function AdminReportsPage() {
                                             ))}
                                         </select>
                                     </div>
-                                    <div className={styles.headerRow}>
+                                    <div className={styles.filterField}>
                                         <label className="text-secondary" style={{ fontSize: "0.85rem", fontWeight: 500 }}>Pay Cycle</label>
                                         <select 
                                             className={styles.dateInput} 
                                             value={selectedCycle}
                                             onChange={handleCycleChange}
-                                            style={{ minWidth: "180px" }}
                                         >
                                             <option value="manual">Manual Range</option>
                                             {closedCycles.map(cycle => (
@@ -190,22 +188,23 @@ export default function AdminReportsPage() {
                                             ))}
                                         </select>
                                     </div>
-                                    <div className={styles.headerRow} style={{ alignItems: "center" }}>
+                                    <div className={styles.checkboxField}>
                                         <label
                                             className="text-secondary"
-                                            style={{ fontSize: "0.85rem", fontWeight: 500, display: "flex", alignItems: "center", gap: "0.4rem", cursor: "pointer" }}
+                                            style={{ fontSize: "0.85rem", fontWeight: 500, display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer", userSelect: "none" }}
                                         >
                                             <input
                                                 type="checkbox"
                                                 checked={activeOnly}
                                                 onChange={(e) => setActiveOnly(e.target.checked)}
+                                                style={{ width: "16px", height: "16px", cursor: "pointer" }}
                                             />
                                             Active only (worked &gt; 0, assigned &gt; 0, pay &gt; $0)
                                         </label>
                                     </div>
                                 </>
                             )}
-                            <div className={styles.headerRow}>
+                            <div className={styles.filterField}>
                                 <label className="text-secondary" style={{ fontSize: "0.85rem", fontWeight: 500 }}>Start Date</label>
                                 <input 
                                     type="date" 
@@ -217,7 +216,7 @@ export default function AdminReportsPage() {
                                     }}
                                 />
                             </div>
-                            <div className={styles.headerRow}>
+                            <div className={styles.filterField}>
                                 <label className="text-secondary" style={{ fontSize: "0.85rem", fontWeight: 500 }}>End Date</label>
                                 <input 
                                     type="date" 

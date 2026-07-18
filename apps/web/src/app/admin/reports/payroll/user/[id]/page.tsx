@@ -57,8 +57,11 @@ export default async function UserPayrollDetailsPage(props: {
     let totalReimb = 0;
     let totalBonus = 0;
 
+    // This runs server-side, where the JS runtime's default timezone (UTC on Vercel) is
+    // not the store's actual local time — must pass timeZone explicitly, same as every
+    // other timestamp display in this app.
     const formatClockTime = (dt: any) =>
-        dt ? new Date(dt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }) : "--";
+        dt ? new Date(dt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", timeZone: "America/Chicago" }) : "--";
 
     const formatBreak = (mins: number) =>
         mins > 0 ? `${Math.round(mins)} min` : "--";

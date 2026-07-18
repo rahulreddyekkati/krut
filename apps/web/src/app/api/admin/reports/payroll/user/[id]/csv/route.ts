@@ -50,8 +50,10 @@ export async function GET(
         csvContent += `Hourly Wage: $${hourlyWage.toFixed(2)}/hr\n\n`;
         csvContent += `Date,Store,Clock In,Clock Out,Break (min),Assigned Hours,Hours Worked,Reimbursement,Bonus,Shift Pay,Total Shift Pay\n`;
 
+        // Runs server-side — must pass timeZone explicitly or this defaults to the server's
+        // system timezone (UTC on Vercel), not the store's actual local time.
         const formatClockTime = (dt: any) =>
-            dt ? new Date(dt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }) : "--";
+            dt ? new Date(dt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", timeZone: "America/Chicago" }) : "--";
 
         let sumAssigned = 0;
         let sumWorked = 0;

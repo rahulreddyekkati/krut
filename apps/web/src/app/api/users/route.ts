@@ -92,6 +92,7 @@ export async function GET() {
                     // Only count bonus and reimbursement for completed/approved shifts
                     if (assignment.recap?.status === "APPROVED") {
                         if (assignment.recap.reimbursement) totalReimbursement += assignment.recap.reimbursement;
+                        if (assignment.bonus) totalBonus += assignment.bonus;
                         if (job.bonus) totalBonus += job.bonus;
                     }
                 }

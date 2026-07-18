@@ -21,6 +21,7 @@ export default function AdminReportsPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [markets, setMarkets] = useState<any[]>([]);
     const [selectedMarket, setSelectedMarket] = useState<string>("all");
+    const [activeOnly, setActiveOnly] = useState(false);
 
     // Memoize cycles to avoid unnecessary recalculations
     const closedCycles = useMemo(() => getClosedCycles(24), []);
@@ -135,9 +136,14 @@ export default function AdminReportsPage() {
 
     // Filter payroll data by selected market
     const filteredPayrollData = useMemo(() => {
-        if (selectedMarket === "all") return payrollData;
-        return payrollData.filter(member => member.location === selectedMarket);
-    }, [payrollData, selectedMarket]);
+        let data = selectedMarket === "all"
+            ? payrollData
+            : payrollData.filter(member => member.location === selectedMarket);
+        if (activeOnly) {
+            data = data.filter(member => member.assigned > 0 && member.worked > 0 && member.payForCycle);
+        }
+        return data;
+    }, [payrollData, selectedMarket, activeOnly]);
 
     return (
         <div>
@@ -183,6 +189,19 @@ export default function AdminReportsPage() {
                                                 </option>
                                             ))}
                                         </select>
+                                    </div>
+                                    <div className={styles.headerRow} style={{ alignItems: "center" }}>
+                                        <label
+                                            className="text-secondary"
+                                            style={{ fontSize: "0.85rem", fontWeight: 500, display: "flex", alignItems: "center", gap: "0.4rem", cursor: "pointer" }}
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={activeOnly}
+                                                onChange={(e) => setActiveOnly(e.target.checked)}
+                                            />
+                                            Active only (worked &gt; 0, assigned &gt; 0, pay &gt; $0)
+                                        </label>
                                     </div>
                                 </>
                             )}

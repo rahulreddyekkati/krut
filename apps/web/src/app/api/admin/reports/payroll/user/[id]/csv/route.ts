@@ -48,24 +48,46 @@ export async function GET(
         csvContent += `Pay Report for ${user.name}\n`;
         csvContent += `Pay Cycle: ${startDate} to ${endDate}\n`;
         csvContent += `Hourly Wage: $${hourlyWage.toFixed(2)}/hr\n\n`;
-        csvContent += `Date,Store,Hours Worked,Reimbursement,Shift Pay,Total Shift Pay\n`;
+        csvContent += `Date,Store,Clock In,Clock Out,Break (min),Assigned Hours,Hours Worked,Reimbursement,Bonus,Shift Pay,Total Shift Pay\n`;
 
+        const formatClockTime = (dt: any) =>
+            dt ? new Date(dt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }) : "--";
+
+        let sumAssigned = 0;
         let sumWorked = 0;
         let sumReimb = 0;
+        let sumBonus = 0;
 
         for (const assignment of user.jobs) {
             const worked = assignment.workedHours || 0;
-            const reimb = (assignment.recap?.reimbursement || 0) + (assignment.job?.bonus || 0);
+            const reimb = assignment.recap?.reimbursement || 0;
+            const bonus = (assignment.bonus || 0) + (assignment.job?.bonus || 0);
             const shiftPay = worked * hourlyWage;
-            const totalPay = shiftPay + reimb;
+            const totalPay = shiftPay + reimb + bonus;
 
+            const startTimeStr = assignment.customStartTimeStr ?? assignment.job?.startTimeStr;
+            const endTimeStr = assignment.customEndTimeStr ?? assignment.job?.endTimeStr;
+            let assignedH = 0;
+            if (startTimeStr && endTimeStr) {
+                const [sh, sm] = startTimeStr.split(":").map(Number);
+                const [eh, em] = endTimeStr.split(":").map(Number);
+                let durationMins = (eh * 60 + em) - (sh * 60 + sm);
+                if (durationMins < 0) durationMins += 24 * 60;
+                assignedH = durationMins / 60;
+            }
+
+            sumAssigned += assignedH;
             sumWorked += worked;
             sumReimb += reimb;
+            sumBonus += bonus;
 
-            csvContent += `${assignment.date ? assignment.date.toLocaleDateString(undefined, { timeZone: "UTC" }) : "--"},"${assignment.job.store.name.replace(/"/g, '""')}",${worked.toFixed(2)},${reimb.toFixed(2)},${shiftPay.toFixed(2)},${totalPay.toFixed(2)}\n`;
+            const dateLabel = assignment.date ? assignment.date.toLocaleDateString(undefined, { timeZone: "UTC" }) : "--";
+            const storeLabel = assignment.job.store.name.replace(/"/g, '""');
+            const breakMins = Math.round(assignment.breakTimeMinutes || 0);
+            csvContent += `${dateLabel},"${storeLabel}",${formatClockTime(assignment.clockIn)},${formatClockTime(assignment.clockOut)},${breakMins},${assignedH.toFixed(2)},${worked.toFixed(2)},${reimb.toFixed(2)},${bonus.toFixed(2)},${shiftPay.toFixed(2)},${totalPay.toFixed(2)}\n`;
         }
 
-        csvContent += `\nTotal,,-,${sumWorked.toFixed(2)},${sumReimb.toFixed(2)},${(sumWorked * hourlyWage).toFixed(2)},${((sumWorked * hourlyWage) + sumReimb).toFixed(2)}\n`;
+        csvContent += `\nTotal,,,,,${sumAssigned.toFixed(2)},${sumWorked.toFixed(2)},${sumReimb.toFixed(2)},${sumBonus.toFixed(2)},${(sumWorked * hourlyWage).toFixed(2)},${((sumWorked * hourlyWage) + sumReimb + sumBonus).toFixed(2)}\n`;
 
         const filename = `Payroll_Report_${user.name.replace(/\s+/g, '_')}_${startDate}_to_${endDate}.csv`;
 

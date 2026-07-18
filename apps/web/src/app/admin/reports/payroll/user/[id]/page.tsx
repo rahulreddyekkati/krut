@@ -53,16 +53,38 @@ export default async function UserPayrollDetailsPage(props: {
 
     const hourlyWage = user.hourlyWage || 0;
     let totalWorkedHours = 0;
+    let totalAssignedHours = 0;
     let totalReimb = 0;
+    let totalBonus = 0;
+
+    const formatClockTime = (dt: any) =>
+        dt ? new Date(dt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }) : "--";
+
+    const formatBreak = (mins: number) =>
+        mins > 0 ? `${Math.round(mins)} min` : "--";
 
     const shiftRows = user.jobs.map((assignment: any) => {
         const workedH = assignment.workedHours || 0;
-        const reimb = (assignment.recap?.reimbursement || 0) + (assignment.job?.bonus || 0);
+        const reimb = assignment.recap?.reimbursement || 0;
+        const bonus = (assignment.bonus || 0) + (assignment.job?.bonus || 0);
         const shiftPay = workedH * hourlyWage;
-        const totalPay = shiftPay + reimb;
+        const totalPay = shiftPay + reimb + bonus;
+
+        const startTimeStr = assignment.customStartTimeStr ?? assignment.job?.startTimeStr;
+        const endTimeStr = assignment.customEndTimeStr ?? assignment.job?.endTimeStr;
+        let assignedH = 0;
+        if (startTimeStr && endTimeStr) {
+            const [sh, sm] = startTimeStr.split(":").map(Number);
+            const [eh, em] = endTimeStr.split(":").map(Number);
+            let durationMins = (eh * 60 + em) - (sh * 60 + sm);
+            if (durationMins < 0) durationMins += 24 * 60;
+            assignedH = durationMins / 60;
+        }
 
         totalWorkedHours += workedH;
+        totalAssignedHours += assignedH;
         totalReimb += reimb;
+        totalBonus += bonus;
 
         return {
             id: assignment.id,
@@ -70,13 +92,18 @@ export default async function UserPayrollDetailsPage(props: {
             store: assignment.job.store.name,
             market: assignment.job.store.market?.name || "--",
             hours: workedH.toFixed(2),
+            assignedHours: assignedH.toFixed(2),
+            clockIn: formatClockTime(assignment.clockIn),
+            clockOut: formatClockTime(assignment.clockOut),
+            breakTime: formatBreak(assignment.breakTimeMinutes || 0),
             reimb: reimb.toFixed(2),
+            bonus: bonus.toFixed(2),
             shiftPay: shiftPay.toFixed(2),
             totalPay: totalPay.toFixed(2)
         };
     });
 
-    const totalCyclePay = (totalWorkedHours * hourlyWage) + totalReimb;
+    const totalCyclePay = (totalWorkedHours * hourlyWage) + totalReimb + totalBonus;
 
     return (
         <div style={{ backgroundColor: "white", minHeight: "100vh", padding: "2rem" }}>
@@ -146,16 +173,24 @@ export default async function UserPayrollDetailsPage(props: {
                         </thead>
                         <tbody>
                             <tr style={{ borderBottom: "1px solid #e5e7eb" }}>
+                                <td style={{ padding: "0.875rem 1rem" }}>Assigned Hours</td>
+                                <td style={{ padding: "0.875rem 1rem", textAlign: "right", fontWeight: 700 }}>{totalAssignedHours.toFixed(2)}h</td>
+                            </tr>
+                            <tr style={{ borderBottom: "1px solid #e5e7eb", backgroundColor: "#f9fafb" }}>
                                 <td style={{ padding: "0.875rem 1rem" }}>Worked Hours</td>
                                 <td style={{ padding: "0.875rem 1rem", textAlign: "right", fontWeight: 700 }}>{totalWorkedHours.toFixed(2)}h</td>
                             </tr>
-                            <tr style={{ borderBottom: "1px solid #e5e7eb", backgroundColor: "#f9fafb" }}>
+                            <tr style={{ borderBottom: "1px solid #e5e7eb" }}>
                                 <td style={{ padding: "0.875rem 1rem" }}>Pay Rate</td>
                                 <td style={{ padding: "0.875rem 1rem", textAlign: "right", fontWeight: 700 }}>${hourlyWage.toFixed(2)}/hr</td>
                             </tr>
-                            <tr style={{ borderBottom: "1px solid #e5e7eb" }}>
+                            <tr style={{ borderBottom: "1px solid #e5e7eb", backgroundColor: "#f9fafb" }}>
                                 <td style={{ padding: "0.875rem 1rem" }}>Reimbursement</td>
                                 <td style={{ padding: "0.875rem 1rem", textAlign: "right", fontWeight: 700 }}>${totalReimb.toFixed(2)}</td>
+                            </tr>
+                            <tr style={{ borderBottom: "1px solid #e5e7eb" }}>
+                                <td style={{ padding: "0.875rem 1rem" }}>Bonus</td>
+                                <td style={{ padding: "0.875rem 1rem", textAlign: "right", fontWeight: 700 }}>${totalBonus.toFixed(2)}</td>
                             </tr>
                             <tr style={{ borderBottom: "1px solid #e5e7eb", backgroundColor: "#f9fafb" }}>
                                 <td style={{ padding: "0.875rem 1rem" }}>Total Wage (Hours * Rate)</td>
@@ -186,7 +221,12 @@ export default async function UserPayrollDetailsPage(props: {
                                 <tr>
                                     <th style={{ padding: "1rem", fontSize: "0.875rem", fontWeight: 600 }}>Date</th>
                                     <th style={{ padding: "1rem", fontSize: "0.875rem", fontWeight: 600 }}>Location</th>
+                                    <th style={{ padding: "1rem", fontSize: "0.875rem", fontWeight: 600 }}>Clock In</th>
+                                    <th style={{ padding: "1rem", fontSize: "0.875rem", fontWeight: 600 }}>Clock Out</th>
+                                    <th style={{ padding: "1rem", fontSize: "0.875rem", fontWeight: 600 }}>Break</th>
                                     <th style={{ padding: "1rem", fontSize: "0.875rem", fontWeight: 600 }}>Hours</th>
+                                    <th style={{ padding: "1rem", fontSize: "0.875rem", fontWeight: 600, textAlign: "right" }}>Reimb.</th>
+                                    <th style={{ padding: "1rem", fontSize: "0.875rem", fontWeight: 600, textAlign: "right" }}>Bonus</th>
                                     <th style={{ padding: "1rem", fontSize: "0.875rem", fontWeight: 600, textAlign: "right" }}>Shift Pay</th>
                                     <th style={{ padding: "1rem", fontSize: "0.875rem", fontWeight: 600, textAlign: "right" }}>Total</th>
                                 </tr>
@@ -199,7 +239,12 @@ export default async function UserPayrollDetailsPage(props: {
                                             <div style={{ fontWeight: 500 }}>{row.store}</div>
                                             <div style={{ fontSize: "0.75rem", color: "#6b7280" }}>{row.market}</div>
                                         </td>
+                                        <td style={{ padding: "1rem" }}>{row.clockIn}</td>
+                                        <td style={{ padding: "1rem" }}>{row.clockOut}</td>
+                                        <td style={{ padding: "1rem" }}>{row.breakTime}</td>
                                         <td style={{ padding: "1rem" }}>{row.hours}h</td>
+                                        <td style={{ padding: "1rem", textAlign: "right" }}>${row.reimb}</td>
+                                        <td style={{ padding: "1rem", textAlign: "right" }}>${row.bonus}</td>
                                         <td style={{ padding: "1rem", textAlign: "right" }}>${row.shiftPay}</td>
                                         <td style={{ padding: "1rem", textAlign: "right", fontWeight: 600 }}>${row.totalPay}</td>
                                     </tr>

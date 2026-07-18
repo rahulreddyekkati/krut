@@ -145,6 +145,11 @@ model JobAssignment {
   customStartTimeStr String?
   customEndTimeStr   String?
 
+  // One-off bonus for this specific shift instance, set when assigning the shift.
+  // Distinct from Job.bonus (which is shared across every worker/occurrence of that job) —
+  // this lets an admin give a bonus for a single occurrence without needing a duplicate Job.
+  bonus Float?
+
   // Break records for this assignment (multiple breaks per shift supported)
   breaks    Break[]
 

@@ -102,9 +102,10 @@ export async function GET(request: NextRequest) {
                     });
                 }
 
-                // --- Job Bonus ---
-                if (assignment.clockIn && job.bonus) {
-                    totalReimbursements += job.bonus;
+                // --- Bonus (per-shift override, plus legacy job-level bonus) ---
+                if (assignment.clockIn) {
+                    if (assignment.bonus) totalReimbursements += assignment.bonus;
+                    if (job.bonus) totalReimbursements += job.bonus;
                 }
             });
 

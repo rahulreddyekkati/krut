@@ -60,7 +60,9 @@ export async function POST(
         const body = await request.json();
         // weekdays: array of day numbers (0=Sun…6=Sat) for cycle-based assignment
         // date: single date string for one-off assignment
-        const { jobId, weekdays, date } = body;
+        // bonus: optional one-time bonus applied to each shift created by this request
+        const { jobId, weekdays, date, bonus } = body;
+        const bonusValue = bonus !== undefined && bonus !== null && bonus !== "" ? parseFloat(bonus) : undefined;
 
         if (!jobId) {
             return NextResponse.json({ error: "Missing jobId" }, { status: 400 });
@@ -91,7 +93,7 @@ export async function POST(
                     continue;
                 }
                 const assignment = await prisma.jobAssignment.create({
-                    data: { workerId: id, jobId, date: d, isRecurring: true, dayOfWeek: d.getUTCDay() }
+                    data: { workerId: id, jobId, date: d, isRecurring: true, dayOfWeek: d.getUTCDay(), bonus: bonusValue }
                 });
                 created.push(assignment);
             }
@@ -133,7 +135,7 @@ export async function POST(
                 return NextResponse.json({ error: "Worker is already assigned to this job on that date" }, { status: 409 });
             }
             const assignment = await prisma.jobAssignment.create({
-                data: { workerId: id, jobId, date: dateObj, isRecurring: false }
+                data: { workerId: id, jobId, date: dateObj, isRecurring: false, bonus: bonusValue }
             });
             const [worker, job] = await Promise.all([
                 prisma.user.findUnique({ where: { id }, select: { email: true } }),

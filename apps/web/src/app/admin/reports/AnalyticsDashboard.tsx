@@ -11,6 +11,7 @@ interface AnalyticsDashboardProps {
 export default function AnalyticsDashboard({ startDate, endDate }: AnalyticsDashboardProps) {
     const [data, setData] = useState<any>(null);
     const [workers, setWorkers] = useState<any[]>([]);
+    const [brandSpend, setBrandSpend] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -18,12 +19,14 @@ export default function AnalyticsDashboard({ startDate, endDate }: AnalyticsDash
             if (!startDate || !endDate) return;
             setLoading(true);
             try {
-                const [analyticsRes, perfRes] = await Promise.all([
+                const [analyticsRes, perfRes, brandSpendRes] = await Promise.all([
                     fetch(`/api/admin/reports/analytics?startDate=${startDate}&endDate=${endDate}`),
-                    fetch(`/api/admin/reports/worker-performance?startDate=${startDate}&endDate=${endDate}`)
+                    fetch(`/api/admin/reports/worker-performance?startDate=${startDate}&endDate=${endDate}`),
+                    fetch(`/api/admin/reports/brand-spend?startDate=${startDate}&endDate=${endDate}`)
                 ]);
                 if (analyticsRes.ok) setData(await analyticsRes.json());
                 if (perfRes.ok) { const d = await perfRes.json(); setWorkers(d.workers || []); }
+                if (brandSpendRes.ok) setBrandSpend(await brandSpendRes.json());
             } catch (error) {
                 console.error("Failed to fetch analytics", error);
             } finally {
@@ -42,17 +45,54 @@ export default function AnalyticsDashboard({ startDate, endDate }: AnalyticsDash
         );
     }
 
+    // Rendered outside the "no recap data" early-return below since brand spend is sourced
+    // from JobAssignment/payroll, not Recap — shifts can exist (and cost money) with no
+    // approved recaps yet, so this shouldn't be hidden just because sales analytics are empty.
+    const brandSpendSection = brandSpend && (
+        <div className={styles.metricRow} style={{ marginBottom: "1.5rem" }}>
+            <div className="card glass">
+                <p className="text-secondary" style={{ fontSize: "0.875rem", fontWeight: 600 }}>TOTAL SPENT</p>
+                <h3 style={{ fontSize: "2rem", fontWeight: 800, color: "var(--primary)", marginTop: "0.5rem" }}>
+                    ${brandSpend.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </h3>
+            </div>
+            <div className="card glass">
+                <p className="text-secondary" style={{ fontSize: "0.875rem", fontWeight: 600 }}>KRUTO</p>
+                <h3 style={{ fontSize: "2rem", fontWeight: 800, color: "var(--accent)", marginTop: "0.5rem" }}>
+                    ${brandSpend.kruto.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </h3>
+            </div>
+            <div className="card glass">
+                <p className="text-secondary" style={{ fontSize: "0.875rem", fontWeight: 600 }}>MULUK</p>
+                <h3 style={{ fontSize: "2rem", fontWeight: 800, color: "var(--success)", marginTop: "0.5rem" }}>
+                    ${brandSpend.muluk.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </h3>
+            </div>
+            <div className="card glass">
+                <p className="text-secondary" style={{ fontSize: "0.875rem", fontWeight: 600 }}>BOTH (COMBINED TASTINGS)</p>
+                <h3 style={{ fontSize: "2rem", fontWeight: 800, color: "var(--danger)", marginTop: "0.5rem" }}>
+                    ${brandSpend.both.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </h3>
+            </div>
+        </div>
+    );
+
     if (!data || data.summary.count === 0) {
         return (
-            <div className="card glass text-center" style={{ padding: "4rem" }}>
-                <p className="text-secondary">No recorded data found for the selected period.</p>
-                <p style={{ fontSize: "0.875rem", marginTop: "0.5rem" }}>Ensure recaps are submitted and approved to see analytics.</p>
+            <div>
+                {brandSpendSection}
+                <div className="card glass text-center" style={{ padding: "4rem" }}>
+                    <p className="text-secondary">No recorded data found for the selected period.</p>
+                    <p style={{ fontSize: "0.875rem", marginTop: "0.5rem" }}>Ensure recaps are submitted and approved to see analytics.</p>
+                </div>
             </div>
         );
     }
 
     return (
         <div className={styles.dashboardGrid}>
+            {brandSpendSection}
+
             {/* Top Metric Cards */}
             <div className={styles.metricRow}>
                 <div className="card glass">

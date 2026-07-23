@@ -61,8 +61,15 @@ export async function POST(
         // weekdays: array of day numbers (0=Sun…6=Sat) for cycle-based assignment
         // date: single date string for one-off assignment
         // bonus: optional one-time bonus applied to each shift created by this request
-        const { jobId, weekdays, date, bonus } = body;
+        // brandAllocation: optional "KRUTO" | "MULUK" | "BOTH" tag applied to each shift created
+        const { jobId, weekdays, date, bonus, brandAllocation } = body;
         const bonusValue = bonus !== undefined && bonus !== null && bonus !== "" ? parseFloat(bonus) : undefined;
+
+        const ALLOWED_BRAND_ALLOCATIONS = ["KRUTO", "MULUK", "BOTH"];
+        if (brandAllocation !== undefined && brandAllocation !== null && brandAllocation !== "" && !ALLOWED_BRAND_ALLOCATIONS.includes(brandAllocation)) {
+            return NextResponse.json({ error: "Invalid brandAllocation" }, { status: 400 });
+        }
+        const brandAllocationValue = brandAllocation || undefined;
 
         if (!jobId) {
             return NextResponse.json({ error: "Missing jobId" }, { status: 400 });
@@ -93,7 +100,7 @@ export async function POST(
                     continue;
                 }
                 const assignment = await prisma.jobAssignment.create({
-                    data: { workerId: id, jobId, date: d, isRecurring: true, dayOfWeek: d.getUTCDay(), bonus: bonusValue }
+                    data: { workerId: id, jobId, date: d, isRecurring: true, dayOfWeek: d.getUTCDay(), bonus: bonusValue, brandAllocation: brandAllocationValue }
                 });
                 created.push(assignment);
             }
@@ -135,7 +142,7 @@ export async function POST(
                 return NextResponse.json({ error: "Worker is already assigned to this job on that date" }, { status: 409 });
             }
             const assignment = await prisma.jobAssignment.create({
-                data: { workerId: id, jobId, date: dateObj, isRecurring: false, bonus: bonusValue }
+                data: { workerId: id, jobId, date: dateObj, isRecurring: false, bonus: bonusValue, brandAllocation: brandAllocationValue }
             });
             const [worker, job] = await Promise.all([
                 prisma.user.findUnique({ where: { id }, select: { email: true } }),

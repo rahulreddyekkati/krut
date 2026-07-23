@@ -150,6 +150,10 @@ model JobAssignment {
   // this lets an admin give a bonus for a single occurrence without needing a duplicate Job.
   bonus Float?
 
+  // Which brand this shift instance is allocated to, set when assigning the shift.
+  // "KRUTO" | "MULUK" | "BOTH" | null (unallocated — most historical data predates this field)
+  brandAllocation String?
+
   // Break records for this assignment (multiple breaks per shift supported)
   breaks    Break[]
 

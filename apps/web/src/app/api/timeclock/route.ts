@@ -247,9 +247,10 @@ export async function POST(request: NextRequest) {
             const [endH, endM] = endTimeStr.split(":").map(Number);
             const startMins = startH * 60 + startM;
             const endMins = endH * 60 + endM;
-            if (nowMins < startMins) {
+            const EARLY_CLOCKIN_BUFFER_MINS = 10;
+            if (nowMins < startMins - EARLY_CLOCKIN_BUFFER_MINS) {
                 throw new AppError(
-                    `Your shift doesn't start until ${startH % 12 || 12}:${String(startM).padStart(2, "0")} ${startH >= 12 ? "PM" : "AM"}.`,
+                    `Your shift doesn't start until ${startH % 12 || 12}:${String(startM).padStart(2, "0")} ${startH >= 12 ? "PM" : "AM"}. You can clock in up to 10 minutes early.`,
                     400
                 );
             }

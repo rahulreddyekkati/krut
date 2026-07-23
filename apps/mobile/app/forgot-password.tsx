@@ -5,7 +5,9 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? "https://krut-6zbd.vercel.app/api";
+// Must be the real custom domain — see apiClient.ts for why the old *.vercel.app
+// alias fallback is wrong (it now 308-redirects and strips auth headers).
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? "https://www.krutotastes.com/api";
 
 type Step = 'email' | 'otp' | 'password' | 'done';
 

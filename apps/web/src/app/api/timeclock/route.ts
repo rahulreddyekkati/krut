@@ -210,10 +210,18 @@ export async function POST(request: NextRequest) {
         const now = new Date();
 
         if (action === "CLOCK_IN") {
-            // N3: Clock-in is mobile-app only — web browser GPS is too inaccurate for geofencing
+            // N3: Clock-in is normally mobile-app only — web browser GPS is less reliable
+            // for geofencing. TEMPORARY (2026-07-23, mobile app auth outage post-Vercel-
+            // transfer): allow web clock-in too, but only with a real, verified location —
+            // mobile keeps its existing behavior unchanged. Revert to mobile-only once the
+            // mobile app fix is confirmed live for everyone.
             const isMobileApp = request.headers.get("x-app-client") === "mobile-app";
-            if (!isMobileApp) {
-                throw new AppError("Clock-in is only available from the mobile app", 403);
+            const { latitude: clockInLat, longitude: clockInLng } = body;
+            if (!isMobileApp && (clockInLat == null || clockInLng == null)) {
+                throw new AppError(
+                    "Location access is required to clock in from the web. Please allow location access and try again.",
+                    403
+                );
             }
 
             // Block clock-in if worker has any unsubmitted recaps

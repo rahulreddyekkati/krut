@@ -375,6 +375,29 @@ export default function WorkerDashboard({
             body = { action, assignmentId: id };
         }
 
+        // TEMPORARY (mobile app auth outage): the server now requires a verified location
+        // for web-originated clock-ins, since web GPS isn't as reliable as the native app's.
+        // Ask for it here rather than let the server reject with no way to retry with location.
+        if (action === "CLOCK_IN") {
+            if (!("geolocation" in navigator)) {
+                alert("Location Error: Your browser doesn't support location access, which is required to clock in.");
+                return;
+            }
+            try {
+                const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+                    navigator.geolocation.getCurrentPosition(resolve, reject, {
+                        enableHighAccuracy: true,
+                        timeout: 15000,
+                    });
+                });
+                body.latitude = position.coords.latitude;
+                body.longitude = position.coords.longitude;
+            } catch {
+                alert("Location Required: Please allow location access in your browser to clock in.");
+                return;
+            }
+        }
+
         try {
             console.log(`Executing ${action} on ${endpoint} with`, body);
             const res = await fetch(endpoint, {

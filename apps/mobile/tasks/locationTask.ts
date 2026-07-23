@@ -84,8 +84,10 @@ TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }: any) =>
     const token = await getToken();
     if (!token) return;
 
+    // Must be the real custom domain — see apiClient.ts for why the old *.vercel.app
+    // alias fallback is wrong (it now 308-redirects and strips auth headers).
     const API_BASE_URL =
-      process.env.EXPO_PUBLIC_API_BASE_URL ?? "https://krut-6zbd.vercel.app/api";
+      process.env.EXPO_PUBLIC_API_BASE_URL ?? "https://www.krutotastes.com/api";
 
     // Fire-and-forget in/out status to server (foundation for admin live-location view)
     fetch(`${API_BASE_URL}/location/status`, {

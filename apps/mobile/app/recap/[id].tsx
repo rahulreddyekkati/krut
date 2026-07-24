@@ -115,21 +115,31 @@ export default function SubmitRecap() {
     return Math.ceil((base64Data.length * 3) / 4);
   };
 
-  // Always transcode through ImageManipulator instead of trusting the picker's own output.
-  // This fixes two real, separate failure modes seen in production: expo-image-picker's
-  // base64 field coming back undefined on some Android devices (blank/broken upload), and
-  // iPhones sometimes returning the original HEIC bytes mislabeled as JPEG (image data is
-  // present but no browser other than Safari can decode it, so admins see a broken image).
-  // Re-encoding through the native image pipeline guarantees real, valid JPEG bytes either way.
+  // Transcode through ImageManipulator to guarantee real, valid JPEG bytes regardless of
+  // source format (fixes Android's base64-undefined bug and iPhone HEIC-mislabeled-as-JPEG).
+  // ImageManipulator is a *native* module — it's only actually present on devices running a
+  // build compiled after this dependency was added. OTA updates ship JS-only changes, so any
+  // device still running an older binary (which can't be avoided — OTA can't add new native
+  // modules retroactively) would otherwise hard-crash here with "module not found" the moment
+  // someone tries to attach a receipt photo. Catch that and fall back to the pre-ImageManipulator
+  // behavior (trust the picker's own base64) so the recap flow degrades instead of breaking.
   const readImageAsBase64Uri = async (asset: any): Promise<string> => {
-    const context = ImageManipulator.manipulate(asset.uri);
-    const rendered = await context.renderAsync();
-    const result = await rendered.saveAsync({
-      format: SaveFormat.JPEG,
-      compress: RECEIPT_IMAGE_QUALITY,
-      base64: true,
-    });
-    return `data:image/jpeg;base64,${result.base64}`;
+    try {
+      const context = ImageManipulator.manipulate(asset.uri);
+      const rendered = await context.renderAsync();
+      const result = await rendered.saveAsync({
+        format: SaveFormat.JPEG,
+        compress: RECEIPT_IMAGE_QUALITY,
+        base64: true,
+      });
+      return `data:image/jpeg;base64,${result.base64}`;
+    } catch (e) {
+      console.warn('ImageManipulator unavailable (likely running on a build without this native module), falling back to picker base64:', e);
+      if (asset.base64) {
+        return `data:image/jpeg;base64,${asset.base64}`;
+      }
+      throw new Error('Could not process this photo. Please update the app to the latest version and try again.');
+    }
   };
 
   // Adds only the photos that fit; silently skips (with one friendly alert) any that don't,

@@ -27,4 +27,10 @@ const prisma = globalThis.prisma ?? prismaClientSingleton();
 
 export default prisma;
 
-if (process.env.NODE_ENV !== "production") globalThis.prisma = prisma;
+// Cache the singleton in every environment, not just non-production. In dev this avoids
+// Next.js hot-reload spawning a fresh client (and libsql connection) per file save. In
+// production/serverless, it's what makes a warm function instance actually reuse its one
+// connection across invocations instead of accumulating fresh ones — the previous
+// production-only exclusion meant this reference was never stored there, which likely
+// contributed to Turso connection exhaustion under real traffic (every request hanging).
+globalThis.prisma = prisma;

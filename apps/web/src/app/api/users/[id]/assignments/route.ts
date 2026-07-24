@@ -318,6 +318,22 @@ export async function DELETE(
             return NextResponse.json({ error: "Missing assignment id or jobId+weekday" }, { status: 400 });
         }
 
+        // Refuse to delete a shift that's already been clocked into — unlike the
+        // pattern-delete path above (which detaches worked shifts instead of deleting
+        // them), a one-off shift has no "detach" equivalent, so the only safe option
+        // is to block the delete outright. Confirmed this exact gap caused real
+        // payroll data loss for multiple workers.
+        const existing = await prisma.jobAssignment.findUnique({
+            where: { id: assignmentId },
+            select: { clockIn: true }
+        });
+        if (existing?.clockIn) {
+            return NextResponse.json(
+                { error: "This shift has already been worked (has clock-in data) and can't be deleted." },
+                { status: 409 }
+            );
+        }
+
         await prisma.jobAssignment.delete({
             where: { id: assignmentId }
         });

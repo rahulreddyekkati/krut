@@ -50,7 +50,9 @@ export async function ensureCurrentCycleAssignments(workerId: string): Promise<v
     // Create current cycle assignments for each pattern, skipping dates that already exist.
     // Never generate a date before today — a late-running rollover shouldn't backfill
     // already-past days as bogus unclocked "Missed" shifts.
-    const todayUTCMidnight = new Date(toLocalDateStr(new Date(), TZ) + "T00:00:00.000Z");
+    const chicagoNow = new Date(Date.now() - 6 * 60 * 60 * 1000);
+    const dateStr = chicagoNow.toISOString().split("T")[0];
+    const todayUTCMidnight = new Date(dateStr + "T00:00:00.000Z");
     const rangeStart = todayUTCMidnight > currentCycle.start ? todayUTCMidnight : currentCycle.start;
     for (const { jobId, weekday } of patterns.values()) {
         const dates = getDatesForWeekdays([weekday], rangeStart, currentCycle.end);

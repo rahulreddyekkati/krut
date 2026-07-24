@@ -1,7 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { toZonedTime, fromZonedTime } from "date-fns-tz";
 import styles from "./WorkerDashboard.module.css";
+
+// Business operating timezone — same default used server-side throughout this app
+// (e.g. apps/web/src/app/api/timeclock/route.ts, cron/auto-clockout). startTimeStr/
+// endTimeStr are plain "HH:MM" strings meaning store-local time, not the viewer's
+// device time, so comparisons against "now" must go through this conversion first.
+const STORE_TZ = "America/Chicago";
+
+const getZonedNow = (tz: string = STORE_TZ): Date => toZonedTime(new Date(), tz);
 
 interface WorkerDashboardProps {
     user: any;
@@ -44,7 +53,7 @@ const getNextOccurrenceDate = (dayOfWeek: number) => {
 
 const isShiftStarted = (startTimeStr?: string) => {
     if (!startTimeStr) return true;
-    const now = new Date();
+    const now = getZonedNow();
     const [h, m] = startTimeStr.split(':').map(Number);
     const startMins = h * 60 + m;
     const nowMins = now.getHours() * 60 + now.getMinutes();
@@ -53,11 +62,12 @@ const isShiftStarted = (startTimeStr?: string) => {
 
 const isWithin2Hours = (shiftDate: Date, startTimeStr?: string) => {
     if (!startTimeStr) return true;
-    const [h, m] = startTimeStr.split(':').map(Number);
-    const shiftStart = new Date(shiftDate);
-    shiftStart.setHours(h, m, 0, 0);
+    // shiftDate is a UTC-midnight calendar-day marker — extract Y-M-D from its UTC
+    // representation (not local getters) to avoid shifting a day in negative-offset zones.
+    const dateStr = new Date(shiftDate).toISOString().split('T')[0];
+    const shiftStart = fromZonedTime(`${dateStr}T${startTimeStr}:00`, STORE_TZ);
     const now = new Date();
-    
+
     // If shift is in the past, it's definitely not "within 2 hours of starting" in a way that blocks release
     // (Actual status handling should take over for past shifts)
     if (now > shiftStart) return false;
@@ -70,7 +80,7 @@ const formatToClockTime = (date: Date | string | null) => {
     if (!date) return "--:--";
     const d = new Date(date);
     if (isNaN(d.getTime())) return "--:--";
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: STORE_TZ });
 };
 
 export default function WorkerDashboard({
@@ -487,7 +497,7 @@ export default function WorkerDashboard({
                         <div className={styles.dateLabel}>
                             {activeAssignment.date
                                 ? new Date(activeAssignment.date).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' })
-                                : `Today, ${new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}`}
+                                : `Today, ${new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', timeZone: STORE_TZ })}`}
                         </div>
                         <div className={styles.location}>{activeAssignment.job.store.address}</div>
                     </div>
@@ -554,18 +564,19 @@ export default function WorkerDashboard({
                                     const shiftDate = a.date
                                         ? new Date(a.date)
                                         : getNextOccurrenceDate(a.dayOfWeek);
-                                    
-                                    // Set hours for shift start/end comparison
-                                    const [startH, startM] = (a.job?.startTimeStr || "00:00").split(':').map(Number);
-                                    const [endH, endM] = (a.job?.endTimeStr || "23:59").split(':').map(Number);
-                                    
-                                    const startDateTime = new Date(shiftDate);
-                                    startDateTime.setHours(startH, startM, 0, 0);
-                                    
-                                    const endDateTime = new Date(shiftDate);
-                                    endDateTime.setHours(endH, endM, 0, 0);
+
+                                    // shiftDate's UTC representation is the store-local calendar day
+                                    // (UTC-midnight marker convention used throughout this app) — build
+                                    // real UTC instants from store-local wall-clock start/end via
+                                    // fromZonedTime, not device-local setHours.
+                                    const dateStr = shiftDate.toISOString().split('T')[0];
+                                    const startTimeStr = a.job?.startTimeStr || "00:00";
+                                    const endTimeStr = a.job?.endTimeStr || "23:59";
+
+                                    const startDateTime = fromZonedTime(`${dateStr}T${startTimeStr}:00`, STORE_TZ);
+                                    let endDateTime = fromZonedTime(`${dateStr}T${endTimeStr}:00`, STORE_TZ);
                                     // Handle overnight if needed (though rare for this app)
-                                    if (endDateTime < startDateTime) endDateTime.setDate(endDateTime.getDate() + 1);
+                                    if (endDateTime < startDateTime) endDateTime = new Date(endDateTime.getTime() + 24 * 60 * 60 * 1000);
 
                                     const now = new Date();
                                     const isPast = now > endDateTime;

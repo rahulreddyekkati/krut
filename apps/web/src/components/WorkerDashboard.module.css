@@ -445,6 +445,13 @@
     left: 0;
     right: 0;
     bottom: 0;
+    /* iOS/Android browser chrome (address bar) resizes the viewport dynamically —
+       100vh-based heights can render the overlay taller than the visible area,
+       pushing the popup below the fold and making it appear unresponsive to taps.
+       height/100dvh (dynamic viewport height) tracks the *actual* visible area;
+       fall back to vh/% for browsers that don't support dvh yet. */
+    height: 100%;
+    height: 100dvh;
     background: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(6px);
     z-index: 2000;
@@ -464,7 +471,9 @@
     display: flex;
     flex-direction: column;
     max-height: 85vh;
+    max-height: 85dvh;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     animation: slideUp 0.3s ease-out;
 }
 

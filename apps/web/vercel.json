@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/cron/auto-clockout",
-      "schedule": "0 0 * * *"
+      "schedule": "*/30 * * * *"
     },
     {
       "path": "/api/cron/cycle-rollover",
@@ -10,7 +10,11 @@
     },
     {
       "path": "/api/cron/recap-reminder",
-      "schedule": "0 9 * * *"
+      "schedule": "0 */2 * * *"
+    },
+    {
+      "path": "/api/cron/shift-reminder",
+      "schedule": "*/15 * * * *"
     }
   ]
 }

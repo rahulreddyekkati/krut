@@ -10,13 +10,15 @@ export async function GET(request: NextRequest) {
         const session = await getSession();
         if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-        // Auto-rollover: non-blocking — don't let rollover errors break the shifts response
+        // Auto-rollover: non-blocking — temporarily commented out to debug 504 timeout
+        /*
         try { await ensureCurrentCycleAssignments(session.user.id); } catch (e) {
             console.error("ensureCurrentCycleAssignments error:", e);
         }
         try { await ensureNextCyclePreview(session.user.id); } catch (e) {
             console.error("ensureNextCyclePreview error:", e);
         }
+        */
 
         const tz = resolveTimezone(request);
         const { start: dbTodayStart } = getLocalDayBoundsUTC(tz);

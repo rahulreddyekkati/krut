@@ -24,11 +24,15 @@ export async function GET(request: NextRequest) {
         const prevCycle = getPreviousCycleDates();
 
         // Assignments in the current cycle (not AVAILABLE — those are released shifts)
+        // Also exclude payroll-correction entries: these are bonus-only bookkeeping rows
+        // (title prefix "Payroll Correction —"), not real shifts — they belong in the
+        // payroll report, not the worker's own shift list.
         const currentCycle = await prisma.jobAssignment.findMany({
             where: {
                 workerId: session.user.id,
                 date: { gte: cycle.start, lte: cycle.end },
-                status: { not: "AVAILABLE" }
+                status: { not: "AVAILABLE" },
+                job: { title: { not: { startsWith: "Payroll Correction —" } } }
             },
             include: {
                 job: {
@@ -46,7 +50,8 @@ export async function GET(request: NextRequest) {
             where: {
                 workerId: session.user.id,
                 date: { gte: dbTodayStart },
-                status: { not: "AVAILABLE" }
+                status: { not: "AVAILABLE" },
+                job: { title: { not: { startsWith: "Payroll Correction —" } } }
             },
             include: {
                 job: {
@@ -64,7 +69,8 @@ export async function GET(request: NextRequest) {
             where: {
                 workerId: session.user.id,
                 date: { gte: prevCycle.start, lte: prevCycle.end },
-                status: { in: ["COMPLETED", "RECAP_PENDING"] }
+                status: { in: ["COMPLETED", "RECAP_PENDING"] },
+                job: { title: { not: { startsWith: "Payroll Correction —" } } }
             },
             include: {
                 job: {

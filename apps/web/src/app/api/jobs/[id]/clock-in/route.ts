@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { handleApiError, AppError } from "@/lib/apiError";
-import { resolveTimezone, getLocalDayBoundsUTC, localTimeToUTC } from "@/lib/timezone";
+import { resolveTimezone, getLocalDayBoundsUTC, localTimeToUTC, toLocalDateStr } from "@/lib/timezone";
 import { isWithinRadius } from "@/lib/geo";
 
 const CLOCK_IN_EARLY_WINDOW_MS = 15 * 60 * 1000; // 15 minutes before shift start
@@ -24,10 +24,35 @@ export async function POST(
         const body = await request.json();
         const { latitude, longitude } = body;
 
+        // Resolve timezone up front — needed both for the early-clockin check below
+        // and for finding *today's* assignment row (not just any row for this job).
+        const tz = resolveTimezone(request);
+
+        // Dates are stored as UTC midnight of the local calendar-date string (matching
+        // the convention used by /api/timeclock — NOT the true UTC-offset midnight that
+        // getLocalDayBoundsUTC returns). Mixing the two conventions is what caused two
+        // different clock-in endpoints to each "materialize" their own duplicate row for
+        // the same recurring shift, since neither could see the other's row.
+        const todayLocalStr = toLocalDateStr(new Date(), tz);
+        const todayUTCMidnight = new Date(todayLocalStr + "T00:00:00.000Z");
+        const tomorrowUTCMidnight = new Date(todayLocalStr + "T00:00:00.000Z");
+        tomorrowUTCMidnight.setUTCDate(tomorrowUTCMidnight.getUTCDate() + 1);
+
         // ── Fetch assignment + store GPS info ────────────────────────────────
+        // Prefer today's own dated row (whether pre-generated per-occurrence, or a
+        // recurring instance already materialized elsewhere) over an arbitrary row for
+        // this job — a worker can have many weeks of history for the same recurring job.
         const assignment = await prisma.jobAssignment.findFirst({
-            where: { jobId, workerId: user.id },
-            include: { job: { include: { store: true } } }
+            where: {
+                jobId,
+                workerId: user.id,
+                OR: [
+                    { date: { gte: todayUTCMidnight, lt: tomorrowUTCMidnight } },
+                    { isRecurring: true, date: null }
+                ]
+            },
+            include: { job: { include: { store: true } } },
+            orderBy: { date: "desc" }
         });
 
         if (!assignment) {
@@ -59,7 +84,6 @@ export async function POST(
         }
 
         // ── CRIT-04: Early clock-in prevention ───────────────────────────────
-        const tz = resolveTimezone(request);
         const { start: startOfToday } = getLocalDayBoundsUTC(tz);
         const now = new Date();
 
@@ -77,18 +101,18 @@ export async function POST(
             }
         }
 
-        const { start: startOfTodayUTC, end: endOfTodayUTC } = getLocalDayBoundsUTC(tz);
-
         let targetAssignmentId = assignment.id;
 
         // ── Handle recurring shift materialization ───────────────────────────
-        if (assignment.isRecurring) {
+        // Only a true template (isRecurring, no date yet) needs a new row created —
+        // the lookup above already prefers an existing dated row for today if one
+        // exists, so this only fires for the rare not-yet-materialized case.
+        if (assignment.isRecurring && !assignment.date) {
             const existingInstance = await prisma.jobAssignment.findFirst({
                 where: {
                     workerId: user.id,
                     jobId: assignment.jobId,
-                    date: { gte: startOfTodayUTC, lte: endOfTodayUTC },
-                    isRecurring: false
+                    date: { gte: todayUTCMidnight, lt: tomorrowUTCMidnight }
                 }
             });
 
@@ -102,7 +126,7 @@ export async function POST(
                     data: {
                         workerId: user.id,
                         jobId: assignment.jobId,
-                        date: startOfTodayUTC,
+                        date: todayUTCMidnight,
                         isRecurring: false,
                         breakTimeMinutes: assignment.breakTimeMinutes
                     }

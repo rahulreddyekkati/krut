@@ -302,12 +302,14 @@ export async function POST(request: NextRequest) {
                 const tomorrowUTCMidnight = new Date(todayLocalStr + "T00:00:00.000Z");
                 tomorrowUTCMidnight.setUTCDate(tomorrowUTCMidnight.getUTCDate() + 1);
 
+                // Not filtering on isRecurring here — any row already dated for today (whether a
+                // recurring instance or a fresh materialization) counts as "already exists" and
+                // must be reused, or a second clock-in attempt creates a duplicate shift.
                 const existingInstance = await prisma.jobAssignment.findFirst({
                     where: {
                         workerId: user.id,
                         jobId: assignment.jobId,
-                        date: { gte: todayUTCMidnight, lt: tomorrowUTCMidnight },
-                        isRecurring: false
+                        date: { gte: todayUTCMidnight, lt: tomorrowUTCMidnight }
                     }
                 });
 

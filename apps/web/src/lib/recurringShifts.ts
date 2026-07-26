@@ -30,13 +30,18 @@ export async function ensureCurrentCycleAssignments(workerId: string): Promise<v
     console.log(`[ROLLOVER] currentCount: ${currentCount}`);
     if (currentCount > 0) return;
 
-    // Look at previous cycle's recurring assignments as the template
+    // Look at previous cycle's recurring assignments as the template.
+    // Exclude jobs that have their own fixed `date` set — those are genuinely one-off
+    // shifts (e.g. a single bonus assignment). Their assignment happening to be flagged
+    // isRecurring:true doesn't mean the job itself should keep spawning weekly copies
+    // forever; only jobs with no fixed date are true ongoing recurring commitments.
     console.log("[ROLLOVER] querying prevAssignments...");
     const prevAssignments = await prisma.jobAssignment.findMany({
         where: {
             workerId,
             isRecurring: true,
-            date: { gte: prevCycle.start, lte: prevCycle.end }
+            date: { gte: prevCycle.start, lte: prevCycle.end },
+            job: { date: null }
         },
         select: { jobId: true, date: true }
     });
@@ -118,13 +123,16 @@ export async function ensureNextCyclePreview(workerId: string): Promise<void> {
     console.log(`[ROLLOVER] nextCount: ${nextCount}`);
     if (nextCount > 0) return;
 
-    // Use the CURRENT cycle's recurring assignments as the template for next cycle
+    // Use the CURRENT cycle's recurring assignments as the template for next cycle.
+    // Same exclusion as ensureCurrentCycleAssignments — a job with its own fixed date
+    // is a one-off, not an ongoing recurring commitment.
     console.log("[ROLLOVER] querying currentAssignments...");
     const currentAssignments = await prisma.jobAssignment.findMany({
         where: {
             workerId,
             isRecurring: true,
-            date: { gte: currentCycle.start, lte: currentCycle.end }
+            date: { gte: currentCycle.start, lte: currentCycle.end },
+            job: { date: null }
         },
         select: { jobId: true, date: true }
     });

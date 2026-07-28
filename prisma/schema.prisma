@@ -161,6 +161,13 @@ model JobAssignment {
   recap     Recap?
 
   createdAt DateTime @default(now())
+
+  // Prevents the exact "two near-simultaneous requests both materialize the same
+  // dated shift" race condition (confirmed to have happened at least once in
+  // production — two rollover calls both passed a "does this exist?" check before
+  // either had committed its insert). NULL dates (true recurring templates) are
+  // exempt from this constraint under standard SQL NULL semantics.
+  @@unique([workerId, jobId, date])
 }
 
 // Records each break interval within a shift.

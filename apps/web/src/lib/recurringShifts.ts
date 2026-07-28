@@ -82,10 +82,20 @@ export async function ensureCurrentCycleAssignments(workerId: string): Promise<v
             console.log(`[ROLLOVER] existing date ${d.toISOString()}: ${existing ? "FOUND" : "NOT FOUND"}`);
             if (!existing) {
                 console.log(`[ROLLOVER] creating assignment for date ${d.toISOString()}...`);
-                await prisma.jobAssignment.create({
-                    data: { workerId, jobId, date: d, isRecurring: true }
-                });
-                console.log(`[ROLLOVER] created assignment for date ${d.toISOString()}`);
+                try {
+                    await prisma.jobAssignment.create({
+                        data: { workerId, jobId, date: d, isRecurring: true }
+                    });
+                    console.log(`[ROLLOVER] created assignment for date ${d.toISOString()}`);
+                } catch (e) {
+                    // A concurrent rollover call for the same worker can win the race between
+                    // this "not found" check and the create — the @@unique constraint on
+                    // (workerId, jobId, date) turns what would silently become a duplicate
+                    // shift into a P2002 here instead, which just means the other call already
+                    // created it. Nothing more to do.
+                    if ((e as any).code !== "P2002") throw e;
+                    console.log(`[ROLLOVER] assignment for date ${d.toISOString()} already created by a concurrent call — skipping`);
+                }
             }
         }
     }
@@ -162,10 +172,18 @@ export async function ensureNextCyclePreview(workerId: string): Promise<void> {
             console.log(`[ROLLOVER] existing next-cycle date ${d.toISOString()}: ${existing ? "FOUND" : "NOT FOUND"}`);
             if (!existing) {
                 console.log(`[ROLLOVER] creating next-cycle preview assignment for date ${d.toISOString()}...`);
-                await prisma.jobAssignment.create({
-                    data: { workerId, jobId, date: d, isRecurring: true }
-                });
-                console.log(`[ROLLOVER] created next-cycle preview assignment for date ${d.toISOString()}`);
+                try {
+                    await prisma.jobAssignment.create({
+                        data: { workerId, jobId, date: d, isRecurring: true }
+                    });
+                    console.log(`[ROLLOVER] created next-cycle preview assignment for date ${d.toISOString()}`);
+                } catch (e) {
+                    // See matching comment in ensureCurrentCycleAssignments — a concurrent call
+                    // for the same worker can win this exact race; the unique constraint just
+                    // turns it into a no-op here instead of a duplicate shift.
+                    if ((e as any).code !== "P2002") throw e;
+                    console.log(`[ROLLOVER] next-cycle assignment for date ${d.toISOString()} already created by a concurrent call — skipping`);
+                }
             }
         }
     }

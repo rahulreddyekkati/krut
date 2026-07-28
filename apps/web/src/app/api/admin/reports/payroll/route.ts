@@ -71,6 +71,7 @@ export async function GET(request: NextRequest) {
             let totalWorkedHours = 0;
             let totalAssignedHours = 0;
             let totalReimbursements = 0;
+            let totalBonus = 0;
             let totalBottlesSold = 0;
 
             user.jobs.forEach((assignment: any) => {
@@ -103,9 +104,11 @@ export async function GET(request: NextRequest) {
                 }
 
                 // --- Bonus (per-shift override, plus legacy job-level bonus) ---
+                // Kept separate from totalReimbursements — bonus is taxable wages,
+                // reimbursement isn't, and "Taxable Pay" below depends on that distinction.
                 if (assignment.clockIn) {
-                    if (assignment.bonus) totalReimbursements += assignment.bonus;
-                    if (job.bonus) totalReimbursements += job.bonus;
+                    if (assignment.bonus) totalBonus += assignment.bonus;
+                    if (job.bonus) totalBonus += job.bonus;
                 }
             });
 
@@ -120,7 +123,10 @@ export async function GET(request: NextRequest) {
             });
 
             const hourlyWage = user.hourlyWage || 0;
-            const payForCycle = (totalWorkedHours * hourlyWage) + totalReimbursements;
+            const payForCycle = (totalWorkedHours * hourlyWage) + totalReimbursements + totalBonus;
+            // Everything except reimbursement — wages and bonus are both taxable income,
+            // reimbursement (expense repayment) isn't.
+            const taxablePay = payForCycle - totalReimbursements;
 
             return {
                 id: user.id,
@@ -132,7 +138,8 @@ export async function GET(request: NextRequest) {
                 assigned: parseFloat(Math.max(0, totalAssignedHours).toFixed(2)),
                 reimb: parseFloat(totalReimbursements.toFixed(2)),
                 bottlesSold: totalBottlesSold,
-                payForCycle: parseFloat(payForCycle.toFixed(2))
+                payForCycle: parseFloat(payForCycle.toFixed(2)),
+                taxablePay: parseFloat(taxablePay.toFixed(2))
             } as any;
         });
 

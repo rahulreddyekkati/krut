@@ -76,6 +76,8 @@ export default async function PrintAllPayrollPage(props: {
                 reimb: parseFloat(reimb.toFixed(2)),
                 bottles,
                 pay: user.role === "WORKER" ? parseFloat(((worked * wage) + reimb).toFixed(2)) : null,
+                // Everything except reimbursement — wages are taxable, reimbursement isn't.
+                taxablePay: user.role === "WORKER" ? parseFloat((worked * wage).toFixed(2)) : null,
             };
         })
         .filter((r) => !market || market === "all" || r.location === market);
@@ -119,6 +121,7 @@ export default async function PrintAllPayrollPage(props: {
                         <th style={{ ...th, textAlign: "right" }}>Reimb.</th>
                         <th style={{ ...th, textAlign: "right" }}>Bottles Sold</th>
                         <th style={{ ...th, textAlign: "right" }}>Pay for Cycle</th>
+                        <th style={{ ...th, textAlign: "right" }} title="Pay for Cycle minus Reimbursement">Taxable Pay</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -134,6 +137,9 @@ export default async function PrintAllPayrollPage(props: {
                             <td style={{ ...td, textAlign: "right" }}>{r.role === "WORKER" ? r.bottles : "N/A"}</td>
                             <td style={{ ...td, textAlign: "right", fontWeight: 700, color: r.pay !== null ? "#059669" : "#6b7280" }}>
                                 {r.pay !== null ? `$${r.pay.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : "N/A"}
+                            </td>
+                            <td style={{ ...td, textAlign: "right", fontWeight: 700 }}>
+                                {r.taxablePay !== null ? `$${r.taxablePay.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : "N/A"}
                             </td>
                         </tr>
                     ))}
@@ -155,6 +161,9 @@ export default async function PrintAllPayrollPage(props: {
                         </td>
                         <td style={{ ...td, textAlign: "right", fontWeight: 700, color: "#059669" }}>
                             ${rows.filter(r => r.pay !== null).reduce((s, r) => s + (r.pay ?? 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </td>
+                        <td style={{ ...td, textAlign: "right", fontWeight: 700 }}>
+                            ${rows.filter(r => r.taxablePay !== null).reduce((s, r) => s + (r.taxablePay ?? 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </td>
                     </tr>
                 </tfoot>

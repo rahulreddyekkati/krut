@@ -20,6 +20,7 @@ interface PayrollMember {
     reimb: number;
     bottlesSold: number;
     payForCycle: number;
+    taxablePay: number;
 }
 
 interface PayrollTableProps {
@@ -79,6 +80,7 @@ export default function PayrollTable({ data, isLoading, startDate, endDate }: Pa
                         <th>REIMB.</th>
                         <th>BOTTLES SOLD</th>
                         <th>PAY FOR CYCLE</th>
+                        <th title="Pay for Cycle minus Reimbursement — what should be reported as taxable income">TAXABLE PAY</th>
                         <th>ACTIONS</th>
                     </tr>
                 </thead>
@@ -104,6 +106,13 @@ export default function PayrollTable({ data, isLoading, startDate, endDate }: Pa
                                 <span className={styles.payAmount}>
                                     {member.role === "WORKER"
                                         ? `$${member.payForCycle.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                        : 'N/A'}
+                                </span>
+                            </td>
+                            <td>
+                                <span className={styles.payAmount}>
+                                    {member.role === "WORKER"
+                                        ? `$${member.taxablePay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                                         : 'N/A'}
                                 </span>
                             </td>

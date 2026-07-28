@@ -69,6 +69,8 @@ export default async function UserPayrollDetailsPage(props: {
         const bonus = (assignment.bonus || 0) + (assignment.job?.bonus || 0);
         const shiftPay = workedH * hourlyWage;
         const totalPay = shiftPay + reimb + bonus;
+        // Everything except reimbursement — wages and bonus are taxable, reimbursement isn't.
+        const taxablePay = shiftPay + bonus;
 
         const startTimeStr = assignment.customStartTimeStr ?? assignment.job?.startTimeStr;
         const endTimeStr = assignment.customEndTimeStr ?? assignment.job?.endTimeStr;
@@ -99,11 +101,14 @@ export default async function UserPayrollDetailsPage(props: {
             reimb: reimb.toFixed(2),
             bonus: bonus.toFixed(2),
             shiftPay: shiftPay.toFixed(2),
-            totalPay: totalPay.toFixed(2)
+            totalPay: totalPay.toFixed(2),
+            taxablePay: taxablePay.toFixed(2)
         };
     });
 
     const totalCyclePay = (totalWorkedHours * hourlyWage) + totalReimb + totalBonus;
+    // Everything except reimbursement — wages and bonus are taxable, reimbursement isn't.
+    const totalTaxablePay = totalCyclePay - totalReimb;
 
     return (
         <div style={{ backgroundColor: "white", minHeight: "100vh", padding: "2rem" }}>
@@ -202,6 +207,12 @@ export default async function UserPayrollDetailsPage(props: {
                                 {user.role === "WORKER" ? `$${totalCyclePay.toFixed(2)}` : 'N/A'}
                             </td>
                             </tr>
+                            <tr style={{ borderBottom: "1px solid #e5e7eb" }} title="Pay for Cycle minus Reimbursement — what should be reported as taxable income">
+                                <td style={{ padding: "0.875rem 1rem" }}>Taxable Pay (excludes Reimbursement)</td>
+                                <td style={{ padding: "0.875rem 1rem", textAlign: "right", fontWeight: 700 }}>
+                                {user.role === "WORKER" ? `$${totalTaxablePay.toFixed(2)}` : 'N/A'}
+                            </td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -229,6 +240,7 @@ export default async function UserPayrollDetailsPage(props: {
                                     <th style={{ padding: "1rem", fontSize: "0.875rem", fontWeight: 600, textAlign: "right" }}>Bonus</th>
                                     <th style={{ padding: "1rem", fontSize: "0.875rem", fontWeight: 600, textAlign: "right" }}>Shift Pay</th>
                                     <th style={{ padding: "1rem", fontSize: "0.875rem", fontWeight: 600, textAlign: "right" }}>Total</th>
+                                    <th style={{ padding: "1rem", fontSize: "0.875rem", fontWeight: 600, textAlign: "right" }} title="Total minus Reimbursement">Taxable</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -247,6 +259,7 @@ export default async function UserPayrollDetailsPage(props: {
                                         <td style={{ padding: "1rem", textAlign: "right" }}>${row.bonus}</td>
                                         <td style={{ padding: "1rem", textAlign: "right" }}>${row.shiftPay}</td>
                                         <td style={{ padding: "1rem", textAlign: "right", fontWeight: 600 }}>${row.totalPay}</td>
+                                        <td style={{ padding: "1rem", textAlign: "right", fontWeight: 600 }}>${row.taxablePay}</td>
                                     </tr>
                                 ))}
                             </tbody>

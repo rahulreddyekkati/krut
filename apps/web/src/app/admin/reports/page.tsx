@@ -83,16 +83,17 @@ export default function AdminReportsPage() {
                 "Reimbursement": member.reimb,
                 "Bottles Sold": member.role === "WORKER" ? member.bottlesSold : "N/A",
                 "Pay For Cycle": member.role === "WORKER" ? member.payForCycle : "N/A",
+                "Taxable Pay": member.role === "WORKER" ? member.taxablePay : "N/A",
             }));
 
         const ws = XLSX.utils.json_to_sheet(rows);
         ws['!cols'] = [
             { wch: 22 }, { wch: 16 }, { wch: 20 }, { wch: 10 },
-            { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 13 }, { wch: 14 }
+            { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 13 }, { wch: 14 }, { wch: 14 }
         ];
 
-        // Apply currency formatting to Pay/Hr (D), Reimbursement (G), Pay For Cycle (I)
-        const currencyCols = ["D", "G", "I"];
+        // Apply currency formatting to Pay/Hr (D), Reimbursement (G), Pay For Cycle (I), Taxable Pay (J)
+        const currencyCols = ["D", "G", "I", "J"];
         const range = XLSX.utils.decode_range(ws['!ref'] || "A1");
         for (let r = range.s.r + 1; r <= range.e.r; r++) {
             for (const col of currencyCols) {

@@ -126,11 +126,7 @@ export async function GET(request: NextRequest) {
             const startStr = `${dateParam}T00:00:00Z`;
             const endStr = `${dateParam}T23:59:59Z`;
             assignmentDateFilter = {
-                OR: [
-                    { date: { gte: new Date(startStr), lte: new Date(endStr) } },
-                    { isRecurring: true },
-                    { job: { date: { gte: new Date(startStr), lte: new Date(endStr) } } }
-                ]
+                date: { gte: new Date(startStr), lte: new Date(endStr) }
             };
         }
 

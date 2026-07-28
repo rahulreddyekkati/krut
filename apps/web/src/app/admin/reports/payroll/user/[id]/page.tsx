@@ -31,10 +31,7 @@ export default async function UserPayrollDetailsPage(props: {
             jobs: {
                 where: {
                     clockIn: { not: null },
-                    OR: [
-                        { date: { gte: start, lte: end } },
-                        { job: { date: { gte: start, lte: end } } }
-                    ]
+                    date: { gte: start, lte: end }
                 },
                 include: {
                     job: {

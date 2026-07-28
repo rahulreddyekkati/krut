@@ -34,7 +34,7 @@ export default function PrintButton() {
             >
                 Print Report
             </button>
-            <style jsx global>{`
+            <style dangerouslySetInnerHTML={{ __html: `
                 @media print {
                     button {
                         display: none !important;
@@ -43,7 +43,7 @@ export default function PrintButton() {
                         background-color: white !important;
                     }
                 }
-            `}</style>
+            `}} />
         </div>
     );
 }

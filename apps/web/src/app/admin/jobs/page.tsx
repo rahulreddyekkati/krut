@@ -28,6 +28,17 @@ interface Store {
     marketId: string;
 }
 
+interface ShiftByDate {
+    id: string;
+    assignmentId: string | null;
+    storeName: string;
+    startTime: string;
+    endTime: string;
+    marketName: string;
+    marketId: string | null;
+    assignedWorker: string;
+}
+
 export default function AdminJobsPage() {
     const [jobs, setJobs] = useState<Job[]>([]);
     const [markets, setMarkets] = useState<Market[]>([]);
@@ -43,6 +54,17 @@ export default function AdminJobsPage() {
     const [editSaving, setEditSaving] = useState(false);
     const [editInProgressWorkers, setEditInProgressWorkers] = useState<string[]>([]);
 
+    const [activeTab, setActiveTab] = useState<"all" | "byDate">("all");
+    const [selectedDate, setSelectedDate] = useState(() => {
+        const d = new Date();
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${y}-${m}-${day}`;
+    });
+    const [shiftsByDate, setShiftsByDate] = useState<ShiftByDate[]>([]);
+    const [loadingByDate, setLoadingByDate] = useState(false);
+
     const [formData, setFormData] = useState({
         title: "",
         marketId: "",
@@ -57,6 +79,25 @@ export default function AdminJobsPage() {
     useEffect(() => {
         fetchData();
     }, []);
+
+    useEffect(() => {
+        if (activeTab !== "byDate") return;
+        const fetchByDate = async () => {
+            setLoadingByDate(true);
+            try {
+                const res = await fetch(`/api/admin/dashboard-details?type=jobs&date=${selectedDate}`);
+                if (res.ok) {
+                    const { data } = await res.json();
+                    setShiftsByDate(data || []);
+                }
+            } catch (err) {
+                setError("Failed to fetch shifts for this date");
+            } finally {
+                setLoadingByDate(false);
+            }
+        };
+        fetchByDate();
+    }, [activeTab, selectedDate]);
 
     // When market changes, filter stores
     useEffect(() => {
@@ -224,6 +265,11 @@ export default function AdminJobsPage() {
         return jobs.filter(job => job.marketId === selectedMarket);
     }, [jobs, selectedMarket]);
 
+    const filteredShiftsByDate = useMemo(() => {
+        if (selectedMarket === "all") return shiftsByDate;
+        return shiftsByDate.filter(s => s.marketId === selectedMarket);
+    }, [shiftsByDate, selectedMarket]);
+
     return (
         <div className={styles.container}>
             <header className={styles.header}>
@@ -249,6 +295,99 @@ export default function AdminJobsPage() {
                 <p className="text-secondary">Manage and assign shifts across all locations.</p>
             </header>
 
+            {/* TABS */}
+            <div style={{ display: "flex", gap: "2rem", borderBottom: "1px solid #e5e7eb", marginTop: "1rem", marginBottom: "1.5rem" }}>
+                {[
+                    { key: "all" as const, label: "All Jobs" },
+                    { key: "byDate" as const, label: "By Date" },
+                ].map(tab => (
+                    <div
+                        key={tab.key}
+                        onClick={() => setActiveTab(tab.key)}
+                        style={{
+                            padding: "0.75rem 0",
+                            cursor: "pointer",
+                            fontSize: "0.9rem",
+                            fontWeight: activeTab === tab.key ? 700 : 500,
+                            color: activeTab === tab.key ? "#6366f1" : "#6b7280",
+                            borderBottom: activeTab === tab.key ? "2px solid #6366f1" : "2px solid transparent",
+                            marginBottom: "-1px",
+                        }}
+                    >
+                        {tab.label}
+                    </div>
+                ))}
+            </div>
+
+            {activeTab === "byDate" && (
+                <div>
+                    <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "1rem" }}>
+                        <input
+                            type="date"
+                            value={selectedDate}
+                            onChange={(e) => setSelectedDate(e.target.value)}
+                            style={{
+                                padding: "0.5rem 1rem",
+                                borderRadius: "10px",
+                                border: "1px solid #e5e7eb",
+                                fontSize: "0.875rem",
+                                fontWeight: 600,
+                                color: "#374151",
+                                background: "white",
+                            }}
+                        />
+                    </div>
+                    <div className={styles.tableWrapper}>
+                        <table className={styles.table}>
+                            <thead>
+                                <tr>
+                                    <th>Store</th>
+                                    <th>Market</th>
+                                    <th>Start Time</th>
+                                    <th>End Time</th>
+                                    <th>Assignment Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {loadingByDate ? (
+                                    <tr><td colSpan={5} className="text-center" style={{ padding: "3rem" }}>Loading shifts...</td></tr>
+                                ) : filteredShiftsByDate.length === 0 ? (
+                                    <tr><td colSpan={5} className="text-center" style={{ padding: "3rem" }}>No shifts scheduled for this date.</td></tr>
+                                ) : (
+                                    filteredShiftsByDate.map(shift => {
+                                        const isAssigned = shift.assignedWorker !== "Unassigned";
+                                        return (
+                                            <tr key={shift.assignmentId ?? shift.id} className="animate-fade-in">
+                                                <td><strong>{shift.storeName}</strong></td>
+                                                <td>{shift.marketName}</td>
+                                                <td>{to12hr(shift.startTime)}</td>
+                                                <td>{to12hr(shift.endTime)}</td>
+                                                <td>
+                                                    <span style={{
+                                                        padding: "0.25rem 0.75rem",
+                                                        borderRadius: "99px",
+                                                        fontSize: "0.7rem",
+                                                        fontWeight: 700,
+                                                        background: isAssigned ? "#d1fae5" : "#fee2e2",
+                                                        color: isAssigned ? "#065f46" : "#991b1b",
+                                                        textTransform: "uppercase",
+                                                        letterSpacing: "0.03em",
+                                                    }}>
+                                                        {isAssigned ? `Assigned — ${shift.assignedWorker}` : "Unassigned"}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {activeTab === "all" && (
+            <>
             {showForm && (
                 <div className="card glass animate-fade-in" style={{ marginBottom: "2rem", padding: "1.5rem" }}>
                     <h3 className="heading h4">Setup New Shift</h3>
@@ -449,6 +588,8 @@ export default function AdminJobsPage() {
                     </tbody>
                 </table>
             </div>
+            </>
+            )}
 
             {editingJob && (
                 <div

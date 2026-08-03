@@ -62,7 +62,9 @@ export async function GET(
 
         for (const assignment of user.jobs) {
             const worked = assignment.workedHours || 0;
-            const reimb = assignment.recap?.reimbursement || 0;
+            // Reimbursement only counts once the recap is approved — matches the other
+            // payroll views; a submitted-but-unreviewed amount isn't confirmed pay yet.
+            const reimb = assignment.recap?.status === "APPROVED" ? (assignment.recap.reimbursement || 0) : 0;
             const bonus = (assignment.bonus || 0) + (assignment.job?.bonus || 0);
             const shiftPay = worked * hourlyWage;
             const totalPay = shiftPay + reimb + bonus;

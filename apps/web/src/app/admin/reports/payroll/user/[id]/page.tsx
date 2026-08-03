@@ -65,7 +65,12 @@ export default async function UserPayrollDetailsPage(props: {
 
     const shiftRows = user.jobs.map((assignment: any) => {
         const workedH = assignment.workedHours || 0;
-        const reimb = assignment.recap?.reimbursement || 0;
+        // Reimbursement only counts once the recap is approved — a submitted-but-unreviewed
+        // (or rejected) amount isn't confirmed yet and shouldn't show up as real pay.
+        const recapStatus = assignment.recap?.status;
+        const rawReimb = assignment.recap?.reimbursement || 0;
+        const reimb = recapStatus === "APPROVED" ? rawReimb : 0;
+        const reimbPendingApproval = recapStatus && recapStatus !== "APPROVED" && rawReimb > 0;
         const bonus = (assignment.bonus || 0) + (assignment.job?.bonus || 0);
         const shiftPay = workedH * hourlyWage;
         const totalPay = shiftPay + reimb + bonus;
@@ -99,6 +104,7 @@ export default async function UserPayrollDetailsPage(props: {
             clockOut: formatClockTime(assignment.clockOut),
             breakTime: formatBreak(assignment.breakTimeMinutes || 0),
             reimb: reimb.toFixed(2),
+            reimbPendingApproval,
             bonus: bonus.toFixed(2),
             shiftPay: shiftPay.toFixed(2),
             totalPay: totalPay.toFixed(2),
@@ -255,7 +261,9 @@ export default async function UserPayrollDetailsPage(props: {
                                         <td style={{ padding: "1rem" }}>{row.clockOut}</td>
                                         <td style={{ padding: "1rem" }}>{row.breakTime}</td>
                                         <td style={{ padding: "1rem" }}>{row.hours}h</td>
-                                        <td style={{ padding: "1rem", textAlign: "right" }}>${row.reimb}</td>
+                                        <td style={{ padding: "1rem", textAlign: "right", ...(row.reimbPendingApproval ? { color: "#b45309", fontStyle: "italic" } : {}) }}>
+                                            {row.reimbPendingApproval ? "Not approved" : `$${row.reimb}`}
+                                        </td>
                                         <td style={{ padding: "1rem", textAlign: "right" }}>${row.bonus}</td>
                                         <td style={{ padding: "1rem", textAlign: "right" }}>${row.shiftPay}</td>
                                         <td style={{ padding: "1rem", textAlign: "right", fontWeight: 600 }}>${row.totalPay}</td>

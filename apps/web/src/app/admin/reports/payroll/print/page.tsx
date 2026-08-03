@@ -44,7 +44,7 @@ export default async function PrintAllPayrollPage(props: {
 
     const rows = users
         .map((user) => {
-            let worked = 0, assigned = 0, reimb = 0, bottles = 0;
+            let worked = 0, assigned = 0, reimb = 0, bonus = 0, bottles = 0;
             user.jobs.forEach((a: any) => {
                 const job = a.job;
                 if (job?.startTimeStr && job?.endTimeStr) {
@@ -64,6 +64,12 @@ export default async function PrintAllPayrollPage(props: {
                     reimb += a.recap.reimbursement || 0;
                     (a.recap.skus || []).forEach((s: any) => { bottles += s.bottlesSold || 0; });
                 }
+                // Bonus (per-shift override + legacy job-level bonus) — kept separate from
+                // reimbursement, same as the other payroll views: bonus is taxable wages.
+                if (a.clockIn) {
+                    if (a.bonus) bonus += a.bonus;
+                    if (job?.bonus) bonus += job.bonus;
+                }
             });
             const wage = user.hourlyWage || 0;
             return {
@@ -75,9 +81,9 @@ export default async function PrintAllPayrollPage(props: {
                 assigned: parseFloat(Math.max(0, assigned).toFixed(2)),
                 reimb: parseFloat(reimb.toFixed(2)),
                 bottles,
-                pay: user.role === "WORKER" ? parseFloat(((worked * wage) + reimb).toFixed(2)) : null,
-                // Everything except reimbursement — wages are taxable, reimbursement isn't.
-                taxablePay: user.role === "WORKER" ? parseFloat((worked * wage).toFixed(2)) : null,
+                pay: user.role === "WORKER" ? parseFloat(((worked * wage) + reimb + bonus).toFixed(2)) : null,
+                // Everything except reimbursement — wages and bonus are taxable, reimbursement isn't.
+                taxablePay: user.role === "WORKER" ? parseFloat(((worked * wage) + bonus).toFixed(2)) : null,
             };
         })
         .filter((r) => !market || market === "all" || r.location === market);

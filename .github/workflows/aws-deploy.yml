@@ -1,0 +1,60 @@
+name: Deploy web to AWS App Runner
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/web/**"
+      - "packages/**"
+      - "prisma/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/aws-deploy.yml"
+  workflow_dispatch: {}
+
+permissions:
+  id-token: write # required for OIDC -> AWS role assumption
+  contents: read
+
+env:
+  AWS_REGION: us-east-2
+  ECR_REPOSITORY: clock-in-out-web
+  APP_RUNNER_SERVICE_ARN: arn:aws:apprunner:us-east-2:378656857904:service/clock-in-out-web/a3894f61dd7f4a89882d4334307643eb
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::378656857904:role/GitHubActions-clock-in-out-deploy
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: aws-actions/amazon-ecr-login@v2
+        id: ecr-login
+
+      # --platform linux/amd64 is required: App Runner only runs x86_64, and
+      # ubuntu-latest GitHub runners are already amd64, but pin explicitly so this
+      # workflow can never silently produce a wrong-architecture image regardless
+      # of what runner image GitHub ships in the future. See apps/web/Dockerfile
+      # for the (costly, previously debugged) reason this matters.
+      - name: Build and push image
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+        run: |
+          docker build --platform linux/amd64 \
+            -f apps/web/Dockerfile \
+            -t "$ECR_REGISTRY/$ECR_REPOSITORY:latest" \
+            -t "$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}" \
+            .
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:latest"
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}"
+
+      # AutoDeploymentsEnabled is already on for the service, so the :latest push
+      # above alone will trigger a redeploy on its own — this just makes it happen
+      # immediately instead of waiting on App Runner's own ECR-polling pipeline.
+      - name: Trigger App Runner deployment
+        run: |
+          aws apprunner start-deployment --service-arn "$APP_RUNNER_SERVICE_ARN" --region "$AWS_REGION"

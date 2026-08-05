@@ -54,6 +54,8 @@ model User {
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+
+  @@index([status])
 }
 
 model Market {
@@ -115,6 +117,8 @@ model Job {
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([status])
 }
 
 
@@ -168,6 +172,7 @@ model JobAssignment {
   // either had committed its insert). NULL dates (true recurring templates) are
   // exempt from this constraint under standard SQL NULL semantics.
   @@unique([workerId, jobId, date])
+  @@index([status])
 }
 
 // Records each break interval within a shift.
@@ -201,6 +206,8 @@ model ReleaseRequest {
   reason    String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([status])
 }
 
 model ShiftRequest {
@@ -222,6 +229,8 @@ model ShiftRequest {
   status    String   @default("PENDING") // PENDING, APPROVED, DENIED
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([status])
 }
 
 model Recap {
@@ -253,6 +262,8 @@ model Recap {
   skus              RecapSKU[]
 
   createdAt         DateTime @default(now())
+
+  @@index([status])
 }
 
 model OvertimeRequest {

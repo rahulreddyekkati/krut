@@ -40,6 +40,13 @@ jobs:
       # workflow can never silently produce a wrong-architecture image regardless
       # of what runner image GitHub ships in the future. See apps/web/Dockerfile
       # for the (costly, previously debugged) reason this matters.
+      # AutoDeploymentsEnabled is already on for the service, so the :latest push
+      # below is all that's needed -- App Runner's own event-driven pipeline picks
+      # it up and starts a deployment within seconds on its own. Deliberately not
+      # also calling `aws apprunner start-deployment` here: it loses the race with
+      # that pipeline nearly every time (the service is already OPERATION_IN_PROGRESS
+      # by the time this step would run), which just fails the workflow on a
+      # deployment that's actually proceeding correctly regardless.
       - name: Build and push image
         env:
           ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
@@ -51,10 +58,3 @@ jobs:
             .
           docker push "$ECR_REGISTRY/$ECR_REPOSITORY:latest"
           docker push "$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}"
-
-      # AutoDeploymentsEnabled is already on for the service, so the :latest push
-      # above alone will trigger a redeploy on its own — this just makes it happen
-      # immediately instead of waiting on App Runner's own ECR-polling pipeline.
-      - name: Trigger App Runner deployment
-        run: |
-          aws apprunner start-deployment --service-arn "$APP_RUNNER_SERVICE_ARN" --region "$AWS_REGION"

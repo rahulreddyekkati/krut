@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Dimensions
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../providers/AuthProvider';
 import { fetchWithAuth } from '../utils/apiClient';
+import { toLocalDateStr } from '../utils/date';
 import { router } from 'expo-router';
 import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
@@ -309,9 +310,13 @@ export default function HomeTab() {
       if (res.ok) {
         // Stop background location tracking now that the shift has ended
         stopBackgroundLocationTracking().catch(() => {});
+        // Note: the activeAssignment.date branch intentionally keeps toISOString() --
+        // that value is already a server-side UTC-midnight-encoded local date, so
+        // extracting its UTC date part is correct. Only the fallback (no date at all)
+        // needs the local-calendar-day-safe helper, since that's built from "now".
         const shiftDate = activeAssignment.date
           ? new Date(activeAssignment.date).toISOString().split('T')[0]
-          : new Date().toISOString().split('T')[0];
+          : toLocalDateStr(new Date());
         router.push(`/recap/${activeAssignment.jobId}?date=${shiftDate}&assignmentId=${activeAssignment.id}`);
       } else {
         const data = await res.json();
@@ -405,7 +410,7 @@ export default function HomeTab() {
             onPress={() => {
               const shiftDate = recap.shiftDate
                 ? new Date(recap.shiftDate).toISOString().split('T')[0]
-                : new Date().toISOString().split('T')[0];
+                : toLocalDateStr(new Date());
               router.push(`/recap/${recap.jobId}?date=${shiftDate}&assignmentId=${recap.assignmentId}`);
             }}
           >

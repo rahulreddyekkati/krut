@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, RefreshControl, ActivityIndicator } from 'react-native';
 import { fetchWithAuth } from '../../utils/apiClient';
 import { router } from 'expo-router';
+import { toLocalDateStr } from '../../utils/date';
 
 export default function ReportsScreen() {
   const [reports, setReports] = useState<any[]>([]);
@@ -11,9 +12,9 @@ export default function ReportsScreen() {
   const startObj = new Date();
   startObj.setDate(startObj.getDate() - 14); // 2 weeks back
   const endObj = new Date(); // today
-  
-  const startDate = startObj.toISOString().split('T')[0];
-  const endDate = endObj.toISOString().split('T')[0];
+
+  const startDate = toLocalDateStr(startObj);
+  const endDate = toLocalDateStr(endObj);
 
   const loadData = async () => {
     try {

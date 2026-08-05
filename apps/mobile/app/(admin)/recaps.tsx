@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, RefreshControl, A
 import { fetchWithAuth } from '../../utils/apiClient';
 import { router } from 'expo-router';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import { toLocalDateStr } from '../../utils/date';
 
 export default function RecapsScreen() {
   const [activeTab, setActiveTab] = useState(0); // 0: Pending, 1: Incomplete, 2: Reviewed
@@ -24,7 +25,7 @@ export default function RecapsScreen() {
   const [selectedDate, setSelectedDate] = useState(() => {
     return new Date();
   });
-  const dateString = selectedDate.toISOString().split('T')[0];
+  const dateString = toLocalDateStr(selectedDate);
 
   const fetchPending = async () => {
     setLoadingPending(true);

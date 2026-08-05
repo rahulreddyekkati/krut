@@ -21,8 +21,15 @@ export default async function UserPayrollDetailsPage(props: {
         return <div className="p-8">Please provide a valid start and end date.</div>;
     }
 
-    const start = new Date(startDate + "T00:00:00");
-    const end = new Date(endDate + "T23:59:59");
+    // JobAssignment.date is stored as a pure calendar marker -- UTC midnight of the LOCAL
+    // date (e.g. Aug 1 is always exactly 2026-08-01T00:00:00.000Z), not a real clock time.
+    // Comparing it against a real end-of-day boundary is the wrong operation regardless of
+    // which timezone that boundary is resolved in -- it must be compared against another
+    // UTC-midnight marker. (This previously "worked" only by accident, since the server
+    // defaults to UTC and `new Date(dateStr + "T23:59:59")` parses in server-local time --
+    // fragile, and inconsistent with /api/admin/reports/payroll's own date handling.)
+    const start = new Date(startDate + "T00:00:00.000Z");
+    const end = new Date(endDate + "T00:00:00.000Z");
 
     const user: any = await prisma.user.findUnique({
         where: { id },

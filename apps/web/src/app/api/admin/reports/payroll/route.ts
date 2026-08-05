@@ -24,6 +24,19 @@ export async function GET(request: NextRequest) {
             throw new AppError("endDate must be after startDate", 400);
         }
 
+        // JobAssignment.date is stored as a pure calendar marker -- UTC midnight of the
+        // LOCAL date, not a real clock time (e.g. Aug 1 is exactly 2026-08-01T00:00:00.000Z,
+        // always, regardless of timezone). Comparing that against `endDate` above (a real
+        // end-of-day boundary correctly resolved into the store's timezone, which lands
+        // several hours INTO the next UTC calendar day) systematically leaks the next day's
+        // assignments into every cycle: e.g. an Aug 1 assignment's midnight marker sits
+        // before "Jul 31 23:59 America/Chicago" once that's converted to UTC (~Aug 1 04:59Z),
+        // even though it's conceptually a different day entirely. Confirmed in production:
+        // this caused a "Jul 16 - Jul 31" cycle to silently include an Aug 1 shift.
+        // The `date` marker must be compared against another marker, not a real-time boundary.
+        const dateMarkerStart = new Date(startDateStr + "T00:00:00.000Z");
+        const dateMarkerEnd = new Date(endDateStr + "T00:00:00.000Z");
+
         // MAJ-15: Market Managers can only see their own market — override any query param
         const where: any = {};
         if (user.role === "MARKET_MANAGER") {
@@ -38,7 +51,7 @@ export async function GET(request: NextRequest) {
                 jobs: {
                     where: {
                         OR: [
-                            { date: { gte: startDate, lte: endDate } },
+                            { date: { gte: dateMarkerStart, lte: dateMarkerEnd } },
                             { clockIn: { gte: startDate, lte: endDate } }
                         ]
                     },
@@ -54,7 +67,7 @@ export async function GET(request: NextRequest) {
         const approvedReleases = await prisma.releaseRequest.findMany({
             where: {
                 status: "APPROVED",
-                date: { gte: startDate, lte: endDate }
+                date: { gte: dateMarkerStart, lte: dateMarkerEnd }
             },
             include: {
                 job: { select: { startTimeStr: true, endTimeStr: true } }

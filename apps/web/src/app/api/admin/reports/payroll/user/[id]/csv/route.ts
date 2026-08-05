@@ -21,8 +21,10 @@ export async function GET(
 
         if (!startDate || !endDate) return new NextResponse("Missing date parameters", { status: 400 });
 
-        const start = new Date(startDate + "T00:00:00");
-        const end = new Date(endDate + "T23:59:59");
+        // See apps/web/src/app/api/admin/reports/payroll/route.ts for why this must be
+        // UTC-midnight markers, not a real end-of-day boundary.
+        const start = new Date(startDate + "T00:00:00.000Z");
+        const end = new Date(endDate + "T00:00:00.000Z");
 
         const user: any = await prisma.user.findUnique({
             where: { id: userId },

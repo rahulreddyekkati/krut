@@ -16,8 +16,16 @@ export default async function PrintAllPayrollPage(props: {
         return <div style={{ padding: "2rem" }}>Missing date range.</div>;
     }
 
-    const start = new Date(startDate + "T00:00:00Z");
-    const end = new Date(endDate + "T23:59:59Z");
+    // Two different boundary pairs are needed here, not one -- see
+    // apps/web/src/app/api/admin/reports/payroll/route.ts for the full explanation.
+    // `date` is a pure UTC-midnight calendar marker; `clockIn` is a real timestamp.
+    // Reusing one end-of-day boundary for both (as this page previously did) either
+    // wrongly excludes late clock-ins or wrongly leaks the next day's `date`-marked
+    // assignments into the cycle, depending on which way it's rounded.
+    const start = new Date(startDate + "T00:00:00.000Z");
+    const end = new Date(endDate + "T23:59:59.999Z");
+    const dateMarkerStart = new Date(startDate + "T00:00:00.000Z");
+    const dateMarkerEnd = new Date(endDate + "T00:00:00.000Z");
 
     const requester: any = await prisma.user.findUnique({ where: { id: session.user.id } });
     const where: any = {};
@@ -33,7 +41,7 @@ export default async function PrintAllPayrollPage(props: {
             jobs: {
                 where: {
                     OR: [
-                        { date: { gte: start, lte: end } },
+                        { date: { gte: dateMarkerStart, lte: dateMarkerEnd } },
                         { clockIn: { gte: start, lte: end } },
                     ],
                 },

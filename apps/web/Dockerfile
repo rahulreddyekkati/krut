@@ -24,7 +24,13 @@ FROM base AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY apps/web/package.json apps/web/package.json
-COPY packages ./packages
+# packages/ui and packages/utils (declared in root package.json's workspaces glob)
+# are currently empty placeholder dirs with no package.json in either -- git doesn't
+# track empty directories, so `packages/` doesn't exist at all after a fresh clone
+# (e.g. CI's checkout), even though it's present locally if you've ever mkdir'd it.
+# npm silently skips them either way since they have no package.json to resolve as
+# a workspace. If real content ever lands in either, add `COPY packages ./packages`
+# back here.
 RUN npm ci
 
 # ---- build: compile the web app ----

@@ -5,18 +5,6 @@
       "schedule": "*/30 * * * *"
     },
     {
-      "path": "/api/cron/cycle-rollover",
-      "schedule": "0 6 1,16 * *"
-    },
-    {
-      "path": "/api/cron/recap-reminder",
-      "schedule": "0 */2 * * *"
-    },
-    {
-      "path": "/api/cron/shift-reminder",
-      "schedule": "*/15 * * * *"
-    },
-    {
       "path": "/api/cycle/current",
       "schedule": "*/5 * * * *"
     }

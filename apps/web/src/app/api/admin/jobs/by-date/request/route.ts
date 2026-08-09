@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { sendPushToUser } from "@/lib/notifications";
-import { sendShiftInterestRequestEmail } from "@/lib/mailer";
 import { to12hr } from "@/lib/timeFormat";
 
 // Skip re-notifying the same worker about the same shift within this window
@@ -139,8 +138,10 @@ export async function POST(request: NextRequest) {
 
             results.push({ jobId, date, success: true });
 
-            // Fire-and-forget notification/push/email — message includes store/date/time
-            // so it stays distinct per shift (see DEDUPE_WINDOW_MS below).
+            // Fire-and-forget notification/push — message includes store/date/time so it
+            // stays distinct per shift (see DEDUPE_WINDOW_MS below). Push + in-app
+            // notification only, no email here (unlike the sibling released-shifts/request
+            // ping) -- the app is the source of truth for claiming the shift either way.
             const dateLabel = new Date(date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
             const title = "Shift Available";
             const message = `Interested in picking up this shift at ${job.store.name} on ${dateLabel}, ${to12hr(job.startTimeStr)}–${to12hr(job.endTimeStr)}? Open the app to claim it.`;
@@ -158,9 +159,6 @@ export async function POST(request: NextRequest) {
 
                 await prisma.notification.create({ data: { userId: workerId, title, message } });
                 sendPushToUser(workerId, title, message).catch(() => {});
-                if (worker.email) {
-                    sendShiftInterestRequestEmail(worker.email, job.store.name, dateLabel, job.startTimeStr, job.endTimeStr).catch(() => {});
-                }
             })().catch((e) => console.error("[by-date/request] notification failed:", e));
         }
 

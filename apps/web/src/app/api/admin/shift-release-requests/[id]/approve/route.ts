@@ -61,10 +61,13 @@ export async function POST(
                 data: { status: "APPROVED" }
             });
 
-            // 2. Flip assignment to AVAILABLE (no new Job created)
+            // 2. Flip assignment to AVAILABLE (no new Job created).
+            // requestedWorkerId is cleared here too — an organically re-released shift
+            // must go back to being visible to the whole market, not stay invisibly
+            // pinned to whoever a prior admin-targeted invite (if any) was aimed at.
             await tx.jobAssignment.update({
                 where: { id: assignment!.id },
-                data: { status: "AVAILABLE", releasedByWorkerId: releaseRequest.workerId }
+                data: { status: "AVAILABLE", releasedByWorkerId: releaseRequest.workerId, requestedWorkerId: null }
             });
 
             // 3. Notify the releasing worker

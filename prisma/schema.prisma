@@ -144,6 +144,11 @@ model JobAssignment {
   // When status=AVAILABLE, this records who released it (original worker)
   releasedByWorkerId String?
 
+  // Admin-targeted invite: when set, only this worker should see/claim this
+  // AVAILABLE assignment via Open Shifts. Null means open to the whole
+  // market (today's default behavior for organically-released shifts).
+  requestedWorkerId String?
+
   // Admin-overridable time bounds for this specific assignment
   // When set, these override job.startTimeStr / job.endTimeStr for this worker only
   customStartTimeStr String?

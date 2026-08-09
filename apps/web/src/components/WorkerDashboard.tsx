@@ -44,11 +44,18 @@ const formatTimeStr = (timeStr?: string) => {
 
 const getNextOccurrenceDate = (dayOfWeek: number) => {
     const now = new Date();
-    const result = new Date();
     const currentDay = now.getDay();
-    let distance = (dayOfWeek - currentDay + 7) % 7;
-    result.setDate(now.getDate() + distance);
-    return result;
+    const distance = (dayOfWeek - currentDay + 7) % 7;
+    const target = new Date(now);
+    target.setDate(now.getDate() + distance);
+    // Return a UTC-midnight marker for that LOCAL calendar day, matching the convention used
+    // everywhere else in this app for date-only values (JobAssignment.date etc.) — this
+    // fixes the web-side twin of the toISOString() UTC-roll-over bug fixed on mobile in
+    // commit 95bb1e0. Using local Y/M/D getters here (not toISOString()) on `target` keeps
+    // the computed weekday correct regardless of the viewer's device timezone offset; once
+    // this is itself a proper UTC-midnight marker, downstream .toISOString().split('T')[0]
+    // callers (which already assume that convention, see isWithin2Hours below) work safely.
+    return new Date(Date.UTC(target.getFullYear(), target.getMonth(), target.getDate(), 0, 0, 0, 0));
 };
 
 const isShiftStarted = (startTimeStr?: string) => {

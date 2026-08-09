@@ -74,12 +74,20 @@ export async function POST(
             const clockUpdate: any = { status: "COMPLETED" };
             if (newClockIn) clockUpdate.clockIn = newClockIn;
             if (newClockOut) clockUpdate.clockOut = newClockOut;
-            if (newClockIn && newClockOut) {
-                const effectiveClockIn = newClockIn;
-                const effectiveClockOut = newClockOut;
-                const breakMins = assignment.breakTimeMinutes ?? 0;
-                const grossMins = (effectiveClockOut.getTime() - effectiveClockIn.getTime()) / 60000;
-                clockUpdate.workedHours = parseFloat(Math.max(0, (grossMins - breakMins) / 60).toFixed(2));
+            // Recompute workedHours whenever EITHER clock time changes, not only when both do
+            // — using the effective (newly-edited, or existing-if-untouched) value for
+            // whichever one wasn't edited. Previously this only recomputed `if (newClockIn &&
+            // newClockOut)`, so correcting just one timestamp left workedHours silently
+            // pointing at the pre-edit pair (confirmed in production: one real assignment was
+            // under-reported by 30 minutes from exactly this).
+            if (newClockIn || newClockOut) {
+                const effectiveClockIn = newClockIn ?? assignment.clockIn;
+                const effectiveClockOut = newClockOut ?? assignment.clockOut;
+                if (effectiveClockIn && effectiveClockOut) {
+                    const breakMins = assignment.breakTimeMinutes ?? 0;
+                    const grossMins = (new Date(effectiveClockOut).getTime() - new Date(effectiveClockIn).getTime()) / 60000;
+                    clockUpdate.workedHours = parseFloat(Math.max(0, (grossMins - breakMins) / 60).toFixed(2));
+                }
             }
             await tx.jobAssignment.update({
                 where: { id: assignment.id },

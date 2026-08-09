@@ -53,10 +53,13 @@ export default function AdminReportsPage() {
         if (activeTab === "pay-reports" && selectedCycle !== "manual" && selectedCycle !== "") {
             const cycle = closedCycles.find(c => c.label === selectedCycle);
             if (cycle) {
+                // cycles.ts builds cycle.start/end with Date.UTC(...) (a calendar-day marker,
+                // not a real local instant) — must read it back with UTC getters, or a
+                // browser west of UTC would derive the day *before* the intended one.
                 const formatDate = (date: Date) => {
-                    const y = date.getFullYear();
-                    const m = String(date.getMonth() + 1).padStart(2, '0');
-                    const d = String(date.getDate()).padStart(2, '0');
+                    const y = date.getUTCFullYear();
+                    const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+                    const d = String(date.getUTCDate()).padStart(2, '0');
                     return `${y}-${m}-${d}`;
                 };
                 setStartDate(formatDate(cycle.start));
@@ -118,7 +121,12 @@ export default function AdminReportsPage() {
         if (!startDate || !endDate) return;
         setIsLoading(true);
         try {
-            const res = await fetch(`/api/admin/reports/payroll?startDate=${startDate}&endDate=${endDate}`);
+            const res = await fetch(`/api/admin/reports/payroll?startDate=${startDate}&endDate=${endDate}`, {
+                headers: {
+                    "x-timezone": Intl.DateTimeFormat().resolvedOptions().timeZone,
+                    "x-timezone-offset": new Date().getTimezoneOffset().toString()
+                }
+            });
             if (res.ok) {
                 setPayrollData(await res.json());
             }

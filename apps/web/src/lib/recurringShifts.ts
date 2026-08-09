@@ -1,9 +1,21 @@
 import prisma from "@/lib/prisma";
 import { getCurrentCycleDates, getPreviousCycleDates, getNextCycleDates, getDatesForWeekdays } from "@/lib/cycles";
-import { toLocalDateStr } from "@/lib/timezone";
 
 const NEXT_CYCLE_PREVIEW_DAYS = 4;
 const TZ = "America/Chicago";
+
+// Native (no date-fns-tz) local-date computation — this file's rollover functions run on
+// every GET request for a worker's assignments, and calling date-fns-tz's fromZonedTime/
+// toZonedTime here previously caused Vercel 504 timeouts (see commit 1030c02). That fix
+// replaced it with a hardcoded `Date.now() - 6h` offset, which assumes Chicago is always
+// UTC-6 (CST) — wrong for roughly 8 months of the year when it's actually UTC-5 (CDT),
+// silently misdating rollover-generated shifts near local midnight during DST. This uses
+// Intl.DateTimeFormat instead (built into V8, no external library, so it doesn't carry
+// whatever overhead caused the original timeout) and stays DST-correct year-round.
+function getLocalDateStrNative(date: Date, timeZone: string): string {
+    // en-CA formats as YYYY-MM-DD directly.
+    return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+}
 
 /**
  * Called at the start of each GET request for a worker's assignments.
@@ -63,8 +75,7 @@ export async function ensureCurrentCycleAssignments(workerId: string): Promise<v
     // Create current cycle assignments for each pattern, skipping dates that already exist.
     // Never generate a date before today — a late-running rollover shouldn't backfill
     // already-past days as bogus unclocked "Missed" shifts.
-    const chicagoNow = new Date(Date.now() - 6 * 60 * 60 * 1000);
-    const dateStr = chicagoNow.toISOString().split("T")[0];
+    const dateStr = getLocalDateStrNative(new Date(), TZ);
     const todayUTCMidnight = new Date(dateStr + "T00:00:00.000Z");
     const rangeStart = todayUTCMidnight > currentCycle.start ? todayUTCMidnight : currentCycle.start;
     console.log(`[ROLLOVER] rangeStart resolved to: ${rangeStart.toISOString()}`);

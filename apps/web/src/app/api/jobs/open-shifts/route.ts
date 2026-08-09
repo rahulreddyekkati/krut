@@ -14,12 +14,25 @@ export async function GET(request: NextRequest) {
 
         if (!user?.marketId) return NextResponse.json({ shifts: [] });
 
-        // Return AVAILABLE assignments in the worker's market (exclude their own releases)
+        // Return AVAILABLE assignments in the worker's market (exclude their own releases).
+        // requestedWorkerId gates visibility for admin-targeted invites (Job Scheduling
+        // "By Date" bulk/per-row Request): null means open to the whole market as before,
+        // set means only that specific worker should see it.
+        //
+        // Both conditions below are wrapped in explicit `{ field: null } OR { field: { not: x } }`
+        // rather than a bare `{ not: x }` -- on a nullable column, SQL's three-valued logic means
+        // `NULL != x` evaluates to NULL (not true), so a bare `{ not: x }` silently EXCLUDES
+        // NULL rows too. releasedByWorkerId is null on admin-created invites (nobody released
+        // them), so a bare `{ not: session.user.id }` would hide a worker's own invite from
+        // themselves -- confirmed this exact failure mode while testing this feature.
         const available = await prisma.jobAssignment.findMany({
             where: {
                 status: "AVAILABLE",
                 job: { marketId: user.marketId },
-                releasedByWorkerId: { not: session.user.id }
+                AND: [
+                    { OR: [{ releasedByWorkerId: null }, { releasedByWorkerId: { not: session.user.id } }] },
+                    { OR: [{ requestedWorkerId: null }, { requestedWorkerId: session.user.id }] }
+                ]
             },
             include: {
                 job: {

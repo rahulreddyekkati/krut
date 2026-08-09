@@ -48,7 +48,8 @@ export async function POST(
                     data: {
                         workerId: shiftRequest.workerId,
                         status: "ASSIGNED",
-                        releasedByWorkerId: null
+                        releasedByWorkerId: null,
+                        requestedWorkerId: null // invite (if any) consumed
                     }
                 });
 

@@ -2,6 +2,14 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import PrintButton from "../user/[id]/PrintButton";
+import { getMarketTimezone, localTimeToUTC } from "@/lib/timezone";
+import {
+    buildDateMarkerRange,
+    buildCycleAssignmentWhere,
+    assignmentBelongsToCyclePreciseCheck,
+    accumulatePayrollTotals,
+    computePayFigures,
+} from "@/lib/payroll";
 
 export default async function PrintAllPayrollPage(props: {
     searchParams: Promise<{ startDate?: string; endDate?: string; market?: string }>;
@@ -11,21 +19,26 @@ export default async function PrintAllPayrollPage(props: {
         redirect("/login");
     }
 
-    const { startDate, endDate, market } = await props.searchParams;
-    if (!startDate || !endDate) {
+    const { startDate: startDateStr, endDate: endDateStr, market } = await props.searchParams;
+    if (!startDateStr || !endDateStr) {
         return <div style={{ padding: "2rem" }}>Missing date range.</div>;
     }
 
-    // Two different boundary pairs are needed here, not one -- see
-    // apps/web/src/app/api/admin/reports/payroll/route.ts for the full explanation.
-    // `date` is a pure UTC-midnight calendar marker; `clockIn` is a real timestamp.
-    // Reusing one end-of-day boundary for both (as this page previously did) either
-    // wrongly excludes late clock-ins or wrongly leaks the next day's `date`-marked
-    // assignments into the cycle, depending on which way it's rounded.
-    const start = new Date(startDate + "T00:00:00.000Z");
-    const end = new Date(endDate + "T23:59:59.999Z");
-    const dateMarkerStart = new Date(startDate + "T00:00:00.000Z");
-    const dateMarkerEnd = new Date(endDate + "T00:00:00.000Z");
+    // See apps/web/src/lib/payroll.ts for the full explanation of why `date` (a UTC-midnight
+    // calendar marker) and `clockIn` (a real timestamp) need two different boundary kinds,
+    // and why a fixed `date` marker must be the single source of truth for cycle membership
+    // (fixes cross-cycle double-counting for overnight shifts near a boundary).
+    const dateMarkerRange = buildDateMarkerRange(startDateStr, endDateStr);
+
+    // This is a server component with no request headers to resolve a viewer timezone from,
+    // so "America/Chicago" is used as the default/fallback market timezone below (same
+    // fallback the rest of the app uses when nothing more specific is known) — padded widely
+    // enough here to safely over-fetch candidates regardless, then precisely re-checked per
+    // each worker's own market below.
+    const DEFAULT_TZ = "America/Chicago";
+    const PAD_MS = 3 * 60 * 60 * 1000;
+    const paddedRealStart = new Date(localTimeToUTC(startDateStr, "00:00", DEFAULT_TZ).getTime() - PAD_MS);
+    const paddedRealEnd = new Date(localTimeToUTC(endDateStr, "23:59", DEFAULT_TZ).getTime() + PAD_MS);
 
     const requester: any = await prisma.user.findUnique({ where: { id: session.user.id } });
     const where: any = {};
@@ -39,12 +52,7 @@ export default async function PrintAllPayrollPage(props: {
         include: {
             market: { select: { name: true } },
             jobs: {
-                where: {
-                    OR: [
-                        { date: { gte: dateMarkerStart, lte: dateMarkerEnd } },
-                        { clockIn: { gte: start, lte: end } },
-                    ],
-                },
+                where: buildCycleAssignmentWhere(dateMarkerRange, paddedRealStart, paddedRealEnd),
                 include: { job: true, recap: { include: { skus: true } } } as any,
             },
         },
@@ -52,46 +60,28 @@ export default async function PrintAllPayrollPage(props: {
 
     const rows = users
         .map((user) => {
-            let worked = 0, assigned = 0, reimb = 0, bonus = 0, bottles = 0;
-            user.jobs.forEach((a: any) => {
-                const job = a.job;
-                if (job?.startTimeStr && job?.endTimeStr) {
-                    const [sh, sm] = job.startTimeStr.split(":").map(Number);
-                    const [eh, em] = job.endTimeStr.split(":").map(Number);
-                    let dur = (eh * 60 + em) - (sh * 60 + sm);
-                    if (dur < 0) dur += 1440;
-                    assigned += dur / 60;
-                }
-                if (typeof a.workedHours === "number") {
-                    worked += a.workedHours;
-                } else if (a.clockIn && a.clockOut) {
-                    const diff = (new Date(a.clockOut).getTime() - new Date(a.clockIn).getTime()) / 60000;
-                    worked += Math.max(0, (diff - (a.breakTimeMinutes || 0)) / 60);
-                }
-                if (a.recap?.status === "APPROVED") {
-                    reimb += a.recap.reimbursement || 0;
-                    (a.recap.skus || []).forEach((s: any) => { bottles += s.bottlesSold || 0; });
-                }
-                // Bonus (per-shift override + legacy job-level bonus) — kept separate from
-                // reimbursement, same as the other payroll views: bonus is taxable wages.
-                if (a.clockIn) {
-                    if (a.bonus) bonus += a.bonus;
-                    if (job?.bonus) bonus += job.bonus;
-                }
-            });
+            const marketTz = user.market?.name ? getMarketTimezone(user.market.name) : DEFAULT_TZ;
+            const preciseStart = localTimeToUTC(startDateStr, "00:00", marketTz);
+            const preciseEnd = localTimeToUTC(endDateStr, "23:59", marketTz);
+            const relevantAssignments = (user.jobs as any[]).filter((a) =>
+                assignmentBelongsToCyclePreciseCheck(a, preciseStart, preciseEnd)
+            );
+
+            const totals = accumulatePayrollTotals(relevantAssignments);
             const wage = user.hourlyWage || 0;
+            const { payForCycle, taxablePay } = computePayFigures(wage, totals);
+
             return {
                 name: user.name || user.email,
                 role: user.role,
                 location: user.market?.name || "N/A",
                 payHr: wage,
-                worked: parseFloat(worked.toFixed(2)),
-                assigned: parseFloat(Math.max(0, assigned).toFixed(2)),
-                reimb: parseFloat(reimb.toFixed(2)),
-                bottles,
-                pay: user.role === "WORKER" ? parseFloat(((worked * wage) + reimb + bonus).toFixed(2)) : null,
-                // Everything except reimbursement — wages and bonus are taxable, reimbursement isn't.
-                taxablePay: user.role === "WORKER" ? parseFloat(((worked * wage) + bonus).toFixed(2)) : null,
+                worked: parseFloat(totals.totalWorkedHours.toFixed(2)),
+                assigned: parseFloat(Math.max(0, totals.totalAssignedHours).toFixed(2)),
+                reimb: parseFloat(totals.totalReimbursements.toFixed(2)),
+                bottles: totals.totalBottlesSold,
+                pay: user.role === "WORKER" ? parseFloat(payForCycle.toFixed(2)) : null,
+                taxablePay: user.role === "WORKER" ? parseFloat(taxablePay.toFixed(2)) : null,
             };
         })
         .filter((r) => !market || market === "all" || r.location === market);
@@ -114,7 +104,7 @@ export default async function PrintAllPayrollPage(props: {
                     <h1 style={{ fontSize: "1.5rem", fontWeight: 800, color: "#111827", margin: 0 }}>Payroll Report</h1>
                     <p style={{ color: "#6b7280", margin: "4px 0 0", fontSize: "0.875rem" }}>
                         {market && market !== "all" ? `Market: ${market}` : "All Markets"} &nbsp;·&nbsp;
-                        {new Date(startDate).toLocaleDateString()} – {new Date(endDate).toLocaleDateString()}
+                        {new Date(startDateStr).toLocaleDateString()} – {new Date(endDateStr).toLocaleDateString()}
                     </p>
                 </div>
                 <p style={{ color: "#9ca3af", fontSize: "0.8rem", margin: 0 }}>

@@ -1,0 +1,176 @@
+// Shared payroll calculation logic, used by every Pay Report surface:
+//   - apps/web/src/app/api/admin/reports/payroll/route.ts        (summary table)
+//   - apps/web/src/app/admin/reports/payroll/print/page.tsx      (print-all view)
+//   - apps/web/src/app/admin/reports/payroll/user/[id]/page.tsx  (per-worker drill-down)
+//   - apps/web/src/app/api/admin/reports/payroll/user/[id]/csv/route.ts (per-worker CSV)
+//
+// Before this file existed, each of the 4 views above hand-copied the same math
+// independently, and drifted apart over time (custom shift times honored in some but not
+// others, a workedHours fallback present in some but not others, etc.) — see the payroll
+// audit findings. Routing all 4 through this one module is what stops that from happening
+// again: fix a formula here once, every view picks it up.
+
+export interface PayrollAssignmentLike {
+    date: Date | string | null;
+    clockIn: Date | string | null;
+    clockOut: Date | string | null;
+    breakTimeMinutes: number | null;
+    workedHours: number | null;
+    bonus: number | null;
+    customStartTimeStr: string | null;
+    customEndTimeStr: string | null;
+    job: {
+        startTimeStr: string | null;
+        endTimeStr: string | null;
+        bonus: number | null;
+    };
+    recap?: {
+        status: string | null;
+        reimbursement: number | null;
+        skus?: { bottlesSold: number | null }[] | null;
+    } | null;
+}
+
+function durationHours(startTimeStr: string, endTimeStr: string): number {
+    const [sh, sm] = startTimeStr.split(":").map(Number);
+    const [eh, em] = endTimeStr.split(":").map(Number);
+    let durationMins = (eh * 60 + em) - (sh * 60 + sm);
+    if (durationMins < 0) durationMins += 24 * 60; // overnight shift
+    return durationMins / 60;
+}
+
+// Assignment-level custom times (set per-worker, e.g. via a reassignment/edit) override the
+// Job's default scheduled times. Every view must honor this, or "Assigned Hours" silently
+// disagrees between the view that does and the view that doesn't for the same shift.
+export function computeAssignedHours(a: PayrollAssignmentLike): number {
+    const startTimeStr = a.customStartTimeStr ?? a.job?.startTimeStr;
+    const endTimeStr = a.customEndTimeStr ?? a.job?.endTimeStr;
+    if (!startTimeStr || !endTimeStr) return 0;
+    return durationHours(startTimeStr, endTimeStr);
+}
+
+// Trust the stored workedHours (stamped once at clock-out) when present; otherwise fall
+// back to a live clockOut-clockIn-break computation. Every view must have this fallback —
+// without it, any assignment with real clock times but a null workedHours (legacy data, or
+// the recap-approval staleness case below) silently shows 0 hours instead of the real total.
+export function computeWorkedHours(a: PayrollAssignmentLike): number {
+    if (typeof a.workedHours === "number") return a.workedHours;
+    if (a.clockIn && a.clockOut) {
+        const diffMins = (new Date(a.clockOut).getTime() - new Date(a.clockIn).getTime()) / 60000;
+        const breakMins = a.breakTimeMinutes || 0;
+        return Math.max(0, (diffMins - breakMins) / 60);
+    }
+    return 0;
+}
+
+// Per-assignment bonus (set when the shift was assigned to this worker) overrides the
+// job-level bonus (set at job creation, shared across every worker/occurrence) — confirmed
+// intent: "the one given at the time of assigning the shift to the user should override the
+// one that is made with the job creation." Only falls back to job.bonus when the assignment
+// has no bonus set at all (null/undefined); an explicit 0 override is respected.
+export function computeBonus(a: PayrollAssignmentLike): number {
+    if (!a.clockIn) return 0; // unworked/no-show shifts don't earn a bonus
+    return a.bonus ?? a.job?.bonus ?? 0;
+}
+
+// Reimbursement and bottles-sold only count once the recap is approved — a submitted-but-
+// unreviewed (or rejected) amount isn't confirmed pay yet.
+export function computeReimbursementAndBottles(a: PayrollAssignmentLike): { reimbursement: number; bottlesSold: number } {
+    if (a.recap?.status !== "APPROVED") return { reimbursement: 0, bottlesSold: 0 };
+    const reimbursement = a.recap.reimbursement || 0;
+    const bottlesSold = (a.recap.skus || []).reduce((sum, s) => sum + (s.bottlesSold || 0), 0);
+    return { reimbursement, bottlesSold };
+}
+
+export interface PayrollTotals {
+    totalAssignedHours: number;
+    totalWorkedHours: number;
+    totalReimbursements: number;
+    totalBonus: number;
+    totalBottlesSold: number;
+}
+
+export function accumulatePayrollTotals(assignments: PayrollAssignmentLike[]): PayrollTotals {
+    const totals: PayrollTotals = {
+        totalAssignedHours: 0,
+        totalWorkedHours: 0,
+        totalReimbursements: 0,
+        totalBonus: 0,
+        totalBottlesSold: 0,
+    };
+    for (const a of assignments) {
+        totals.totalAssignedHours += computeAssignedHours(a);
+        totals.totalWorkedHours += computeWorkedHours(a);
+        totals.totalBonus += computeBonus(a);
+        const { reimbursement, bottlesSold } = computeReimbursementAndBottles(a);
+        totals.totalReimbursements += reimbursement;
+        totals.totalBottlesSold += bottlesSold;
+    }
+    return totals;
+}
+
+export interface PayFigures {
+    payForCycle: number;
+    taxablePay: number;
+}
+
+// Everything except reimbursement counts as taxable income — wages and bonus are both
+// taxable, reimbursement (expense repayment) isn't.
+export function computePayFigures(hourlyWage: number, totals: Pick<PayrollTotals, "totalWorkedHours" | "totalReimbursements" | "totalBonus">): PayFigures {
+    const payForCycle = (totals.totalWorkedHours * hourlyWage) + totals.totalReimbursements + totals.totalBonus;
+    const taxablePay = payForCycle - totals.totalReimbursements;
+    return { payForCycle, taxablePay };
+}
+
+export interface DateMarkerRange {
+    dateMarkerStart: Date;
+    dateMarkerEnd: Date;
+}
+
+// JobAssignment.date is a pure UTC-midnight calendar marker (e.g. Aug 1 is always exactly
+// 2026-08-01T00:00:00.000Z), not a real clock time — it must only ever be compared against
+// another marker like this, never against a real-time boundary (see the payroll route for
+// the full "why" — comparing it to a timezone-resolved end-of-day leaks the next day's
+// shifts into the cycle).
+export function buildDateMarkerRange(startDateStr: string, endDateStr: string): DateMarkerRange {
+    return {
+        dateMarkerStart: new Date(`${startDateStr}T00:00:00.000Z`),
+        dateMarkerEnd: new Date(`${endDateStr}T00:00:00.000Z`),
+    };
+}
+
+// The Prisma `where` fragment for "does this assignment belong to this cycle" — fixes the
+// cross-cycle double-counting bug: an assignment with a `date` marker is ALWAYS attributed
+// by that marker alone (a fixed date value can only ever fall inside one of two adjacent,
+// non-overlapping cycle ranges, so it can never match two cycle queries at once). The
+// real-time `clockIn` window is only used as a fallback for assignments that have no `date`
+// at all — previously this was a plain OR between the two, which let an assignment whose
+// `date` and actual local-calendar-day-of-clockIn disagreed (an overnight shift near a
+// cycle boundary) match both an assignment's own cycle AND the adjacent one.
+export function buildCycleAssignmentWhere(dateMarkerRange: DateMarkerRange, realTimeStart: Date, realTimeEnd: Date) {
+    return {
+        OR: [
+            { date: { gte: dateMarkerRange.dateMarkerStart, lte: dateMarkerRange.dateMarkerEnd } },
+            { date: null, clockIn: { gte: realTimeStart, lte: realTimeEnd } },
+        ],
+    };
+}
+
+// A single Prisma query can't apply a different exact real-time boundary per market, so the
+// query above is run with a padded (generously wide) window to safely over-fetch candidates.
+// This does the precise per-market re-check afterward, in JS, for the one case where it
+// matters: a date-less assignment (assignment.date === null) that only matched via the
+// padded clockIn window. Assignments with a `date` marker are already exactly correct from
+// the query alone and always belong (a fixed marker can only fall in one non-overlapping
+// cycle range), so this always returns true for them without needing a market timezone at
+// all — it's only ever a real check for the rare date-less fallback case.
+export function assignmentBelongsToCyclePreciseCheck(
+    a: { date: Date | string | null; clockIn: Date | string | null },
+    preciseRealTimeStart: Date,
+    preciseRealTimeEnd: Date
+): boolean {
+    if (a.date) return true;
+    if (!a.clockIn) return false;
+    const ci = new Date(a.clockIn).getTime();
+    return ci >= preciseRealTimeStart.getTime() && ci <= preciseRealTimeEnd.getTime();
+}

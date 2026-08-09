@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { getMarketTimezone, localTimeToUTC } from "@/lib/timezone";
+import {
+    buildDateMarkerRange,
+    buildCycleAssignmentWhere,
+    assignmentBelongsToCyclePreciseCheck,
+    computeAssignedHours,
+    computeWorkedHours,
+    computeBonus,
+} from "@/lib/payroll";
 
 export async function GET(
     request: NextRequest,
@@ -21,19 +30,20 @@ export async function GET(
 
         if (!startDate || !endDate) return new NextResponse("Missing date parameters", { status: 400 });
 
-        // See apps/web/src/app/api/admin/reports/payroll/route.ts for why this must be
-        // UTC-midnight markers, not a real end-of-day boundary.
-        const start = new Date(startDate + "T00:00:00.000Z");
-        const end = new Date(endDate + "T00:00:00.000Z");
+        // See apps/web/src/lib/payroll.ts for the full explanation of the date-marker vs
+        // real-time boundary distinction.
+        const dateMarkerRange = buildDateMarkerRange(startDate, endDate);
+        const DEFAULT_TZ = "America/Chicago";
+        const PAD_MS = 3 * 60 * 60 * 1000;
+        const paddedRealStart = new Date(localTimeToUTC(startDate, "00:00", DEFAULT_TZ).getTime() - PAD_MS);
+        const paddedRealEnd = new Date(localTimeToUTC(endDate, "23:59", DEFAULT_TZ).getTime() + PAD_MS);
 
         const user: any = await prisma.user.findUnique({
             where: { id: userId },
             include: {
+                market: true,
                 jobs: {
-                    where: {
-                        clockIn: { not: null },
-                        date: { gte: start, lte: end }
-                    },
+                    where: buildCycleAssignmentWhere(dateMarkerRange, paddedRealStart, paddedRealEnd),
                     include: {
                         job: { include: { store: true } },
                         recap: true as any
@@ -44,6 +54,13 @@ export async function GET(
         } as any);
 
         if (!user) return new NextResponse("User not found", { status: 404 });
+
+        const marketTz = user.market?.name ? getMarketTimezone(user.market.name) : DEFAULT_TZ;
+        const preciseStart = localTimeToUTC(startDate, "00:00", marketTz);
+        const preciseEnd = localTimeToUTC(endDate, "23:59", marketTz);
+        const relevantAssignments = (user.jobs as any[]).filter((a) =>
+            assignmentBelongsToCyclePreciseCheck(a, preciseStart, preciseEnd)
+        );
 
         const hourlyWage = user.hourlyWage || 0;
         let csvContent = "";
@@ -62,27 +79,18 @@ export async function GET(
         let sumReimb = 0;
         let sumBonus = 0;
 
-        for (const assignment of user.jobs) {
-            const worked = assignment.workedHours || 0;
+        for (const assignment of relevantAssignments) {
+            const worked = computeWorkedHours(assignment);
             // Reimbursement only counts once the recap is approved — matches the other
             // payroll views; a submitted-but-unreviewed amount isn't confirmed pay yet.
             const reimb = assignment.recap?.status === "APPROVED" ? (assignment.recap.reimbursement || 0) : 0;
-            const bonus = (assignment.bonus || 0) + (assignment.job?.bonus || 0);
+            const bonus = computeBonus(assignment);
             const shiftPay = worked * hourlyWage;
             const totalPay = shiftPay + reimb + bonus;
             // Everything except reimbursement — wages and bonus are taxable, reimbursement isn't.
             const taxablePay = shiftPay + bonus;
 
-            const startTimeStr = assignment.customStartTimeStr ?? assignment.job?.startTimeStr;
-            const endTimeStr = assignment.customEndTimeStr ?? assignment.job?.endTimeStr;
-            let assignedH = 0;
-            if (startTimeStr && endTimeStr) {
-                const [sh, sm] = startTimeStr.split(":").map(Number);
-                const [eh, em] = endTimeStr.split(":").map(Number);
-                let durationMins = (eh * 60 + em) - (sh * 60 + sm);
-                if (durationMins < 0) durationMins += 24 * 60;
-                assignedH = durationMins / 60;
-            }
+            const assignedH = computeAssignedHours(assignment);
 
             sumAssigned += assignedH;
             sumWorked += worked;

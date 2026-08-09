@@ -74,6 +74,18 @@ export default function AnalyticsDashboard({ startDate, endDate }: AnalyticsDash
                     ${brandSpend.both.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </h3>
             </div>
+            {/* Only shown when non-zero — most historical shifts predate brandAllocation, so
+                this keeps the grid clean for date ranges where everything's tagged, while
+                making the gap visible (rather than kruto+muluk+both silently summing to less
+                than total) whenever it actually applies. */}
+            {brandSpend.unallocated > 0 && (
+                <div className="card glass">
+                    <p className="text-secondary" style={{ fontSize: "0.875rem", fontWeight: 600 }} title="Shifts with no brand tag set">UNALLOCATED</p>
+                    <h3 style={{ fontSize: "2rem", fontWeight: 800, color: "var(--text-secondary, #6b7280)", marginTop: "0.5rem" }}>
+                        ${brandSpend.unallocated.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </h3>
+                </div>
+            )}
         </div>
     );
 

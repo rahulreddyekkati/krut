@@ -4,6 +4,8 @@ import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import PrintButton from "./PrintButton";
+import { computeAssignedHours, computeWorkedHours, computeBonus, buildDateMarkerRange, buildCycleAssignmentWhere, assignmentBelongsToCyclePreciseCheck } from "@/lib/payroll";
+import { getMarketTimezone, localTimeToUTC } from "@/lib/timezone";
 
 export default async function UserPayrollDetailsPage(props: {
     params: Promise<{ id: string }>,
@@ -21,25 +23,24 @@ export default async function UserPayrollDetailsPage(props: {
         return <div className="p-8">Please provide a valid start and end date.</div>;
     }
 
-    // JobAssignment.date is stored as a pure calendar marker -- UTC midnight of the LOCAL
-    // date (e.g. Aug 1 is always exactly 2026-08-01T00:00:00.000Z), not a real clock time.
-    // Comparing it against a real end-of-day boundary is the wrong operation regardless of
-    // which timezone that boundary is resolved in -- it must be compared against another
-    // UTC-midnight marker. (This previously "worked" only by accident, since the server
-    // defaults to UTC and `new Date(dateStr + "T23:59:59")` parses in server-local time --
-    // fragile, and inconsistent with /api/admin/reports/payroll's own date handling.)
-    const start = new Date(startDate + "T00:00:00.000Z");
-    const end = new Date(endDate + "T00:00:00.000Z");
+    // See apps/web/src/lib/payroll.ts for the full explanation of the date-marker vs
+    // real-time boundary distinction, and why a fixed `date` marker must be the single
+    // source of truth for cycle membership.
+    const dateMarkerRange = buildDateMarkerRange(startDate, endDate);
+    const DEFAULT_TZ = "America/Chicago";
+    const PAD_MS = 3 * 60 * 60 * 1000;
+    const paddedRealStart = new Date(localTimeToUTC(startDate, "00:00", DEFAULT_TZ).getTime() - PAD_MS);
+    const paddedRealEnd = new Date(localTimeToUTC(endDate, "23:59", DEFAULT_TZ).getTime() + PAD_MS);
 
     const user: any = await prisma.user.findUnique({
         where: { id },
         include: {
             market: true,
             jobs: {
-                where: {
-                    clockIn: { not: null },
-                    date: { gte: start, lte: end }
-                },
+                // No longer requires clockIn to be set -- a worker's own detail report should
+                // include the same scheduled-but-unworked/no-show shifts the summary table and
+                // print view do, rather than silently dropping them from this page alone.
+                where: buildCycleAssignmentWhere(dateMarkerRange, paddedRealStart, paddedRealEnd),
                 include: {
                     job: {
                         include: { store: { include: { market: true } } }
@@ -61,6 +62,13 @@ export default async function UserPayrollDetailsPage(props: {
     let totalReimb = 0;
     let totalBonus = 0;
 
+    const marketTz = user.market?.name ? getMarketTimezone(user.market.name) : DEFAULT_TZ;
+    const preciseStart = localTimeToUTC(startDate, "00:00", marketTz);
+    const preciseEnd = localTimeToUTC(endDate, "23:59", marketTz);
+    const relevantAssignments = (user.jobs as any[]).filter((a) =>
+        assignmentBelongsToCyclePreciseCheck(a, preciseStart, preciseEnd)
+    );
+
     // This runs server-side, where the JS runtime's default timezone (UTC on Vercel) is
     // not the store's actual local time — must pass timeZone explicitly, same as every
     // other timestamp display in this app.
@@ -70,30 +78,21 @@ export default async function UserPayrollDetailsPage(props: {
     const formatBreak = (mins: number) =>
         mins > 0 ? `${Math.round(mins)} min` : "--";
 
-    const shiftRows = user.jobs.map((assignment: any) => {
-        const workedH = assignment.workedHours || 0;
+    const shiftRows = relevantAssignments.map((assignment: any) => {
+        const workedH = computeWorkedHours(assignment);
         // Reimbursement only counts once the recap is approved — a submitted-but-unreviewed
         // (or rejected) amount isn't confirmed yet and shouldn't show up as real pay.
         const recapStatus = assignment.recap?.status;
         const rawReimb = assignment.recap?.reimbursement || 0;
         const reimb = recapStatus === "APPROVED" ? rawReimb : 0;
         const reimbPendingApproval = recapStatus && recapStatus !== "APPROVED" && rawReimb > 0;
-        const bonus = (assignment.bonus || 0) + (assignment.job?.bonus || 0);
+        const bonus = computeBonus(assignment);
         const shiftPay = workedH * hourlyWage;
         const totalPay = shiftPay + reimb + bonus;
         // Everything except reimbursement — wages and bonus are taxable, reimbursement isn't.
         const taxablePay = shiftPay + bonus;
 
-        const startTimeStr = assignment.customStartTimeStr ?? assignment.job?.startTimeStr;
-        const endTimeStr = assignment.customEndTimeStr ?? assignment.job?.endTimeStr;
-        let assignedH = 0;
-        if (startTimeStr && endTimeStr) {
-            const [sh, sm] = startTimeStr.split(":").map(Number);
-            const [eh, em] = endTimeStr.split(":").map(Number);
-            let durationMins = (eh * 60 + em) - (sh * 60 + sm);
-            if (durationMins < 0) durationMins += 24 * 60;
-            assignedH = durationMins / 60;
-        }
+        const assignedH = computeAssignedHours(assignment);
 
         totalWorkedHours += workedH;
         totalAssignedHours += assignedH;

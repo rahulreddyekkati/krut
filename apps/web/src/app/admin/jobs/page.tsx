@@ -30,14 +30,31 @@ interface Store {
 
 interface ShiftByDate {
     id: string;
+    jobId: string;
     assignmentId: string | null;
+    workerId: string | null;
+    status: string | null;
+    requestedWorkerId: string | null;
     storeName: string;
+    storeId: string;
     startTime: string;
     endTime: string;
     marketName: string;
     marketId: string | null;
     assignedWorker: string;
+    date: string | null;
 }
+
+interface Worker {
+    id: string;
+    name: string;
+    email: string;
+    marketId: string | null;
+}
+
+// Composite key for row selection/busy-state maps: assignmentId when the row already
+// has one, else a jobId+date pair (Unassigned rows have no assignmentId).
+const rowKey = (shift: ShiftByDate) => shift.assignmentId ?? `${shift.jobId}-${shift.date ?? "recurring"}`;
 
 export default function AdminJobsPage() {
     const [jobs, setJobs] = useState<Job[]>([]);
@@ -55,15 +72,17 @@ export default function AdminJobsPage() {
     const [editInProgressWorkers, setEditInProgressWorkers] = useState<string[]>([]);
 
     const [activeTab, setActiveTab] = useState<"all" | "byDate">("all");
-    const [selectedDate, setSelectedDate] = useState(() => {
-        const d = new Date();
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, "0");
-        const day = String(d.getDate()).padStart(2, "0");
-        return `${y}-${m}-${day}`;
-    });
+    const [selectedStore, setSelectedStore] = useState<string>("all");
     const [shiftsByDate, setShiftsByDate] = useState<ShiftByDate[]>([]);
     const [loadingByDate, setLoadingByDate] = useState(false);
+
+    // By Date: bulk/per-row targeted "Request" and "Assign"
+    const [workers, setWorkers] = useState<Worker[]>([]);
+    const [selectedRows, setSelectedRows] = useState<Map<string, ShiftByDate>>(new Map());
+    const [bulkWorkerId, setBulkWorkerId] = useState("");
+    const [bulkBusy, setBulkBusy] = useState(false);
+    const [perRowWorkerId, setPerRowWorkerId] = useState<Record<string, string>>({});
+    const [rowBusy, setRowBusy] = useState<Record<string, "assign" | "request" | undefined>>({});
 
     const [formData, setFormData] = useState({
         title: "",
@@ -80,24 +99,44 @@ export default function AdminJobsPage() {
         fetchData();
     }, []);
 
+    const fetchByDate = async () => {
+        setLoadingByDate(true);
+        try {
+            // scope=upcoming: only specific-date jobs (not recurring templates), today or later.
+            const res = await fetch(`/api/admin/dashboard-details?type=jobs&scope=upcoming`, {
+                headers: {
+                    "x-timezone": Intl.DateTimeFormat().resolvedOptions().timeZone,
+                    "x-timezone-offset": new Date().getTimezoneOffset().toString()
+                }
+            });
+            if (res.ok) {
+                const { data } = await res.json();
+                setShiftsByDate(data || []);
+            }
+        } catch (err) {
+            setError("Failed to fetch shifts");
+        } finally {
+            setLoadingByDate(false);
+        }
+    };
+
     useEffect(() => {
         if (activeTab !== "byDate") return;
-        const fetchByDate = async () => {
-            setLoadingByDate(true);
-            try {
-                const res = await fetch(`/api/admin/dashboard-details?type=jobs&date=${selectedDate}`);
-                if (res.ok) {
-                    const { data } = await res.json();
-                    setShiftsByDate(data || []);
-                }
-            } catch (err) {
-                setError("Failed to fetch shifts for this date");
-            } finally {
-                setLoadingByDate(false);
-            }
-        };
         fetchByDate();
-    }, [activeTab, selectedDate]);
+        if (workers.length === 0) {
+            fetch("/api/users/workers")
+                .then(r => r.json())
+                .then(d => setWorkers(Array.isArray(d) ? d : []))
+                .catch(() => {});
+        }
+    }, [activeTab]);
+
+    // Switching markets can leave selectedStore pointing at a store that doesn't
+    // belong to the new market (or doesn't exist in its dropdown options at all) --
+    // reset back to "all" so the table doesn't silently show an empty/stale result.
+    useEffect(() => {
+        setSelectedStore("all");
+    }, [selectedMarket]);
 
     // When market changes, filter stores
     useEffect(() => {
@@ -265,10 +304,172 @@ export default function AdminJobsPage() {
         return jobs.filter(job => job.marketId === selectedMarket);
     }, [jobs, selectedMarket]);
 
+    // Store picker options, narrowed to the currently selected market -- same
+    // cascading UX the create-job form's own store picker already uses.
+    const storesForByDate = useMemo(() => {
+        if (selectedMarket === "all") return stores;
+        return stores.filter(s => s.marketId === selectedMarket);
+    }, [stores, selectedMarket]);
+
+    // Effective market for the bulk worker picker: prefer the selected store's own
+    // market (Store.marketId is a required schema field, so a *found* store always has
+    // one) over the market filter, so picking "Store A" narrows the worker list even
+    // when "All Markets" is still selected. Falls back to the market filter if the
+    // selected store id isn't in the current `stores` list (stale selection after a
+    // refetch) rather than silently showing every worker system-wide.
+    const effectiveByDateMarketId = useMemo(() => {
+        if (selectedStore !== "all") {
+            const store = stores.find(s => s.id === selectedStore);
+            if (store) return store.marketId;
+        }
+        return selectedMarket !== "all" ? selectedMarket : null;
+    }, [selectedStore, selectedMarket, stores]);
+
+    // Worker picker options for the bulk request bar, narrowed by the effective market.
+    const workersForByDate = useMemo(() => {
+        if (!effectiveByDateMarketId) return workers;
+        return workers.filter(w => w.marketId === effectiveByDateMarketId);
+    }, [workers, effectiveByDateMarketId]);
+
     const filteredShiftsByDate = useMemo(() => {
-        if (selectedMarket === "all") return shiftsByDate;
-        return shiftsByDate.filter(s => s.marketId === selectedMarket);
-    }, [shiftsByDate, selectedMarket]);
+        return shiftsByDate
+            .filter(s => selectedMarket === "all" || s.marketId === selectedMarket)
+            .filter(s => selectedStore === "all" || s.storeId === selectedStore)
+            .sort((a, b) => {
+                // Dated rows chronologically ascending; recurring templates (no
+                // materialized date yet) grouped last.
+                if (!a.date && !b.date) return 0;
+                if (!a.date) return 1;
+                if (!b.date) return -1;
+                return a.date.localeCompare(b.date);
+            });
+    }, [shiftsByDate, selectedMarket, selectedStore]);
+
+    // Status marker for a By Date row: Unassigned (no assignment yet) / Requested
+    // (AVAILABLE + targeted invite pending) / Released (AVAILABLE, open to whole
+    // market — the pre-existing organic-release case) / Assigned (otherwise).
+    const getShiftMarker = (shift: ShiftByDate): { label: string; bg: string; color: string } => {
+        if (!shift.assignmentId) return { label: "Unassigned", bg: "#fee2e2", color: "#991b1b" };
+        if (shift.status === "AVAILABLE" && shift.requestedWorkerId) {
+            return { label: `Requested — ${shift.assignedWorker}`, bg: "#fef3c7", color: "#92400e" };
+        }
+        if (shift.status === "AVAILABLE") {
+            return { label: `Released — ${shift.assignedWorker}`, bg: "#fef3c7", color: "#92400e" };
+        }
+        return { label: `Assigned — ${shift.assignedWorker}`, bg: "#d1fae5", color: "#065f46" };
+    };
+
+    const toggleRow = (shift: ShiftByDate) => {
+        if (!shift.date) return; // recurring templates aren't selectable
+        setSelectedRows(prev => {
+            const next = new Map(prev);
+            const key = rowKey(shift);
+            if (next.has(key)) next.delete(key);
+            else next.set(key, shift);
+            return next;
+        });
+    };
+
+    const selectableRows = useMemo(() => filteredShiftsByDate.filter(s => !!s.date), [filteredShiftsByDate]);
+    const allSelected = selectableRows.length > 0 && selectableRows.every(s => selectedRows.has(rowKey(s)));
+
+    const toggleSelectAll = () => {
+        setSelectedRows(prev => {
+            if (allSelected) return new Map();
+            const next = new Map(prev);
+            selectableRows.forEach(s => next.set(rowKey(s), s));
+            return next;
+        });
+    };
+
+    const summarizeResults = (results: Array<{ success: boolean; reason?: string }>) => {
+        const succeeded = results.filter(r => r.success).length;
+        const skipped = results.length - succeeded;
+        if (skipped === 0) return `${succeeded} requested.`;
+        const reasons = Array.from(new Set(results.filter(r => !r.success).map(r => r.reason).filter(Boolean)));
+        return `${succeeded} requested, ${skipped} skipped${reasons.length ? ` (${reasons.join("; ")})` : ""}.`;
+    };
+
+    const handleBulkRequest = async () => {
+        if (!bulkWorkerId || selectedRows.size === 0) return;
+        setBulkBusy(true);
+        try {
+            const items = Array.from(selectedRows.values()).map(s => ({ jobId: s.jobId, date: s.date, assignmentId: s.assignmentId }));
+            const res = await fetch("/api/admin/jobs/by-date/request", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ items, workerId: bulkWorkerId })
+            });
+            const d = await res.json();
+            if (res.ok) {
+                alert(summarizeResults(d.results || []));
+                setSelectedRows(new Map());
+                fetchByDate();
+            } else {
+                alert(d.error || "Failed to send requests");
+            }
+        } catch {
+            alert("Network error");
+        } finally {
+            setBulkBusy(false);
+        }
+    };
+
+    const handleRowRequest = async (shift: ShiftByDate) => {
+        const key = rowKey(shift);
+        const workerId = perRowWorkerId[key];
+        if (!workerId) return alert("Select a worker first");
+        setRowBusy(prev => ({ ...prev, [key]: "request" }));
+        try {
+            const res = await fetch("/api/admin/jobs/by-date/request", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ items: [{ jobId: shift.jobId, date: shift.date, assignmentId: shift.assignmentId }], workerId })
+            });
+            const d = await res.json();
+            if (res.ok) {
+                alert(summarizeResults(d.results || []));
+                fetchByDate();
+            } else {
+                alert(d.error || "Failed to send request");
+            }
+        } catch {
+            alert("Network error");
+        } finally {
+            setRowBusy(prev => ({ ...prev, [key]: undefined }));
+        }
+    };
+
+    const handleRowAssign = async (shift: ShiftByDate) => {
+        const key = rowKey(shift);
+        const workerId = perRowWorkerId[key];
+        if (!workerId) return alert("Select a worker first");
+        setRowBusy(prev => ({ ...prev, [key]: "assign" }));
+        try {
+            const res = shift.assignmentId && shift.status === "AVAILABLE"
+                ? await fetch(`/api/users/${workerId}/assignments`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ assignmentId: shift.assignmentId, directAssign: true, newWorkerId: workerId })
+                })
+                : await fetch(`/api/users/${workerId}/assignments`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ jobId: shift.jobId, date: shift.date })
+                });
+            if (res.ok) {
+                alert("Shift assigned successfully");
+                fetchByDate();
+            } else {
+                const d = await res.json();
+                alert(d.error || "Failed to assign");
+            }
+        } catch {
+            alert("Network error");
+        } finally {
+            setRowBusy(prev => ({ ...prev, [key]: undefined }));
+        }
+    };
 
     return (
         <div className={styles.container}>
@@ -321,45 +522,91 @@ export default function AdminJobsPage() {
 
             {activeTab === "byDate" && (
                 <div>
-                    <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "1rem" }}>
-                        <input
-                            type="date"
-                            value={selectedDate}
-                            onChange={(e) => setSelectedDate(e.target.value)}
-                            style={{
-                                padding: "0.5rem 1rem",
-                                borderRadius: "10px",
-                                border: "1px solid #e5e7eb",
-                                fontSize: "0.875rem",
-                                fontWeight: 600,
-                                color: "#374151",
-                                background: "white",
-                            }}
-                        />
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "0.75rem" }}>
+                        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                            <select
+                                value={bulkWorkerId}
+                                onChange={(e) => setBulkWorkerId(e.target.value)}
+                                className="input"
+                                style={{ width: "auto", minWidth: "180px", padding: "0.5rem 0.75rem", fontSize: "0.875rem", height: "38px" }}
+                            >
+                                <option value="">Select worker...</option>
+                                {workersForByDate.map(w => (
+                                    <option key={w.id} value={w.id}>{w.name}</option>
+                                ))}
+                            </select>
+                            <button
+                                onClick={handleBulkRequest}
+                                disabled={!bulkWorkerId || selectedRows.size === 0 || bulkBusy}
+                                className="btn"
+                                style={{
+                                    padding: "0.5rem 1rem", background: "white", color: "#4f46e5",
+                                    border: "1.5px solid #4f46e5", borderRadius: "8px", fontWeight: 600,
+                                    fontSize: "0.875rem", height: "38px",
+                                    opacity: !bulkWorkerId || selectedRows.size === 0 || bulkBusy ? 0.6 : 1
+                                }}
+                            >
+                                {bulkBusy ? "Requesting..." : `Request${selectedRows.size > 0 ? ` (${selectedRows.size})` : ""}`}
+                            </button>
+                        </div>
+                        <select
+                            value={selectedStore}
+                            onChange={(e) => setSelectedStore(e.target.value)}
+                            className="input"
+                            style={{ width: "auto", minWidth: "160px", padding: "0.5rem 0.75rem", fontSize: "0.875rem", height: "38px" }}
+                        >
+                            <option value="all">All Stores</option>
+                            {storesForByDate.map(s => (
+                                <option key={s.id} value={s.id}>{s.name}</option>
+                            ))}
+                        </select>
                     </div>
                     <div className={styles.tableWrapper}>
                         <table className={styles.table}>
                             <thead>
                                 <tr>
+                                    <th>
+                                        <input
+                                            type="checkbox"
+                                            checked={allSelected}
+                                            onChange={toggleSelectAll}
+                                            aria-label="Select all shifts"
+                                        />
+                                    </th>
                                     <th>Store</th>
                                     <th>Market</th>
+                                    <th>Date</th>
                                     <th>Start Time</th>
                                     <th>End Time</th>
                                     <th>Assignment Status</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {loadingByDate ? (
-                                    <tr><td colSpan={5} className="text-center" style={{ padding: "3rem" }}>Loading shifts...</td></tr>
+                                    <tr><td colSpan={8} className="text-center" style={{ padding: "3rem" }}>Loading shifts...</td></tr>
                                 ) : filteredShiftsByDate.length === 0 ? (
-                                    <tr><td colSpan={5} className="text-center" style={{ padding: "3rem" }}>No shifts scheduled for this date.</td></tr>
+                                    <tr><td colSpan={8} className="text-center" style={{ padding: "3rem" }}>No shifts found.</td></tr>
                                 ) : (
                                     filteredShiftsByDate.map(shift => {
-                                        const isAssigned = shift.assignedWorker !== "Unassigned";
+                                        const marker = getShiftMarker(shift);
+                                        const key = rowKey(shift);
+                                        const rowWorkers = workers.filter(w => w.marketId === shift.marketId);
+                                        const busy = rowBusy[key];
                                         return (
-                                            <tr key={shift.assignmentId ?? shift.id} className="animate-fade-in">
+                                            <tr key={key} className="animate-fade-in">
+                                                <td>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedRows.has(key)}
+                                                        onChange={() => toggleRow(shift)}
+                                                        disabled={!shift.date}
+                                                        title={!shift.date ? "Select a specific date to request/assign this shift" : undefined}
+                                                    />
+                                                </td>
                                                 <td><strong>{shift.storeName}</strong></td>
                                                 <td>{shift.marketName}</td>
+                                                <td>{shift.date ? new Date(shift.date).toLocaleDateString(undefined, { timeZone: "UTC", month: "short", day: "numeric", year: "numeric" }) : "Recurring"}</td>
                                                 <td>{to12hr(shift.startTime)}</td>
                                                 <td>{to12hr(shift.endTime)}</td>
                                                 <td>
@@ -368,13 +615,52 @@ export default function AdminJobsPage() {
                                                         borderRadius: "99px",
                                                         fontSize: "0.7rem",
                                                         fontWeight: 700,
-                                                        background: isAssigned ? "#d1fae5" : "#fee2e2",
-                                                        color: isAssigned ? "#065f46" : "#991b1b",
+                                                        background: marker.bg,
+                                                        color: marker.color,
                                                         textTransform: "uppercase",
                                                         letterSpacing: "0.03em",
                                                     }}>
-                                                        {isAssigned ? `Assigned — ${shift.assignedWorker}` : "Unassigned"}
+                                                        {marker.label}
                                                     </span>
+                                                </td>
+                                                <td>
+                                                    <div style={{ display: "flex", gap: "0.4rem", alignItems: "center", flexWrap: "wrap" }}>
+                                                        <select
+                                                            value={perRowWorkerId[key] || ""}
+                                                            onChange={e => setPerRowWorkerId(prev => ({ ...prev, [key]: e.target.value }))}
+                                                            disabled={!shift.date}
+                                                            style={{ padding: "0.4rem", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "0.8rem" }}
+                                                        >
+                                                            <option value="">Select worker...</option>
+                                                            {rowWorkers.map(w => (
+                                                                <option key={w.id} value={w.id}>{w.name}</option>
+                                                            ))}
+                                                        </select>
+                                                        <button
+                                                            onClick={() => handleRowAssign(shift)}
+                                                            disabled={!shift.date || !perRowWorkerId[key] || !!busy}
+                                                            style={{
+                                                                padding: "0.4rem 0.75rem", background: "#6366f1", color: "white",
+                                                                border: "none", borderRadius: "8px", fontWeight: 600,
+                                                                cursor: "pointer", fontSize: "0.8rem",
+                                                                opacity: !shift.date || !perRowWorkerId[key] || !!busy ? 0.6 : 1
+                                                            }}
+                                                        >
+                                                            {busy === "assign" ? "Assigning..." : "Assign"}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleRowRequest(shift)}
+                                                            disabled={!shift.date || !perRowWorkerId[key] || !!busy}
+                                                            style={{
+                                                                padding: "0.4rem 0.75rem", background: "white", color: "#4f46e5",
+                                                                border: "1.5px solid #4f46e5", borderRadius: "8px", fontWeight: 600,
+                                                                cursor: "pointer", fontSize: "0.8rem",
+                                                                opacity: !shift.date || !perRowWorkerId[key] || !!busy ? 0.6 : 1
+                                                            }}
+                                                        >
+                                                            {busy === "request" ? "Sending..." : "Request"}
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         );

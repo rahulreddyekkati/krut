@@ -193,7 +193,7 @@ export async function PATCH(
             }
             const updated = await prisma.jobAssignment.update({
                 where: { id: assignmentId },
-                data: { workerId: newWorkerId, status: "ASSIGNED", releasedByWorkerId: null }
+                data: { workerId: newWorkerId, status: "ASSIGNED", releasedByWorkerId: null, requestedWorkerId: null }
             });
             // Deny any pending ShiftRequests for this assignment
             await prisma.shiftRequest.updateMany({

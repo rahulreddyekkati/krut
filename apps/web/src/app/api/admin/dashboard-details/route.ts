@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { resolveTimezone, toLocalDateStr } from "@/lib/timezone";
 
 export async function GET(request: NextRequest) {
     try {
@@ -49,9 +50,29 @@ export async function GET(request: NextRequest) {
         }
 
         if (type === "jobs") {
+            // "By Date" tab (Job Scheduling) opts into this via scope=upcoming: only
+            // shifts from Jobs created with a specific date (Job.date != null, i.e. not a
+            // recurring template) that are today-or-later. Deliberately structured as an
+            // if/else-if with the existing dateParam branch below (not a blind spread) so
+            // the two modes can't silently combine if a future caller ever sent both --
+            // Admin Dashboard / mobile AdminDashboard always pass `date` and rely on the
+            // dateParam branch including recurring-template jobs whose assignments
+            // materialize on that date, which must keep working unchanged.
+            const upcomingSpecificDatesOnly = request.nextUrl.searchParams.get("scope") === "upcoming";
+
+            let jobWhere: any = { ...whereJob };
+            if (upcomingSpecificDatesOnly) {
+                const tz = resolveTimezone(request);
+                const todayStr = toLocalDateStr(new Date(), tz);
+                const todayUTCMidnight = new Date(`${todayStr}T00:00:00.000Z`);
+                jobWhere.date = { not: null, gte: todayUTCMidnight };
+            } else if (dateParam) {
+                jobWhere = { ...jobWhere, ...dateFilter };
+            }
+
             // Total Jobs: show each job with store name, start/end time, market, assigned worker
             const jobs = await prisma.job.findMany({
-                where: { ...whereJob, ...dateFilter },
+                where: jobWhere,
                 include: {
                     store: {
                         include: {
@@ -85,6 +106,8 @@ export async function GET(request: NextRequest) {
                         id: job.id,
                         assignmentId: null,
                         workerId: null,
+                        status: null,
+                        requestedWorkerId: null,
                         storeName: job.store.name,
                         startTime: job.startTimeStr || "--",
                         endTime: job.endTimeStr || "--",
@@ -95,6 +118,7 @@ export async function GET(request: NextRequest) {
                         marketId: job.store.market?.id || null,
                         storeId: job.storeId,
                         jobId: job.id,
+                        date: job.date ? job.date.toISOString() : null,
                     }];
                 }
 
@@ -140,6 +164,8 @@ export async function GET(request: NextRequest) {
                     id: job.id,
                     assignmentId: a.id,
                     workerId: a.workerId,
+                    status: a.status,
+                    requestedWorkerId: a.requestedWorkerId,
                     storeName: job.store.name,
                     startTime: a.customStartTimeStr || job.startTimeStr || "--",
                     endTime: a.customEndTimeStr || job.endTimeStr || "--",
@@ -150,6 +176,7 @@ export async function GET(request: NextRequest) {
                     marketId: job.store.market?.id || null,
                     storeId: job.storeId,
                     jobId: job.id,
+                    date: a.date ? a.date.toISOString() : null,
                 }));
             });
 

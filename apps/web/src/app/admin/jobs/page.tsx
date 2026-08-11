@@ -82,6 +82,7 @@ export default function AdminJobsPage() {
     const [bulkWorkerId, setBulkWorkerId] = useState("");
     const [bulkBusy, setBulkBusy] = useState(false);
     const [perRowWorkerId, setPerRowWorkerId] = useState<Record<string, string>>({});
+    const [perRowBrand, setPerRowBrand] = useState<Record<string, string>>({});
     const [rowBusy, setRowBusy] = useState<Record<string, "assign" | "request" | undefined>>({});
 
     const [formData, setFormData] = useState({
@@ -444,18 +445,20 @@ export default function AdminJobsPage() {
         const key = rowKey(shift);
         const workerId = perRowWorkerId[key];
         if (!workerId) return alert("Select a worker first");
+        const brand = perRowBrand[key];
+        if (!brand) return alert("Select a brand first");
         setRowBusy(prev => ({ ...prev, [key]: "assign" }));
         try {
             const res = shift.assignmentId && shift.status === "AVAILABLE"
                 ? await fetch(`/api/users/${workerId}/assignments`, {
                     method: "PATCH",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ assignmentId: shift.assignmentId, directAssign: true, newWorkerId: workerId })
+                    body: JSON.stringify({ assignmentId: shift.assignmentId, directAssign: true, newWorkerId: workerId, brandAllocation: brand })
                 })
                 : await fetch(`/api/users/${workerId}/assignments`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ jobId: shift.jobId, date: shift.date })
+                    body: JSON.stringify({ jobId: shift.jobId, date: shift.date, brandAllocation: brand })
                 });
             if (res.ok) {
                 alert("Shift assigned successfully");
@@ -636,14 +639,26 @@ export default function AdminJobsPage() {
                                                                 <option key={w.id} value={w.id}>{w.name}</option>
                                                             ))}
                                                         </select>
+                                                        <select
+                                                            value={perRowBrand[key] || ""}
+                                                            onChange={e => setPerRowBrand(prev => ({ ...prev, [key]: e.target.value }))}
+                                                            disabled={!shift.date}
+                                                            title="Which brand is this shift being assigned for?"
+                                                            style={{ padding: "0.4rem", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "0.8rem" }}
+                                                        >
+                                                            <option value="">Select brand...</option>
+                                                            <option value="KRUTO">Kruto</option>
+                                                            <option value="MULUK">Muluk</option>
+                                                            <option value="BOTH">Both</option>
+                                                        </select>
                                                         <button
                                                             onClick={() => handleRowAssign(shift)}
-                                                            disabled={!shift.date || !perRowWorkerId[key] || !!busy}
+                                                            disabled={!shift.date || !perRowWorkerId[key] || !perRowBrand[key] || !!busy}
                                                             style={{
                                                                 padding: "0.4rem 0.75rem", background: "#6366f1", color: "white",
                                                                 border: "none", borderRadius: "8px", fontWeight: 600,
                                                                 cursor: "pointer", fontSize: "0.8rem",
-                                                                opacity: !shift.date || !perRowWorkerId[key] || !!busy ? 0.6 : 1
+                                                                opacity: !shift.date || !perRowWorkerId[key] || !perRowBrand[key] || !!busy ? 0.6 : 1
                                                             }}
                                                         >
                                                             {busy === "assign" ? "Assigning..." : "Assign"}

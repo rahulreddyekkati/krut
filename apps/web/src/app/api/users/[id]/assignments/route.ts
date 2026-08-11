@@ -179,7 +179,7 @@ export async function PATCH(
 
         const { id: targetWorkerId } = await context.params;
         const body = await request.json();
-        const { assignmentId, customStartTimeStr, customEndTimeStr, directAssign, newWorkerId } = body;
+        const { assignmentId, customStartTimeStr, customEndTimeStr, directAssign, newWorkerId, brandAllocation } = body;
 
         if (!assignmentId) {
             return NextResponse.json({ error: "Missing assignmentId" }, { status: 400 });
@@ -187,13 +187,24 @@ export async function PATCH(
 
         // Admin direct-assign: transfer AVAILABLE assignment to a different worker
         if (directAssign && newWorkerId) {
+            const ALLOWED_BRAND_ALLOCATIONS = ["KRUTO", "MULUK", "BOTH"];
+            if (brandAllocation !== undefined && brandAllocation !== null && brandAllocation !== "" && !ALLOWED_BRAND_ALLOCATIONS.includes(brandAllocation)) {
+                return NextResponse.json({ error: "Invalid brandAllocation" }, { status: 400 });
+            }
+
             const assignment = await prisma.jobAssignment.findUnique({ where: { id: assignmentId } });
             if (!assignment || assignment.status !== "AVAILABLE") {
                 return NextResponse.json({ error: "Assignment not available for direct assignment" }, { status: 400 });
             }
             const updated = await prisma.jobAssignment.update({
                 where: { id: assignmentId },
-                data: { workerId: newWorkerId, status: "ASSIGNED", releasedByWorkerId: null, requestedWorkerId: null }
+                data: {
+                    workerId: newWorkerId,
+                    status: "ASSIGNED",
+                    releasedByWorkerId: null,
+                    requestedWorkerId: null,
+                    brandAllocation: brandAllocation || undefined
+                }
             });
             // Deny any pending ShiftRequests for this assignment
             await prisma.shiftRequest.updateMany({

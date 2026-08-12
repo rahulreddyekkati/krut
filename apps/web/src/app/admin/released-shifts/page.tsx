@@ -7,6 +7,7 @@ export default function ReleasedShiftsPage() {
     const [assignments, setAssignments] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [assigning, setAssigning] = useState<string | null>(null);
+    const [requesting, setRequesting] = useState<string | null>(null);
     const [workers, setWorkers] = useState<any[]>([]);
     const [selectedWorker, setSelectedWorker] = useState<Record<string, string>>({});
 
@@ -56,6 +57,29 @@ export default function ReleasedShiftsPage() {
             alert("Network error");
         } finally {
             setAssigning(null);
+        }
+    };
+
+    const handleRequestInterest = async (assignment: any) => {
+        const workerId = selectedWorker[assignment.id];
+        if (!workerId) return alert("Select a worker first");
+        setRequesting(assignment.id);
+        try {
+            const res = await fetch("/api/admin/released-shifts/request", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ assignmentId: assignment.id, workerId })
+            });
+            const d = await res.json();
+            if (res.ok) {
+                alert(d.deduped ? "Already asked this worker recently — no new notification sent." : "Notification sent to worker");
+            } else {
+                alert(d.error || "Failed to send notification");
+            }
+        } catch {
+            alert("Network error");
+        } finally {
+            setRequesting(null);
         }
     };
 
@@ -115,6 +139,18 @@ export default function ReleasedShiftsPage() {
                                             }}
                                         >
                                             {assigning === a.id ? "Assigning..." : "Assign"}
+                                        </button>
+                                        <button
+                                            onClick={() => handleRequestInterest(a)}
+                                            disabled={requesting === a.id || !selectedWorker[a.id]}
+                                            style={{
+                                                padding: "0.5rem 1rem", background: "white", color: "#4f46e5",
+                                                border: "1.5px solid #4f46e5", borderRadius: "8px", fontWeight: 600,
+                                                cursor: "pointer", fontSize: "0.875rem",
+                                                opacity: requesting === a.id || !selectedWorker[a.id] ? 0.6 : 1
+                                            }}
+                                        >
+                                            {requesting === a.id ? "Sending..." : "Request"}
                                         </button>
                                     </div>
                                 </div>

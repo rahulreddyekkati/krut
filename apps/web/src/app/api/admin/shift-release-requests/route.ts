@@ -70,6 +70,34 @@ export async function GET(request: NextRequest) {
                     continue; // Skip adding to list
                 }
             }
+
+            // Auto-cancel orphaned requests: the underlying JobAssignment can
+            // disappear out from under a pending request if an admin resolves
+            // the shift directly (delete assignment, bulk pattern-delete, direct
+            // reassign) instead of going through this Approve/Reject flow. Same
+            // "CANCELLED" convention already used for stale requests when a
+            // worker is deactivated (see api/users/[id]/route.ts).
+            let assignmentExists = false;
+            if (req.assignmentId) {
+                const a = await prisma.jobAssignment.findUnique({ where: { id: req.assignmentId }, select: { id: true } });
+                assignmentExists = !!a;
+            } else if (req.date) {
+                const dayStart = new Date(req.date); dayStart.setUTCHours(0, 0, 0, 0);
+                const dayEnd = new Date(req.date); dayEnd.setUTCHours(23, 59, 59, 999);
+                const a = await prisma.jobAssignment.findFirst({
+                    where: { jobId: req.jobId, workerId: req.workerId, date: { gte: dayStart, lte: dayEnd } },
+                    select: { id: true }
+                });
+                assignmentExists = !!a;
+            }
+            if (!assignmentExists) {
+                await prisma.releaseRequest.update({
+                    where: { id: req.id },
+                    data: { status: "CANCELLED" }
+                });
+                continue; // Skip adding to list
+            }
+
             validRequests.push(req);
         }
 

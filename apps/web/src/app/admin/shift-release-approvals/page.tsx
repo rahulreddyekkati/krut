@@ -76,7 +76,13 @@ function ShiftReleaseApprovalsPageInner() {
                 // Optimistically remove from list
                 setRequests(prev => prev.filter(req => req.id !== id));
             } else {
-                alert(`Failed to ${action} request`);
+                const d = await res.json().catch(() => null);
+                alert(d?.error || `Failed to ${action} request`);
+                // The server may have self-healed (e.g. cleared a stale request
+                // whose assignment no longer exists) even though this call
+                // returned an error -- refetch so the list reflects reality
+                // instead of leaving a now-resolved card stuck on screen.
+                fetchRequests();
             }
         } catch (error) {
             console.error(error);

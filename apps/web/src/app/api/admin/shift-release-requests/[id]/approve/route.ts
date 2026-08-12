@@ -45,7 +45,18 @@ export async function POST(
         }
 
         if (!assignment) {
-            return NextResponse.json({ error: "Associated assignment not found" }, { status: 404 });
+            // The assignment this request was for is gone -- most likely an admin
+            // resolved it directly (deleted the assignment, bulk-removed the
+            // weekday pattern, or reassigned the shift to someone else) instead of
+            // going through this Approve/Reject flow. Self-heal instead of leaving
+            // the request stuck PENDING forever for every future approve attempt.
+            await prisma.releaseRequest.update({
+                where: { id: requestId },
+                data: { status: "CANCELLED" }
+            });
+            return NextResponse.json({
+                error: "This shift was already reassigned outside the release-approval flow — the stale request has been cleared."
+            }, { status: 404 });
         }
 
         const dateLabel = releaseRequest.date

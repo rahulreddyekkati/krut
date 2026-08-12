@@ -211,6 +211,14 @@ export async function PATCH(
                 where: { assignmentId, status: "PENDING" },
                 data: { status: "DENIED" }
             });
+            // Cancel any pending ReleaseRequest for this assignment too -- it's
+            // being reassigned directly, so a stale release request left PENDING
+            // would otherwise point at an assignment that's moved to a different
+            // worker and permanently fail to approve.
+            await prisma.releaseRequest.updateMany({
+                where: { assignmentId, status: "PENDING" },
+                data: { status: "CANCELLED" }
+            });
             return NextResponse.json({ success: true, assignment: updated });
         }
 
@@ -313,6 +321,17 @@ export async function DELETE(
                 .map(a => a.id)
                 .filter(id => !toDeleteIds.includes(id));
 
+            // Cancel any pending ReleaseRequests pointing at assignments we're about
+            // to delete -- otherwise they'd be left PENDING forever, referencing an
+            // assignment that no longer exists (see api/jobs/[id]/route.ts, which
+            // does the same cleanup on full Job delete).
+            if (toDeleteIds.length > 0) {
+                await prisma.releaseRequest.updateMany({
+                    where: { assignmentId: { in: toDeleteIds }, status: "PENDING" },
+                    data: { status: "CANCELLED" }
+                });
+            }
+
             await prisma.jobAssignment.deleteMany({ where: { id: { in: toDeleteIds } } });
             if (toUpdateIds.length > 0) {
                 await prisma.jobAssignment.updateMany({
@@ -344,6 +363,13 @@ export async function DELETE(
                 { status: 409 }
             );
         }
+
+        // Cancel any pending ReleaseRequest for this assignment before it's gone,
+        // same reasoning as the pattern bulk-delete path above.
+        await prisma.releaseRequest.updateMany({
+            where: { assignmentId, status: "PENDING" },
+            data: { status: "CANCELLED" }
+        });
 
         await prisma.jobAssignment.delete({
             where: { id: assignmentId }

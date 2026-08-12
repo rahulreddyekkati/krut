@@ -94,6 +94,52 @@ export async function sendShiftAssignedEmail(
     }
 }
 
+export async function sendShiftInterestRequestEmail(
+    email: string,
+    storeName: string,
+    dateLabel: string,
+    startTime: string,
+    endTime: string
+): Promise<boolean> {
+    const transporter = createTransporter();
+    const from = process.env.SMTP_FROM || '"Kruto Tastes" <noreply@krutotastes.com>';
+    if (!transporter) {
+        console.warn("⚠️ SMTP not configured. Skipping shift interest request email.");
+        return false;
+    }
+    try {
+        const start12 = to12hr(startTime);
+        const end12 = to12hr(endTime);
+        const subject = `Shift Available: ${storeName}`;
+        const textBody = `Hello!\n\nAre you interested in picking up this shift at ${storeName} on ${dateLabel}, ${start12} – ${end12}?\n\nOpen the Kruto Tastes app if you'd like to claim it.\n\nThe Kruto Tastes Team`;
+        const htmlBody = `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 32px 24px; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px;">
+                <div style="text-align: center; margin-bottom: 28px;">
+                    <span style="font-size: 28px; font-weight: 800; letter-spacing: -0.025em; color: #0f172a; text-transform: uppercase;">Kruto Tastes</span>
+                </div>
+                <p style="color: #0f172a; font-size: 18px; font-weight: 600; margin-top: 0; margin-bottom: 16px;">Interested in this shift?</p>
+                <p style="color: #334155; font-size: 15px; line-height: 24px; margin-top: 0; margin-bottom: 24px;">
+                    A shift at <strong style="color: #0f172a;">${storeName}</strong> on <strong style="color: #0f172a;">${dateLabel}</strong> is open and looking for someone to pick it up.
+                </p>
+                <div style="background-color: #eef2ff; border-left: 4px solid #4f46e5; padding: 14px 16px; border-radius: 4px; margin-bottom: 24px;">
+                    <p style="color: #3730a3; font-size: 15px; font-weight: 600; margin: 0;">🕐 ${start12} – ${end12}</p>
+                </div>
+                <p style="color: #334155; font-size: 15px; line-height: 24px; margin-top: 0; margin-bottom: 24px;">
+                    If you're interested, open the Kruto Tastes app to claim the shift.
+                </p>
+                <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; color: #64748b; font-size: 14px;">
+                    <p style="margin: 0 0 4px 0;">Thank you,</p>
+                    <p style="margin: 0; font-weight: 600; color: #475569;">The Kruto Tastes Team</p>
+                </div>
+            </div>`;
+        await transporter.sendMail({ from, to: email, subject, text: textBody, html: htmlBody });
+        return true;
+    } catch (error) {
+        console.error(`❌ Failed to send shift interest request email to ${email}:`, error);
+        return false;
+    }
+}
+
 export async function sendShiftTimeChangedEmail(
     email: string,
     storeName: string,
@@ -136,6 +182,108 @@ export async function sendShiftTimeChangedEmail(
         return true;
     } catch (error) {
         console.error(`❌ Failed to send shift time changed email to ${email}:`, error);
+        return false;
+    }
+}
+
+export async function sendShiftReleaseRequestedEmail(
+    email: string,
+    workerName: string,
+    storeName: string,
+    dateLabel: string,
+    startTime: string,
+    endTime: string,
+    reason: string,
+    reviewUrl: string
+): Promise<boolean> {
+    const transporter = createTransporter();
+    const from = process.env.SMTP_FROM || '"Kruto Tastes" <noreply@krutotastes.com>';
+    if (!transporter) {
+        console.warn("⚠️ SMTP not configured. Skipping shift release requested email.");
+        return false;
+    }
+    try {
+        const start12 = to12hr(startTime);
+        const end12 = to12hr(endTime);
+        const subject = `Shift Release Request: ${storeName}`;
+        const textBody = `Hello!\n\n${workerName} has requested to release their shift at ${storeName} on ${dateLabel}, ${start12} – ${end12}.\n\nReason: ${reason}\n\nReview this request: ${reviewUrl}\n\nThe Kruto Tastes Team`;
+        const htmlBody = `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 32px 24px; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px;">
+                <div style="text-align: center; margin-bottom: 28px;">
+                    <span style="font-size: 28px; font-weight: 800; letter-spacing: -0.025em; color: #0f172a; text-transform: uppercase;">Kruto Tastes</span>
+                </div>
+                <p style="color: #0f172a; font-size: 18px; font-weight: 600; margin-top: 0; margin-bottom: 16px;">Shift Release Request</p>
+                <p style="color: #334155; font-size: 15px; line-height: 24px; margin-top: 0; margin-bottom: 24px;">
+                    <strong style="color: #0f172a;">${workerName}</strong> has requested to release their shift at <strong style="color: #0f172a;">${storeName}</strong> on <strong style="color: #0f172a;">${dateLabel}</strong>.
+                </p>
+                <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 14px 16px; border-radius: 4px; margin-bottom: 24px;">
+                    <p style="color: #92400e; font-size: 15px; font-weight: 600; margin: 0 0 6px 0;">🕐 ${start12} – ${end12}</p>
+                    <p style="color: #92400e; font-size: 14px; margin: 0;">Reason: ${reason}</p>
+                </div>
+                <div style="text-align: center; margin-top: 28px; margin-bottom: 28px;">
+                    <a href="${reviewUrl}" style="display: inline-block; background-color: #0f172a; color: #ffffff; font-size: 15px; font-weight: 600; padding: 14px 32px; text-decoration: none; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.15);">
+                        Review Request
+                    </a>
+                </div>
+                <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; color: #64748b; font-size: 14px;">
+                    <p style="margin: 0 0 4px 0;">Thank you,</p>
+                    <p style="margin: 0; font-weight: 600; color: #475569;">The Kruto Tastes Team</p>
+                </div>
+            </div>`;
+        await transporter.sendMail({ from, to: email, subject, text: textBody, html: htmlBody });
+        return true;
+    } catch (error) {
+        console.error(`❌ Failed to send shift release requested email to ${email}:`, error);
+        return false;
+    }
+}
+
+export async function sendShiftRequestedEmail(
+    email: string,
+    workerName: string,
+    storeName: string,
+    dateLabel: string,
+    startTime: string,
+    endTime: string,
+    reviewUrl: string
+): Promise<boolean> {
+    const transporter = createTransporter();
+    const from = process.env.SMTP_FROM || '"Kruto Tastes" <noreply@krutotastes.com>';
+    if (!transporter) {
+        console.warn("⚠️ SMTP not configured. Skipping shift requested email.");
+        return false;
+    }
+    try {
+        const start12 = to12hr(startTime);
+        const end12 = to12hr(endTime);
+        const subject = `Shift Request: ${storeName}`;
+        const textBody = `Hello!\n\n${workerName} has requested the shift at ${storeName} on ${dateLabel}, ${start12} – ${end12}.\n\nReview this request: ${reviewUrl}\n\nThe Kruto Tastes Team`;
+        const htmlBody = `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 32px 24px; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px;">
+                <div style="text-align: center; margin-bottom: 28px;">
+                    <span style="font-size: 28px; font-weight: 800; letter-spacing: -0.025em; color: #0f172a; text-transform: uppercase;">Kruto Tastes</span>
+                </div>
+                <p style="color: #0f172a; font-size: 18px; font-weight: 600; margin-top: 0; margin-bottom: 16px;">Shift Request</p>
+                <p style="color: #334155; font-size: 15px; line-height: 24px; margin-top: 0; margin-bottom: 24px;">
+                    <strong style="color: #0f172a;">${workerName}</strong> has requested the shift at <strong style="color: #0f172a;">${storeName}</strong> on <strong style="color: #0f172a;">${dateLabel}</strong>.
+                </p>
+                <div style="background-color: #f0fdf4; border-left: 4px solid #22c55e; padding: 14px 16px; border-radius: 4px; margin-bottom: 24px;">
+                    <p style="color: #166534; font-size: 15px; font-weight: 600; margin: 0;">🕐 ${start12} – ${end12}</p>
+                </div>
+                <div style="text-align: center; margin-top: 28px; margin-bottom: 28px;">
+                    <a href="${reviewUrl}" style="display: inline-block; background-color: #0f172a; color: #ffffff; font-size: 15px; font-weight: 600; padding: 14px 32px; text-decoration: none; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.15);">
+                        Review Request
+                    </a>
+                </div>
+                <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; color: #64748b; font-size: 14px;">
+                    <p style="margin: 0 0 4px 0;">Thank you,</p>
+                    <p style="margin: 0; font-weight: 600; color: #475569;">The Kruto Tastes Team</p>
+                </div>
+            </div>`;
+        await transporter.sendMail({ from, to: email, subject, text: textBody, html: htmlBody });
+        return true;
+    } catch (error) {
+        console.error(`❌ Failed to send shift requested email to ${email}:`, error);
         return false;
     }
 }

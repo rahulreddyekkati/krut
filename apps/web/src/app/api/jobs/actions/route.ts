@@ -3,6 +3,37 @@ import prisma from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { handleApiError, AppError } from "@/lib/apiError";
 import { resolveTimezone, localTimeToUTC, toLocalDateStr, toUTCLocalDateStr } from "@/lib/timezone";
+import { getAdminAndMarketManagerEmails } from "@/lib/notifications";
+import { sendShiftReleaseRequestedEmail, sendShiftRequestedEmail } from "@/lib/mailer";
+
+function buildAppBaseUrl(request: NextRequest): string {
+    const host = request.headers.get("x-forwarded-host") || request.headers.get("host") || "localhost:3000";
+    const protocol = host.includes("localhost") ? "http" : "https";
+    return `${protocol}://${host}`;
+}
+
+function formatDateLabel(date: Date | string | null | undefined): string {
+    if (!date) return "Unknown date";
+    return new Date(date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+}
+
+async function notifyAdminsOfShiftRequest(params: {
+    baseUrl: string;
+    requestId: string;
+    workerName: string;
+    storeName: string;
+    dateLabel: string;
+    startTime: string | null;
+    endTime: string | null;
+    marketId: string | null;
+}) {
+    const { baseUrl, requestId, workerName, storeName, dateLabel, startTime, endTime, marketId } = params;
+    const reviewUrl = `${baseUrl}/admin/shift-release-approvals?tab=assign-requests&highlight=${requestId}`;
+    const recipients = await getAdminAndMarketManagerEmails(marketId);
+    for (const email of recipients) {
+        sendShiftRequestedEmail(email, workerName, storeName, dateLabel, startTime || "", endTime || "", reviewUrl).catch(() => {});
+    }
+}
 
 export async function POST(request: NextRequest) {
     try {
@@ -43,13 +74,25 @@ export async function POST(request: NextRequest) {
                         date: assignment.date
                     }
                 });
+
+                notifyAdminsOfShiftRequest({
+                    baseUrl: buildAppBaseUrl(request),
+                    requestId: shiftRequest.id,
+                    workerName: user.name,
+                    storeName: assignment.job.store.name,
+                    dateLabel: formatDateLabel(assignment.date),
+                    startTime: assignment.job.startTimeStr,
+                    endTime: assignment.job.endTimeStr,
+                    marketId: assignment.job.marketId
+                }).catch(() => {});
+
                 return NextResponse.json(shiftRequest);
             }
 
             // Legacy flow: request an OPEN job by jobId
             if (!jobId) return NextResponse.json({ error: "Missing jobId or assignmentId" }, { status: 400 });
 
-            const job = await prisma.job.findUnique({ where: { id: jobId } });
+            const job = await prisma.job.findUnique({ where: { id: jobId }, include: { store: true } });
             if (!job || job.status !== "OPEN") {
                 return NextResponse.json({ error: "Job is no longer available" }, { status: 400 });
             }
@@ -69,6 +112,18 @@ export async function POST(request: NextRequest) {
                     date: job.date ? new Date(job.date) : null
                 }
             });
+
+            notifyAdminsOfShiftRequest({
+                baseUrl: buildAppBaseUrl(request),
+                requestId: shiftRequest.id,
+                workerName: user.name,
+                storeName: job.store.name,
+                dateLabel: formatDateLabel(job.date),
+                startTime: job.startTimeStr,
+                endTime: job.endTimeStr,
+                marketId: job.marketId
+            }).catch(() => {});
+
             return NextResponse.json(shiftRequest);
         }
 
@@ -79,7 +134,7 @@ export async function POST(request: NextRequest) {
             let targetAssignment = assignmentId
                 ? await prisma.jobAssignment.findUnique({
                     where: { id: assignmentId },
-                    include: { job: true }
+                    include: { job: { include: { store: true } } }
                 })
                 : null;
 
@@ -94,7 +149,7 @@ export async function POST(request: NextRequest) {
                 }
                 targetAssignment = await prisma.jobAssignment.findFirst({
                     where,
-                    include: { job: true }
+                    include: { job: { include: { store: true } } }
                 });
             }
 
@@ -109,11 +164,16 @@ export async function POST(request: NextRequest) {
                 throw new AppError("Cannot release a shift you are currently clocked into", 400);
             }
 
+            // Captured as a const so the type stays narrowed (non-null) inside the
+            // fire-and-forget closure below — `targetAssignment` is a reassignable
+            // `let` and TS won't retain narrowing for it across a nested closure.
+            const assignment = targetAssignment;
+
             // 2-hour minimum window check
-            if (targetAssignment.date && targetAssignment.job.startTimeStr) {
+            if (assignment.date && assignment.job.startTimeStr) {
                 const tz = resolveTimezone(request);
-                const dateStr = toUTCLocalDateStr(new Date(targetAssignment.date));
-                const shiftStart = localTimeToUTC(dateStr, targetAssignment.job.startTimeStr, tz);
+                const dateStr = toUTCLocalDateStr(new Date(assignment.date));
+                const shiftStart = localTimeToUTC(dateStr, assignment.job.startTimeStr, tz);
                 const diffMs = shiftStart.getTime() - Date.now();
                 if (diffMs < 2 * 60 * 60 * 1000) {
                     throw new AppError("Cannot release a shift less than 2 hours before it starts", 400);
@@ -122,7 +182,7 @@ export async function POST(request: NextRequest) {
 
             // Prevent duplicate pending request for same assignment
             const existingRelease = await prisma.releaseRequest.findFirst({
-                where: { assignmentId: targetAssignment.id, workerId: user.id, status: "PENDING" }
+                where: { assignmentId: assignment.id, workerId: user.id, status: "PENDING" }
             });
             if (existingRelease) {
                 throw new AppError("A release request for this shift is already pending", 400);
@@ -130,14 +190,32 @@ export async function POST(request: NextRequest) {
 
             const releaseRequest = await prisma.releaseRequest.create({
                 data: {
-                    jobId: targetAssignment.jobId,
+                    jobId: assignment.jobId,
                     workerId: user.id,
-                    assignmentId: targetAssignment.id,
-                    date: targetAssignment.date,
+                    assignmentId: assignment.id,
+                    date: assignment.date,
                     reason: reason || "No reason provided",
                     status: "PENDING"
                 }
             });
+
+            (async () => {
+                const baseUrl = buildAppBaseUrl(request);
+                const reviewUrl = `${baseUrl}/admin/shift-release-approvals?tab=release-requests&highlight=${releaseRequest.id}`;
+                const recipients = await getAdminAndMarketManagerEmails(assignment.job.marketId);
+                for (const email of recipients) {
+                    sendShiftReleaseRequestedEmail(
+                        email,
+                        user.name,
+                        assignment.job.store.name,
+                        formatDateLabel(assignment.date),
+                        assignment.job.startTimeStr || "",
+                        assignment.job.endTimeStr || "",
+                        releaseRequest.reason || "No reason provided",
+                        reviewUrl
+                    ).catch(() => {});
+                }
+            })().catch(() => {});
 
             return NextResponse.json(releaseRequest);
         }

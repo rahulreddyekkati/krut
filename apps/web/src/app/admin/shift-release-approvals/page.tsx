@@ -1,12 +1,29 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { Suspense, useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { to12hr } from "@/lib/timeFormat";
 
 type Tab = "release-requests" | "assign-requests";
 
 export default function ShiftReleaseApprovalsPage() {
-    const [activeTab, setActiveTab] = useState<Tab>("release-requests");
+    return (
+        <Suspense fallback={null}>
+            <ShiftReleaseApprovalsPageInner />
+        </Suspense>
+    );
+}
+
+function ShiftReleaseApprovalsPageInner() {
+    // Deep-linked from the "Shift Release Request" / "Shift Request" admin emails —
+    // ?tab= picks the right tab, ?highlight= scrolls to and flags the specific row.
+    const searchParams = useSearchParams();
+    const tabParam = searchParams.get("tab");
+    const highlightId = searchParams.get("highlight");
+
+    const [activeTab, setActiveTab] = useState<Tab>(
+        tabParam === "assign-requests" ? "assign-requests" : "release-requests"
+    );
     const [requests, setRequests] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -31,6 +48,15 @@ export default function ShiftReleaseApprovalsPage() {
     useEffect(() => {
         fetchRequests();
     }, [fetchRequests]);
+
+    // Scroll to and flag the deep-linked row once it's loaded. If the request was
+    // already approved/denied by someone else before this link was clicked, it just
+    // won't be in `requests` — this quietly no-ops instead of erroring.
+    useEffect(() => {
+        if (!highlightId || loading) return;
+        const el = document.getElementById(`request-${highlightId}`);
+        el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, [highlightId, loading, requests]);
 
     const tabs: { key: Tab; label: string }[] = [
         { key: "release-requests", label: "Shift Release Requests" },
@@ -59,7 +85,7 @@ export default function ShiftReleaseApprovalsPage() {
     };
 
     const renderRequestCard = (req: any, type: Tab) => (
-        <div key={req.id} style={{
+        <div key={req.id} id={`request-${req.id}`} style={{
             background: "white",
             borderRadius: "12px",
             padding: "1.5rem",
@@ -67,7 +93,9 @@ export default function ShiftReleaseApprovalsPage() {
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            gap: "1rem"
+            gap: "1rem",
+            outline: highlightId === req.id ? "2px solid #6366f1" : "none",
+            outlineOffset: "2px"
         }}>
             <div>
                 <h3 style={{ margin: "0 0 0.25rem 0", fontSize: "1rem", color: "#111827" }}>

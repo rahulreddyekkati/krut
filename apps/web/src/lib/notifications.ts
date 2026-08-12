@@ -20,6 +20,22 @@ export async function sendPushToMany(userIds: string[], title: string, body: str
     await Promise.all(tokens.map((token) => sendExpoNotification(token, title, body)));
 }
 
+// Recipients for shift release/request review emails: all ADMINs, plus the
+// MARKET_MANAGER (if any) whose managedMarketId matches the shift's market.
+export async function getAdminAndMarketManagerEmails(marketId: string | null | undefined): Promise<string[]> {
+    const recipients = await prisma.user.findMany({
+        where: {
+            status: "ACTIVE",
+            OR: [
+                { role: "ADMIN" },
+                ...(marketId ? [{ role: "MARKET_MANAGER", managedMarketId: marketId }] : []),
+            ],
+        },
+        select: { email: true },
+    });
+    return recipients.map((r) => r.email);
+}
+
 async function sendExpoNotification(token: string, title: string, body: string) {
     try {
         await fetch("https://exp.host/--/api/v2/push/send", {

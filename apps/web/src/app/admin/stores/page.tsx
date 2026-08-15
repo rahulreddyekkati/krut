@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import styles from "./stores.module.css";
 import Papa from "papaparse";
+import { STORE_CHAINS, STORE_CHAIN_LABELS, type StoreChain } from "@/lib/storeChain";
 
 interface Store {
     id: string;
@@ -13,6 +14,7 @@ interface Store {
     radius: number;
     marketId: string;
     market: { name: string };
+    chain: StoreChain;
     _count: { jobs: number };
 }
 
@@ -34,7 +36,7 @@ export default function StoresPage() {
     const [showImport, setShowImport] = useState(false);
     const [editingStore, setEditingStore] = useState<Store | null>(null);
     const [formData, setFormData] = useState({
-        name: "", address: "", latitude: "", longitude: "", radius: "100", marketId: ""
+        name: "", address: "", latitude: "", longitude: "", radius: "100", marketId: "", chain: "OTHER" as StoreChain
     });
 
     useEffect(() => {
@@ -114,7 +116,9 @@ export default function StoresPage() {
                     address: row.Address || row.address,
                     latitude: parseFloat(row.Latitude || row.latitude || 0),
                     longitude: parseFloat(row.Longitude || row.longitude || 0),
-                    marketName: row.Market || row.market || "General"
+                    marketName: row.Market || row.market || "General",
+                    // Optional — server falls back to a name-based guess when omitted.
+                    chain: row.Chain || row.chain || undefined
                 }));
 
                 try {
@@ -137,7 +141,7 @@ export default function StoresPage() {
     };
 
     const resetForm = () => {
-        setFormData({ name: "", address: "", latitude: "", longitude: "", radius: "100", marketId: "" });
+        setFormData({ name: "", address: "", latitude: "", longitude: "", radius: "100", marketId: "", chain: "OTHER" });
         setEditingStore(null);
         setShowForm(false);
     };
@@ -150,7 +154,8 @@ export default function StoresPage() {
             latitude: store.latitude.toString(),
             longitude: store.longitude.toString(),
             radius: store.radius.toString(),
-            marketId: store.marketId
+            marketId: store.marketId,
+            chain: store.chain || "OTHER"
         });
         setShowForm(true);
     };
@@ -186,7 +191,7 @@ export default function StoresPage() {
             {showImport && (
                 <div className="card glass animate-fade-in" style={{ padding: "1.5rem", marginBottom: "1rem" }}>
                     <h3 className="heading h4">Upload Store CSV</h3>
-                    <p className="text-secondary" style={{ fontSize: "0.875rem" }}>Required columns: Name, Address, Latitude, Longitude, Market</p>
+                    <p className="text-secondary" style={{ fontSize: "0.875rem" }}>Required columns: Name, Address, Latitude, Longitude, Market. Optional: Chain (WB_LIQUORS, TOTAL_WINE, OTHER — guessed from the name if omitted).</p>
                     <input type="file" accept=".csv" onChange={handleCsvUpload} className={styles.fileInput} />
                 </div>
             )}
@@ -208,6 +213,9 @@ export default function StoresPage() {
                             </select>
                             <input type="number" placeholder="Radius (meters)" value={formData.radius} onChange={e => setFormData({ ...formData, radius: e.target.value })} className="input" required />
                         </div>
+                        <select value={formData.chain} onChange={e => setFormData({ ...formData, chain: e.target.value as StoreChain })} className="input" required>
+                            {STORE_CHAINS.map(c => <option key={c} value={c}>{STORE_CHAIN_LABELS[c]}</option>)}
+                        </select>
                         <div className={styles.formActions}>
                             <button type="submit" className="btn btn-primary">Save Store</button>
                             <button type="button" onClick={resetForm} className="btn btn-secondary">Cancel</button>
@@ -225,6 +233,7 @@ export default function StoresPage() {
                         <tr>
                             <th>Name</th>
                             <th>Market</th>
+                            <th>Chain</th>
                             <th>Address</th>
                             <th>Location</th>
                             <th>Actions</th>
@@ -235,6 +244,7 @@ export default function StoresPage() {
                             <tr key={store.id} className="animate-fade-in">
                                 <td><strong>{store.name}</strong></td>
                                 <td><span className="badge">{store.market.name}</span></td>
+                                <td><span className="badge">{STORE_CHAIN_LABELS[store.chain] || store.chain}</span></td>
                                 <td className={styles.addressCell}>{store.address}</td>
                                 <td className={styles.coordCell}>{store.latitude.toFixed(4)}, {store.longitude.toFixed(4)}</td>
                                 <td className={styles.actionsCell}>

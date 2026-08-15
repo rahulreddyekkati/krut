@@ -17,6 +17,9 @@ interface User {
     workedHours: number;
     totalReimbursement: number;
     totalBonus: number;
+    // Each shift priced at the rate in effect on its own date, not always today's current
+    // hourlyWage — see apps/web/src/lib/payRate.ts.
+    payForCycle?: number;
     hourlyWage?: number;
     marketId?: string | null;
     managedMarketId?: string | null;
@@ -33,6 +36,19 @@ export default function AdminUsersPage() {
     const [currentUser, setCurrentUser] = useState<any>(null);
     const [editingUserId, setEditingUserId] = useState<string | null>(null);
     const [editForm, setEditForm] = useState<any>({});
+    // Fetched lazily when a row enters edit mode, not part of the main user list payload —
+    // see GET /api/users/[id]/pay-rate-history.
+    const [wageHistory, setWageHistory] = useState<any[]>([]);
+    const [wageHistoryLoading, setWageHistoryLoading] = useState(false);
+
+    // Local (not UTC) YYYY-MM-DD — evening users west of UTC would otherwise see "tomorrow"
+    // as today's default effective date.
+    const toLocalYMD = (d: Date) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${y}-${m}-${day}`;
+    };
 
     const getLastName = (fullName: string) => {
         const parts = (fullName || "").trim().split(/\s+/);
@@ -413,14 +429,27 @@ export default function AdminUsersPage() {
             name: user.name || "",
             role: user.role,
             hourlyWage: user.hourlyWage?.toString() || "",
+            // Tracked separately so handleSaveEdit only touches the wage (and writes rate
+            // history) when this field actually changed — not on every unrelated edit.
+            originalHourlyWage: user.hourlyWage?.toString() || "",
+            wageEffectiveFrom: toLocalYMD(new Date()),
             manualWorkedHours: user.workedHours?.toString() || "",
             marketId: (user.market as any)?.id || (user.managedMarket as any)?.id || (user as any).marketId || (user as any).managedMarketId || ""
         });
+
+        setWageHistory([]);
+        setWageHistoryLoading(true);
+        fetch(`/api/users/${user.id}/pay-rate-history`)
+            .then(res => res.ok ? res.json() : { history: [] })
+            .then(data => setWageHistory(data.history || []))
+            .catch(() => setWageHistory([]))
+            .finally(() => setWageHistoryLoading(false));
     };
 
     const handleCancelEdit = () => {
         setEditingUserId(null);
         setEditForm({});
+        setWageHistory([]);
     };
 
     const handleSaveEdit = async (userId: string) => {
@@ -428,6 +457,13 @@ export default function AdminUsersPage() {
             setError("Name cannot be empty");
             return;
         }
+
+        const wageChanged = (editForm.hourlyWage || "") !== (editForm.originalHourlyWage || "");
+        if (wageChanged && editForm.hourlyWage && !editForm.wageEffectiveFrom) {
+            setError("Pick an effective date for the new pay rate");
+            return;
+        }
+
         try {
             const res = await fetch(`/api/users/${userId}`, {
                 method: "PATCH",
@@ -435,7 +471,13 @@ export default function AdminUsersPage() {
                 body: JSON.stringify({
                     name: editForm.name.trim(),
                     role: editForm.role,
-                    hourlyWage: editForm.hourlyWage ? parseFloat(editForm.hourlyWage) : null,
+                    // Omitted entirely when unchanged, so an unrelated edit (e.g. just the
+                    // name) doesn't quietly write a same-day PayRateHistory row for a rate
+                    // that never actually changed.
+                    ...(wageChanged ? {
+                        hourlyWage: editForm.hourlyWage ? parseFloat(editForm.hourlyWage) : null,
+                        wageEffectiveFrom: editForm.hourlyWage ? editForm.wageEffectiveFrom : undefined,
+                    } : {}),
                     manualWorkedHours: editForm.manualWorkedHours ? parseFloat(editForm.manualWorkedHours) : null,
                     marketId: (editForm.role === "MARKET_MANAGER" || editForm.role === "WORKER") ? editForm.marketId : null,
                     managedMarketId: editForm.role === "MARKET_MANAGER" ? editForm.marketId : null,
@@ -852,14 +894,35 @@ export default function AdminUsersPage() {
                                         </td>
                                         <td style={{ textAlign: 'right' }}>
                                             {isEditing ? (
-                                                <input
-                                                    type="number"
-                                                    step="0.01"
-                                                    className="input input-sm"
-                                                    style={{ width: "80px", textAlign: "right" }}
-                                                    value={editForm.hourlyWage}
-                                                    onChange={e => setEditForm({ ...editForm, hourlyWage: e.target.value })}
-                                                />
+                                                <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", alignItems: "flex-end" }}>
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        className="input input-sm"
+                                                        style={{ width: "80px", textAlign: "right" }}
+                                                        value={editForm.hourlyWage}
+                                                        onChange={e => setEditForm({ ...editForm, hourlyWage: e.target.value })}
+                                                    />
+                                                    {editForm.hourlyWage !== editForm.originalHourlyWage && (
+                                                        <input
+                                                            type="date"
+                                                            className="input input-sm"
+                                                            style={{ width: "130px", textAlign: "right" }}
+                                                            value={editForm.wageEffectiveFrom}
+                                                            onChange={e => setEditForm({ ...editForm, wageEffectiveFrom: e.target.value })}
+                                                            title="Effective from — shifts before this date keep the old rate"
+                                                        />
+                                                    )}
+                                                    {wageHistoryLoading ? (
+                                                        <span className="text-secondary" style={{ fontSize: "0.7rem" }}>Loading history…</span>
+                                                    ) : wageHistory.length > 0 && (
+                                                        <span className="text-secondary" style={{ fontSize: "0.7rem", maxWidth: "180px", textAlign: "right" }}>
+                                                            {wageHistory.map((h: any) =>
+                                                                `${new Date(h.effectiveFrom).toLocaleDateString(undefined, { timeZone: "UTC" })} – $${h.hourlyWage.toFixed(2)}`
+                                                            ).join(" · ")}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             ) : (
                                                 user.hourlyWage ? `$${user.hourlyWage.toFixed(2)}${user.role === "WORKER" ? "/hr" : "/mo"}` : '-'
                                             )}
@@ -886,7 +949,7 @@ export default function AdminUsersPage() {
                                         </td>
 <td style={{ textAlign: 'right', color: "var(--success)", fontWeight: 700 }}>
     {user.role === "WORKER"
-        ? `$${((user.workedHours * (user.hourlyWage || 0)) + (user.totalReimbursement || 0) + (user.totalBonus || 0)).toFixed(2)}`
+        ? `$${(user.payForCycle ?? 0).toFixed(2)}`
         : 'N/A'}
 </td>
                                         <td>

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { STORE_CHAINS } from "@/lib/storeChain";
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
@@ -63,6 +64,7 @@ export const storeSchema = z.object({
         .number()
         .min(10, "Geofence radius must be at least 10 meters")
         .default(100),
+    chain: z.enum(STORE_CHAINS).default("OTHER"),
 });
 
 // ─── Jobs ────────────────────────────────────────────────────────────────────

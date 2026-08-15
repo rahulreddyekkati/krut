@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { resolveTimezone, toLocalDateStr, toUTCLocalDateStr } from "@/lib/timezone";
+import { resolveRateForDate } from "@/lib/payRate";
 
 // GET /api/users/[id] - Get single user
 export async function GET(
@@ -50,28 +52,132 @@ export async function PATCH(
 
         const { id } = await context.params;
         const body = await request.json();
-        const { role, status, hourlyWage, name, email: rawEmail, marketId, managedMarketId, manualWorkedHours } = body;
+        const { role, status, hourlyWage, wageEffectiveFrom, name, email: rawEmail, marketId, managedMarketId, manualWorkedHours } = body;
         const email = typeof rawEmail === "string" ? rawEmail.trim().toLowerCase() : rawEmail;
 
-        const updateData = {
+        const updateData: Record<string, any> = {
             role,
             status,
             name,
             email,
-            hourlyWage: hourlyWage !== undefined ? parseFloat(hourlyWage) : undefined,
             manualWorkedHours: manualWorkedHours !== undefined ? parseFloat(manualWorkedHours) : undefined,
             marketId,
             managedMarketId
         };
 
-        let user;
-        if (status === 'DEACTIVATED') {
-            user = await prisma.$transaction(async (tx: any) => {
-                const updatedUser = await tx.user.update({
-                    where: { id },
-                    data: updateData
+        // ---- Effective-dated pay rate handling ----
+        // hourlyWage === undefined → not being changed, leave untouched.
+        // hourlyWage === null      → explicitly clearing the rate; "no rate" isn't an
+        //                            effective-dated concept, so skip history entirely.
+        // hourlyWage === a number  → an intentional rate change, tracked via PayRateHistory.
+        const isClearingWage = hourlyWage === null;
+        const isSettingWage = hourlyWage !== undefined && hourlyWage !== null;
+
+        let parsedWage: number | undefined;
+        let wageEffectiveFromDate: Date | undefined;
+        let createdAtMarker: Date | undefined;
+        let existingUser: { hourlyWage: number | null; createdAt: Date } | null = null;
+
+        if (isClearingWage) {
+            updateData.hourlyWage = null;
+        } else if (isSettingWage) {
+            parsedWage = parseFloat(hourlyWage);
+            if (!Number.isFinite(parsedWage) || parsedWage < 0) {
+                return NextResponse.json({ error: "hourlyWage must be a non-negative number" }, { status: 400 });
+            }
+
+            existingUser = await prisma.user.findUnique({
+                where: { id },
+                select: { hourlyWage: true, createdAt: true }
+            });
+            if (!existingUser) {
+                return NextResponse.json({ error: "User not found" }, { status: 404 });
+            }
+
+            const tz = resolveTimezone(request);
+            const effectiveFromStr: string = typeof wageEffectiveFrom === "string" && wageEffectiveFrom
+                ? wageEffectiveFrom
+                : toLocalDateStr(new Date(), tz); // no date given (e.g. mobile) → effective today
+
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(effectiveFromStr)) {
+                return NextResponse.json({ error: "wageEffectiveFrom must be a YYYY-MM-DD date" }, { status: 400 });
+            }
+            wageEffectiveFromDate = new Date(`${effectiveFromStr}T00:00:00.000Z`);
+            if (isNaN(wageEffectiveFromDate.getTime())) {
+                return NextResponse.json({ error: "wageEffectiveFrom is not a valid date" }, { status: 400 });
+            }
+
+            // Reject a date earlier than the worker's account creation — otherwise an admin
+            // could submit a date earlier than the lazy-backfill base row below, silently
+            // redefining what "before tracking" means and undermining the earliest-row
+            // fallback that apps/web/src/lib/payRate.ts relies on.
+            createdAtMarker = new Date(`${toUTCLocalDateStr(existingUser.createdAt)}T00:00:00.000Z`);
+            if (wageEffectiveFromDate.getTime() < createdAtMarker.getTime()) {
+                return NextResponse.json({
+                    error: `Effective date can't be before this worker's account was created (${toUTCLocalDateStr(existingUser.createdAt)})`
+                }, { status: 400 });
+            }
+        }
+
+        const user = await prisma.$transaction(async (tx: any) => {
+            if (isSettingWage && wageEffectiveFromDate && existingUser) {
+                // Lazy backfill (only on a worker's very first tracked change): anchor "the
+                // rate before tracking started" truthfully, using the value about to be
+                // overwritten, instead of guessing later. Skipped if there's no prior wage to
+                // preserve, or if the submitted date happens to land exactly on this anchor
+                // (the upsert below already covers that date).
+                if (existingUser.hourlyWage != null && createdAtMarker && createdAtMarker.getTime() !== wageEffectiveFromDate.getTime()) {
+                    const historyCount = await tx.payRateHistory.count({ where: { workerId: id } });
+                    if (historyCount === 0) {
+                        await tx.payRateHistory.create({
+                            data: {
+                                workerId: id,
+                                hourlyWage: existingUser.hourlyWage,
+                                effectiveFrom: createdAtMarker,
+                                changedById: null,
+                            }
+                        });
+                    }
+                }
+
+                await tx.payRateHistory.upsert({
+                    where: { workerId_effectiveFrom: { workerId: id, effectiveFrom: wageEffectiveFromDate } },
+                    update: { hourlyWage: parsedWage, changedById: session.user.id },
+                    create: { workerId: id, hourlyWage: parsedWage, effectiveFrom: wageEffectiveFromDate, changedById: session.user.id },
                 });
 
+                await tx.auditLog.create({
+                    data: {
+                        actorId: session.user.id,
+                        action: "HOURLY_WAGE_CHANGE",
+                        entityType: "User",
+                        entityId: id,
+                        oldValue: JSON.stringify({ hourlyWage: existingUser.hourlyWage }),
+                        newValue: JSON.stringify({ hourlyWage: parsedWage, effectiveFrom: wageEffectiveFromDate.toISOString() }),
+                    }
+                });
+
+                // Recompute the live "rate as of today" scalar from the full history rather
+                // than blindly assigning the submitted value — correctly leaves today's live
+                // rate untouched for a future-dated change, applies immediately for a
+                // past/today-dated one, and stays at a later row's value if this edit was a
+                // backdated correction superseded by an already-existing later row.
+                const tz = resolveTimezone(request);
+                const todayMarker = new Date(`${toLocalDateStr(new Date(), tz)}T00:00:00.000Z`);
+                const fullHistory = await tx.payRateHistory.findMany({
+                    where: { workerId: id },
+                    orderBy: { effectiveFrom: "asc" },
+                    select: { hourlyWage: true, effectiveFrom: true }
+                });
+                updateData.hourlyWage = resolveRateForDate(fullHistory, todayMarker, existingUser.hourlyWage);
+            }
+
+            const updatedUser = await tx.user.update({
+                where: { id },
+                data: updateData
+            });
+
+            if (status === 'DEACTIVATED') {
                 await tx.releaseRequest.updateMany({
                     where: { workerId: id, status: 'PENDING' },
                     data: { status: 'CANCELLED' }
@@ -106,15 +212,10 @@ export async function PATCH(
                         data: { status: 'RECAP_PENDING' }
                     });
                 }
+            }
 
-                return updatedUser;
-            });
-        } else {
-            user = await prisma.user.update({
-                where: { id },
-                data: updateData
-            });
-        }
+            return updatedUser;
+        });
 
         return NextResponse.json(user);
     } catch (error: any) {

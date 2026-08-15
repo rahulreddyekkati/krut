@@ -10,6 +10,7 @@ import {
     computeWorkedHours,
     computeBonus,
 } from "@/lib/payroll";
+import { buildRateResolver, getWorkerRate } from "@/lib/payRate";
 
 export async function GET(
     request: NextRequest,
@@ -63,11 +64,14 @@ export async function GET(
         );
 
         const hourlyWage = user.hourlyWage || 0;
+        // Batched once for this report, not per-shift — see payRate.ts.
+        const rateHistoryMap = await buildRateResolver([userId]);
+
         let csvContent = "";
         csvContent += `Pay Report for ${user.name}\n`;
         csvContent += `Pay Cycle: ${startDate} to ${endDate}\n`;
-        csvContent += `Hourly Wage: $${hourlyWage.toFixed(2)}/hr\n\n`;
-        csvContent += `Date,Store,Clock In,Clock Out,Break (min),Assigned Hours,Hours Worked,Reimbursement,Bonus,Shift Pay,Total Shift Pay,Taxable Pay\n`;
+        csvContent += `Current Hourly Wage: $${hourlyWage.toFixed(2)}/hr\n\n`;
+        csvContent += `Date,Store,Clock In,Clock Out,Break (min),Assigned Hours,Hours Worked,Rate/hr,Reimbursement,Bonus,Shift Pay,Total Shift Pay,Taxable Pay\n`;
 
         // Runs server-side — must pass timeZone explicitly or this defaults to the server's
         // system timezone (UTC on Vercel), not the store's actual local time.
@@ -78,6 +82,7 @@ export async function GET(
         let sumWorked = 0;
         let sumReimb = 0;
         let sumBonus = 0;
+        let sumShiftPay = 0;
 
         for (const assignment of relevantAssignments) {
             const worked = computeWorkedHours(assignment);
@@ -85,7 +90,10 @@ export async function GET(
             // payroll views; a submitted-but-unreviewed amount isn't confirmed pay yet.
             const reimb = assignment.recap?.status === "APPROVED" ? (assignment.recap.reimbursement || 0) : 0;
             const bonus = computeBonus(assignment);
-            const shiftPay = worked * hourlyWage;
+            // Price this shift at the rate in effect on its own date, not always today's
+            // current rate — see apps/web/src/lib/payRate.ts.
+            const rate = getWorkerRate(rateHistoryMap, userId, assignment.date, hourlyWage);
+            const shiftPay = worked * rate;
             const totalPay = shiftPay + reimb + bonus;
             // Everything except reimbursement — wages and bonus are taxable, reimbursement isn't.
             const taxablePay = shiftPay + bonus;
@@ -96,15 +104,15 @@ export async function GET(
             sumWorked += worked;
             sumReimb += reimb;
             sumBonus += bonus;
+            sumShiftPay += shiftPay;
 
             const dateLabel = assignment.date ? assignment.date.toLocaleDateString(undefined, { timeZone: "UTC" }) : "--";
             const storeLabel = assignment.job.store.name.replace(/"/g, '""');
             const breakMins = Math.round(assignment.breakTimeMinutes || 0);
-            csvContent += `${dateLabel},"${storeLabel}",${formatClockTime(assignment.clockIn)},${formatClockTime(assignment.clockOut)},${breakMins},${assignedH.toFixed(2)},${worked.toFixed(2)},${reimb.toFixed(2)},${bonus.toFixed(2)},${shiftPay.toFixed(2)},${totalPay.toFixed(2)},${taxablePay.toFixed(2)}\n`;
+            csvContent += `${dateLabel},"${storeLabel}",${formatClockTime(assignment.clockIn)},${formatClockTime(assignment.clockOut)},${breakMins},${assignedH.toFixed(2)},${worked.toFixed(2)},${rate.toFixed(2)},${reimb.toFixed(2)},${bonus.toFixed(2)},${shiftPay.toFixed(2)},${totalPay.toFixed(2)},${taxablePay.toFixed(2)}\n`;
         }
 
-        const sumShiftPay = sumWorked * hourlyWage;
-        csvContent += `\nTotal,,,,,${sumAssigned.toFixed(2)},${sumWorked.toFixed(2)},${sumReimb.toFixed(2)},${sumBonus.toFixed(2)},${sumShiftPay.toFixed(2)},${(sumShiftPay + sumReimb + sumBonus).toFixed(2)},${(sumShiftPay + sumBonus).toFixed(2)}\n`;
+        csvContent += `\nTotal,,,,,${sumAssigned.toFixed(2)},${sumWorked.toFixed(2)},,${sumReimb.toFixed(2)},${sumBonus.toFixed(2)},${sumShiftPay.toFixed(2)},${(sumShiftPay + sumReimb + sumBonus).toFixed(2)},${(sumShiftPay + sumBonus).toFixed(2)}\n`;
 
         const filename = `Payroll_Report_${user.name.replace(/\s+/g, '_')}_${startDate}_to_${endDate}.csv`;
 

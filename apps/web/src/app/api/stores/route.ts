@@ -50,6 +50,7 @@ export async function POST(request: NextRequest) {
             longitude: typeof data.longitude === "string" ? parseFloat(data.longitude) : data.longitude,
             marketId: data.marketId,
             radius: data.radius != null ? (typeof data.radius === "string" ? parseFloat(data.radius) : data.radius) : 100,
+            chain: data.chain,
         });
 
         const store = await prisma.store.create({
@@ -60,6 +61,7 @@ export async function POST(request: NextRequest) {
                 longitude: validated.longitude,
                 marketId: validated.marketId,
                 radius: validated.radius,
+                chain: validated.chain,
             }
         });
 

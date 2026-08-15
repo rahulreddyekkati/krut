@@ -89,10 +89,60 @@ export default function AnalyticsDashboard({ startDate, endDate }: AnalyticsDash
         </div>
     );
 
+    // Same source as brandSpendSection (GET /api/admin/reports/brand-spend), just the
+    // byMarket breakdown instead of the brand tiles — rendered right after them, same
+    // "shown even with no recap/sales data" placement rule, since this is sourced from
+    // shifts, not recaps.
+    const byMarketSection = brandSpend?.byMarket?.length > 0 && (
+        <div className="card glass" style={{ marginBottom: "1.5rem" }}>
+            <div className={styles.cardHeader}>
+                <h4 className="heading h4">Spend by Market</h4>
+                <p className="text-secondary">Total Wine / WB Liquors / Other, by store chain</p>
+            </div>
+            <div style={{ overflowX: "auto", marginTop: "1rem" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.875rem" }}>
+                    <thead>
+                        <tr style={{ borderBottom: "2px solid var(--border-color)" }}>
+                            <th style={{ padding: "0.5rem 0.75rem", textAlign: "left", fontWeight: 700, color: "var(--secondary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Market</th>
+                            <th style={{ padding: "0.5rem 0.75rem", textAlign: "right", fontWeight: 700, color: "var(--secondary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Total Spent</th>
+                            <th style={{ padding: "0.5rem 0.75rem", textAlign: "right", fontWeight: 700, color: "var(--secondary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Total Wine</th>
+                            <th style={{ padding: "0.5rem 0.75rem", textAlign: "right", fontWeight: 700, color: "var(--secondary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>WB</th>
+                            {brandSpend.byMarket.some((r: any) => r.other > 0) && (
+                                <th style={{ padding: "0.5rem 0.75rem", textAlign: "right", fontWeight: 700, color: "var(--secondary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em" }} title="Stores not classified as Total Wine or WB Liquors">Other</th>
+                            )}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {brandSpend.byMarket.map((row: any) => (
+                            <tr key={row.market} style={{ borderBottom: "1px solid var(--border-color)" }}>
+                                <td style={{ padding: "0.75rem", fontWeight: 700 }}>{row.market}</td>
+                                <td style={{ padding: "0.75rem", textAlign: "right", fontWeight: 700, color: "var(--primary)" }}>
+                                    ${row.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                </td>
+                                <td style={{ padding: "0.75rem", textAlign: "right" }}>
+                                    ${row.wine.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                </td>
+                                <td style={{ padding: "0.75rem", textAlign: "right" }}>
+                                    ${row.wb.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                </td>
+                                {brandSpend.byMarket.some((r: any) => r.other > 0) && (
+                                    <td style={{ padding: "0.75rem", textAlign: "right", color: "var(--text-secondary, #6b7280)" }}>
+                                        ${row.other.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                    </td>
+                                )}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+
     if (!data || data.summary.count === 0) {
         return (
             <div>
                 {brandSpendSection}
+                {byMarketSection}
                 <div className="card glass text-center" style={{ padding: "4rem" }}>
                     <p className="text-secondary">No recorded data found for the selected period.</p>
                     <p style={{ fontSize: "0.875rem", marginTop: "0.5rem" }}>Ensure recaps are submitted and approved to see analytics.</p>
@@ -104,6 +154,7 @@ export default function AnalyticsDashboard({ startDate, endDate }: AnalyticsDash
     return (
         <div className={styles.dashboardGrid}>
             {brandSpendSection}
+            {byMarketSection}
 
             {/* Top Metric Cards */}
             <div className={styles.metricRow}>

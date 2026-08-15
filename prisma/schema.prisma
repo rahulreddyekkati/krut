@@ -46,6 +46,13 @@ model User {
   // Audit trail of admin actions affecting payroll
   auditLogs     AuditLog[]
 
+  // Effective-dated wage history — see PayRateHistory. onDelete: Restrict —
+  // preserve payroll audit trail. hourlyWage above still reflects "the rate
+  // effective as of today" for live display; pay math resolves per-shift from
+  // this history instead (see apps/web/src/lib/payRate.ts).
+  payRateHistory       PayRateHistory[] @relation("WorkerPayRateHistory")
+  payRateChangesLogged PayRateHistory[] @relation("PayRateHistoryChangedBy")
+
   expoPushToken String?
 
   // Live location status — updated by the background location task while worker is clocked in
@@ -76,6 +83,20 @@ model Store {
   latitude  Float
   longitude Float
   radius    Float    @default(100)
+
+  // IANA timezone the store physically sits in, e.g. "America/Denver" for El Paso.
+  // Defaults to Central since most stores are in that zone — but NOT all of Texas is
+  // Central (El Paso is Mountain), so this must be set per-store, not assumed from state.
+  timezone  String   @default("America/Chicago")
+
+  // Retail chain this store belongs to, set when the store is created and editable later.
+  // Drives the wine/WB spend breakdown in Analytics — see
+  // apps/web/src/app/api/admin/reports/brand-spend/route.ts. Guaranteed to always hold a
+  // real value: the column default covers rows that bypass application code, the create
+  // form makes this a required select, CSV import falls back to the same guess heuristic as
+  // the migration backfill, and the backfill classifies every pre-existing row — see
+  // apps/web/src/lib/storeChain.ts.
+  chain     String   @default("OTHER") // WB_LIQUORS, TOTAL_WINE, OTHER
 
   // onDelete: Restrict — don't silently delete a store that belongs to a market with active jobs
   market    Market   @relation(fields: [marketId], references: [id], onDelete: Restrict)
@@ -384,6 +405,33 @@ model AuditLog {
   oldValue   String?  // JSON serialized (SQLite has no Json type)
   newValue   String?  // JSON serialized
   createdAt  DateTime @default(now())
+}
+
+// Effective-dated pay rate history. Each row records the hourly wage that took
+// effect on effectiveFrom (a UTC-midnight calendar marker, same convention as
+// JobAssignment.date — compared only against another marker, never a real-time
+// boundary). Payroll calculations resolve the rate in effect on each shift's own
+// date instead of applying today's flat User.hourlyWage to every shift in a
+// report. A worker with zero rows here resolves to User.hourlyWage for every
+// date — identical to pre-feature behavior, no backfill needed (see
+// apps/web/src/lib/payRate.ts).
+model PayRateHistory {
+  id            String   @id @default(cuid())
+  // onDelete: Restrict — preserve payroll audit trail
+  worker        User     @relation("WorkerPayRateHistory", fields: [workerId], references: [id], onDelete: Restrict)
+  workerId      String
+  hourlyWage    Float
+  effectiveFrom DateTime
+
+  // Admin who made the change. Null for the lazy-backfill base row written
+  // automatically on a worker's first tracked change (see PATCH /api/users/[id]).
+  // onDelete: SetNull — keep the history row if the admin who made it is later deleted
+  changedBy     User?    @relation("PayRateHistoryChangedBy", fields: [changedById], references: [id], onDelete: SetNull)
+  changedById   String?
+
+  createdAt     DateTime @default(now())
+
+  @@unique([workerId, effectiveFrom])
 }
 
 model Block {

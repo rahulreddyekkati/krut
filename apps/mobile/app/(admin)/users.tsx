@@ -326,7 +326,10 @@ export default function UsersScreen() {
         ) : (
           users.map((u: any) => {
             const isEditing = editingUserId === u.id;
-            const payForCycle = ((u.workedHours || 0) * (u.hourlyWage || 0) + (u.totalReimbursement || 0));
+            // Server-computed: each shift priced at the rate in effect on its own date
+            // (not always today's current hourlyWage — see apps/web/src/lib/payRate.ts),
+            // and includes bonus, which the old inline formula here silently omitted.
+            const payForCycle = u.payForCycle ?? 0;
             return (
               <View key={u.id} style={styles.userRow}>
                 {/* Name / email / role */}

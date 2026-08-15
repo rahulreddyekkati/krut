@@ -16,10 +16,21 @@ interface Store {
   radius: number;
   marketId: string;
   market: { name: string };
+  chain: string;
   _count: { jobs: number };
 }
 
-const EMPTY_FORM = { name: '', address: '', latitude: '', longitude: '', radius: '100', marketId: '' };
+// Mirrors apps/web/src/lib/storeChain.ts — mobile can't import that web-only module across
+// the Expo/Next.js boundary, so these three options are hand-copied. Low risk since there
+// are only three and they rarely change; keep in sync by hand if that ever changes.
+const CHAIN_OPTIONS: { value: string; label: string }[] = [
+  { value: 'WB_LIQUORS', label: 'WB Liquors' },
+  { value: 'TOTAL_WINE', label: 'Total Wine' },
+  { value: 'OTHER', label: 'Other' },
+];
+const CHAIN_LABELS: Record<string, string> = Object.fromEntries(CHAIN_OPTIONS.map(o => [o.value, o.label]));
+
+const EMPTY_FORM = { name: '', address: '', latitude: '', longitude: '', radius: '100', marketId: '', chain: 'OTHER' };
 
 export default function StoresScreen() {
   const [stores, setStores] = useState<Store[]>([]);
@@ -34,8 +45,8 @@ export default function StoresScreen() {
   const [saving, setSaving] = useState(false);
   const [gettingLocation, setGettingLocation] = useState(false);
 
-  // Market picker inside form modal
-  const [formView, setFormView] = useState<'form' | 'marketPicker'>('form');
+  // Market/chain picker inside form modal
+  const [formView, setFormView] = useState<'form' | 'marketPicker' | 'chainPicker'>('form');
 
   // ── Data ──────────────────────────────────────────────────────────────────
 
@@ -101,6 +112,7 @@ export default function StoresScreen() {
       longitude: store.longitude.toString(),
       radius: store.radius.toString(),
       marketId: store.marketId,
+      chain: store.chain || 'OTHER',
     });
     setFormView('form');
     setShowForm(true);
@@ -125,6 +137,7 @@ export default function StoresScreen() {
           longitude: parseFloat(form.longitude),
           radius: parseFloat(form.radius) || 100,
           marketId: form.marketId,
+          chain: form.chain,
         }),
       });
       const data = await res.json();
@@ -167,6 +180,7 @@ export default function StoresScreen() {
   };
 
   const selectedMarket = markets.find(m => m.id === form.marketId);
+  const selectedChain = CHAIN_OPTIONS.find(c => c.value === form.chain);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -204,8 +218,13 @@ export default function StoresScreen() {
               <View style={styles.cardTop}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.storeName}>{store.name}</Text>
-                  <View style={styles.marketBadge}>
-                    <Text style={styles.marketBadgeText}>{store.market?.name}</Text>
+                  <View style={{ flexDirection: 'row', gap: 6 }}>
+                    <View style={styles.marketBadge}>
+                      <Text style={styles.marketBadgeText}>{store.market?.name}</Text>
+                    </View>
+                    <View style={styles.chainBadge}>
+                      <Text style={styles.chainBadgeText}>{CHAIN_LABELS[store.chain] || store.chain}</Text>
+                    </View>
                   </View>
                 </View>
                 <View style={styles.cardActions}>
@@ -250,6 +269,28 @@ export default function StoresScreen() {
                       onPress={() => { setForm(prev => ({ ...prev, marketId: m.id })); setFormView('form'); }}>
                       <Text style={[styles.modalItemText, form.marketId === m.id && styles.modalItemActive]}>
                         {m.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </>
+            )}
+
+            {/* Chain picker sub-view */}
+            {formView === 'chainPicker' && (
+              <>
+                <View style={styles.pickerHeader}>
+                  <TouchableOpacity onPress={() => setFormView('form')} style={styles.pickerBack}>
+                    <Text style={styles.pickerBackText}>← Back</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.modalTitle}>Select Chain</Text>
+                </View>
+                <ScrollView style={{ maxHeight: 400 }}>
+                  {CHAIN_OPTIONS.map(c => (
+                    <TouchableOpacity key={c.value} style={styles.modalItem}
+                      onPress={() => { setForm(prev => ({ ...prev, chain: c.value })); setFormView('form'); }}>
+                      <Text style={[styles.modalItemText, form.chain === c.value && styles.modalItemActive]}>
+                        {c.label}
                       </Text>
                     </TouchableOpacity>
                   ))}
@@ -337,6 +378,13 @@ export default function StoresScreen() {
                   </View>
                 </View>
 
+                <Text style={styles.label}>Chain</Text>
+                <TouchableOpacity style={styles.selectBtn} onPress={() => setFormView('chainPicker')}>
+                  <Text style={styles.selectText}>
+                    {selectedChain ? selectedChain.label : 'Select Chain'}
+                  </Text>
+                </TouchableOpacity>
+
                 <View style={styles.formActions}>
                   <TouchableOpacity
                     style={[styles.primaryBtn, { flex: 1 }]}
@@ -400,6 +448,11 @@ const styles = StyleSheet.create({
     borderRadius: 12, alignSelf: 'flex-start',
   },
   marketBadgeText: { color: '#6366F1', fontSize: 11, fontWeight: '700', letterSpacing: 0.4 },
+  chainBadge: {
+    backgroundColor: '#FEF3C7', paddingVertical: 3, paddingHorizontal: 10,
+    borderRadius: 12, alignSelf: 'flex-start',
+  },
+  chainBadgeText: { color: '#B45309', fontSize: 11, fontWeight: '700', letterSpacing: 0.4 },
   cardActions: { flexDirection: 'row', gap: 8, marginLeft: 12 },
   editBtn: {
     backgroundColor: '#F3F4F6', paddingVertical: 6, paddingHorizontal: 14,

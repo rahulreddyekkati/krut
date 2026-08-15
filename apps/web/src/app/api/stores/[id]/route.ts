@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { STORE_CHAINS } from "@/lib/storeChain";
 
 // PUT /api/stores/[id] - Update a store
 export async function PUT(
@@ -15,7 +16,14 @@ export async function PUT(
 
         const { id } = await context.params;
         const data = await request.json();
-        const { name, address, latitude, longitude, marketId, radius } = data;
+        const { name, address, latitude, longitude, marketId, radius, chain } = data;
+
+        // No Zod adoption on this route today — a manual check consistent with its existing
+        // style, but sourced from the same shared list POST's Zod enum uses (storeChain.ts),
+        // so the two routes can't silently enforce different allowed values over time.
+        if (chain !== undefined && !STORE_CHAINS.includes(chain)) {
+            return NextResponse.json({ error: `Invalid chain: must be one of ${STORE_CHAINS.join(", ")}` }, { status: 400 });
+        }
 
         const store = await prisma.store.update({
             where: { id },
@@ -25,7 +33,8 @@ export async function PUT(
                 latitude: latitude ? parseFloat(latitude) : undefined,
                 longitude: longitude ? parseFloat(longitude) : undefined,
                 marketId,
-                radius: radius ? parseFloat(radius) : undefined
+                radius: radius ? parseFloat(radius) : undefined,
+                chain
             }
         });
 

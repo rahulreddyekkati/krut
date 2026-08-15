@@ -8,13 +8,20 @@ interface UserReportData {
     workedHours: number;
     hourlyWage?: number;
     totalReimbursement: number;
+    totalBonus?: number;
+    // Pre-computed by /api/users (each shift priced at the rate in effect on its own date,
+    // not always today's current hourlyWage — see apps/web/src/lib/payRate.ts). Falls back to
+    // the old flat workedHours * hourlyWage math for any caller that doesn't supply it yet.
+    payForCycle?: number;
 }
 
 export const generateUserReportPDF = (user: UserReportData) => {
     const doc = new jsPDF();
     const payRate = user.hourlyWage || 0;
-    const totalWage = user.workedHours * payRate;
-    const totalPay = totalWage + user.totalReimbursement;
+    const totalBonus = user.totalBonus || 0;
+    const totalPay = user.payForCycle !== undefined
+        ? user.payForCycle
+        : (user.workedHours * payRate) + user.totalReimbursement;
 
     // Header
     doc.setFontSize(22);
@@ -46,14 +53,20 @@ export const generateUserReportPDF = (user: UserReportData) => {
     const finalY = (doc as any).lastAutoTable.finalY + 15;
     doc.text("Payroll Summary", 14, finalY);
 
+    // Not simply Hours * Rate when payForCycle is supplied — each shift may be priced at
+    // whatever rate was in effect on its own date (see apps/web/src/lib/payRate.ts), so this
+    // is derived from the actual total rather than recomputed with one flat rate.
+    const totalWage = totalPay - user.totalReimbursement - totalBonus;
+
     autoTable(doc, {
         startY: finalY + 5,
         head: [['Description', 'Amount / Value']],
         body: [
             ['Worked Hours', `${user.workedHours.toFixed(2)}h`],
-            ['Pay Rate', `$${payRate.toFixed(2)}/hr`],
+            ['Current Pay Rate', `$${payRate.toFixed(2)}/hr`],
             ['Reimbursement', `$${user.totalReimbursement.toFixed(2)}`],
-            ['Total Wage (Hours * Rate)', `$${totalWage.toFixed(2)}`],
+            ['Bonus', `$${totalBonus.toFixed(2)}`],
+            ['Total Wage', `$${totalWage.toFixed(2)}`],
             ['TOTAL PAY FOR CYCLE', `$${totalPay.toFixed(2)}`],
         ],
         theme: 'grid',
@@ -62,7 +75,7 @@ export const generateUserReportPDF = (user: UserReportData) => {
             1: { halign: 'right', fontStyle: 'bold' }
         },
         didParseCell: function (data: any) {
-            if (data.row.index === 4) {
+            if (data.row.index === 5) {
                 data.cell.styles.fillColor = [232, 245, 233];
                 data.cell.styles.textColor = [46, 125, 50];
             }

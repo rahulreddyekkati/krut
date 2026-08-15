@@ -8,8 +8,9 @@ import {
     buildCycleAssignmentWhere,
     assignmentBelongsToCyclePreciseCheck,
     accumulatePayrollTotals,
-    computePayFigures,
+    computePayFiguresFromWage,
 } from "@/lib/payroll";
+import { buildRateResolver, getWorkerRate } from "@/lib/payRate";
 
 export async function GET(request: NextRequest) {
     try {
@@ -85,6 +86,9 @@ export async function GET(request: NextRequest) {
             releasesByWorker[rel.workerId].push(rel);
         });
 
+        // Batched once for the whole report, not per-user/per-shift — see payRate.ts.
+        const rateHistoryMap = await buildRateResolver(users.map((u: any) => u.id));
+
         const payrollData = users.map((user: any) => {
             // Precise per-market real-time boundary for this user's own market, used only to
             // re-check the rare date-less assignment that matched via the padded window above.
@@ -96,7 +100,11 @@ export async function GET(request: NextRequest) {
                 assignmentBelongsToCyclePreciseCheck(a, preciseStart, preciseEnd)
             );
 
-            const totals = accumulatePayrollTotals(relevantAssignments);
+            const hourlyWage = user.hourlyWage || 0;
+            const totals = accumulatePayrollTotals(
+                relevantAssignments,
+                (a) => getWorkerRate(rateHistoryMap, user.id, a.date, hourlyWage)
+            );
 
             // Subtract releases
             let totalAssignedHours = totals.totalAssignedHours;
@@ -109,8 +117,7 @@ export async function GET(request: NextRequest) {
                 totalAssignedHours -= (durationMins / 60);
             });
 
-            const hourlyWage = user.hourlyWage || 0;
-            const { payForCycle, taxablePay } = computePayFigures(hourlyWage, totals);
+            const { payForCycle, taxablePay } = computePayFiguresFromWage(totals);
 
             return {
                 id: user.id,

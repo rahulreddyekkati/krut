@@ -6,6 +6,7 @@ import Link from "next/link";
 import PrintButton from "./PrintButton";
 import { computeAssignedHours, computeWorkedHours, computeBonus, buildDateMarkerRange, buildCycleAssignmentWhere, assignmentBelongsToCyclePreciseCheck } from "@/lib/payroll";
 import { getMarketTimezone, localTimeToUTC } from "@/lib/timezone";
+import { buildRateResolver, getWorkerRate } from "@/lib/payRate";
 
 export default async function UserPayrollDetailsPage(props: {
     params: Promise<{ id: string }>,
@@ -61,6 +62,7 @@ export default async function UserPayrollDetailsPage(props: {
     let totalAssignedHours = 0;
     let totalReimb = 0;
     let totalBonus = 0;
+    let totalWage = 0;
 
     const marketTz = user.market?.name ? getMarketTimezone(user.market.name) : DEFAULT_TZ;
     const preciseStart = localTimeToUTC(startDate, "00:00", marketTz);
@@ -68,6 +70,9 @@ export default async function UserPayrollDetailsPage(props: {
     const relevantAssignments = (user.jobs as any[]).filter((a) =>
         assignmentBelongsToCyclePreciseCheck(a, preciseStart, preciseEnd)
     );
+
+    // Batched once for this report, not per-shift — see payRate.ts.
+    const rateHistoryMap = await buildRateResolver([id]);
 
     // This runs server-side, where the JS runtime's default timezone (UTC on Vercel) is
     // not the store's actual local time — must pass timeZone explicitly, same as every
@@ -87,7 +92,10 @@ export default async function UserPayrollDetailsPage(props: {
         const reimb = recapStatus === "APPROVED" ? rawReimb : 0;
         const reimbPendingApproval = recapStatus && recapStatus !== "APPROVED" && rawReimb > 0;
         const bonus = computeBonus(assignment);
-        const shiftPay = workedH * hourlyWage;
+        // Price this shift at the rate in effect on its own date, not always today's
+        // current rate — see apps/web/src/lib/payRate.ts.
+        const rate = getWorkerRate(rateHistoryMap, id, assignment.date, hourlyWage);
+        const shiftPay = workedH * rate;
         const totalPay = shiftPay + reimb + bonus;
         // Everything except reimbursement — wages and bonus are taxable, reimbursement isn't.
         const taxablePay = shiftPay + bonus;
@@ -98,6 +106,7 @@ export default async function UserPayrollDetailsPage(props: {
         totalAssignedHours += assignedH;
         totalReimb += reimb;
         totalBonus += bonus;
+        totalWage += shiftPay;
 
         return {
             id: assignment.id,
@@ -109,6 +118,7 @@ export default async function UserPayrollDetailsPage(props: {
             clockIn: formatClockTime(assignment.clockIn),
             clockOut: formatClockTime(assignment.clockOut),
             breakTime: formatBreak(assignment.breakTimeMinutes || 0),
+            rate: rate.toFixed(2),
             reimb: reimb.toFixed(2),
             reimbPendingApproval,
             bonus: bonus.toFixed(2),
@@ -118,7 +128,7 @@ export default async function UserPayrollDetailsPage(props: {
         };
     });
 
-    const totalCyclePay = (totalWorkedHours * hourlyWage) + totalReimb + totalBonus;
+    const totalCyclePay = totalWage + totalReimb + totalBonus;
     // Everything except reimbursement — wages and bonus are taxable, reimbursement isn't.
     const totalTaxablePay = totalCyclePay - totalReimb;
 
@@ -198,7 +208,7 @@ export default async function UserPayrollDetailsPage(props: {
                                 <td style={{ padding: "0.875rem 1rem", textAlign: "right", fontWeight: 700 }}>{totalWorkedHours.toFixed(2)}h</td>
                             </tr>
                             <tr style={{ borderBottom: "1px solid #e5e7eb" }}>
-                                <td style={{ padding: "0.875rem 1rem" }}>Pay Rate</td>
+                                <td style={{ padding: "0.875rem 1rem" }}>Current Pay Rate</td>
                                 <td style={{ padding: "0.875rem 1rem", textAlign: "right", fontWeight: 700 }}>${hourlyWage.toFixed(2)}/hr</td>
                             </tr>
                             <tr style={{ borderBottom: "1px solid #e5e7eb", backgroundColor: "#f9fafb" }}>
@@ -210,8 +220,11 @@ export default async function UserPayrollDetailsPage(props: {
                                 <td style={{ padding: "0.875rem 1rem", textAlign: "right", fontWeight: 700 }}>${totalBonus.toFixed(2)}</td>
                             </tr>
                             <tr style={{ borderBottom: "1px solid #e5e7eb", backgroundColor: "#f9fafb" }}>
-                                <td style={{ padding: "0.875rem 1rem" }}>Total Wage (Hours * Rate)</td>
-                                <td style={{ padding: "0.875rem 1rem", textAlign: "right", fontWeight: 700 }}>${(totalWorkedHours * hourlyWage).toFixed(2)}</td>
+                                {/* Not simply Hours * Rate — each shift below is priced at whatever rate
+                                    was in effect on its own date, so this can differ from that flat math
+                                    if the rate changed mid-cycle. See the per-shift Rate/hr column below. */}
+                                <td style={{ padding: "0.875rem 1rem" }}>Total Wage</td>
+                                <td style={{ padding: "0.875rem 1rem", textAlign: "right", fontWeight: 700 }}>${totalWage.toFixed(2)}</td>
                             </tr>
                             <tr style={{ backgroundColor: "#e8f5e9", color: "#2e7d32", fontWeight: 800, fontSize: "1.1rem" }}>
                                 <td style={{ padding: "1rem" }}>TOTAL PAY FOR CYCLE</td>
@@ -248,6 +261,7 @@ export default async function UserPayrollDetailsPage(props: {
                                     <th style={{ padding: "1rem", fontSize: "0.875rem", fontWeight: 600 }}>Clock Out</th>
                                     <th style={{ padding: "1rem", fontSize: "0.875rem", fontWeight: 600 }}>Break</th>
                                     <th style={{ padding: "1rem", fontSize: "0.875rem", fontWeight: 600 }}>Hours</th>
+                                    <th style={{ padding: "1rem", fontSize: "0.875rem", fontWeight: 600, textAlign: "right" }}>Rate/hr</th>
                                     <th style={{ padding: "1rem", fontSize: "0.875rem", fontWeight: 600, textAlign: "right" }}>Reimb.</th>
                                     <th style={{ padding: "1rem", fontSize: "0.875rem", fontWeight: 600, textAlign: "right" }}>Bonus</th>
                                     <th style={{ padding: "1rem", fontSize: "0.875rem", fontWeight: 600, textAlign: "right" }}>Shift Pay</th>
@@ -267,6 +281,7 @@ export default async function UserPayrollDetailsPage(props: {
                                         <td style={{ padding: "1rem" }}>{row.clockOut}</td>
                                         <td style={{ padding: "1rem" }}>{row.breakTime}</td>
                                         <td style={{ padding: "1rem" }}>{row.hours}h</td>
+                                        <td style={{ padding: "1rem", textAlign: "right" }}>${row.rate}</td>
                                         <td style={{ padding: "1rem", textAlign: "right", ...(row.reimbPendingApproval ? { color: "#b45309", fontStyle: "italic" } : {}) }}>
                                             {row.reimbPendingApproval ? "Not approved" : `$${row.reimb}`}
                                         </td>

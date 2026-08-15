@@ -88,23 +88,36 @@ export interface PayrollTotals {
     totalReimbursements: number;
     totalBonus: number;
     totalBottlesSold: number;
+    // Only populated when a rateForAssignment resolver is passed to accumulatePayrollTotals —
+    // sum of computeWorkedHours(a) * rateForAssignment(a) per assignment, i.e. wages priced at
+    // each shift's own effective rate (see apps/web/src/lib/payRate.ts) rather than one flat
+    // rate applied to the whole total. Undefined for legacy callers.
+    totalWage?: number;
 }
 
-export function accumulatePayrollTotals(assignments: PayrollAssignmentLike[]): PayrollTotals {
+export function accumulatePayrollTotals(
+    assignments: PayrollAssignmentLike[],
+    rateForAssignment?: (a: PayrollAssignmentLike) => number
+): PayrollTotals {
     const totals: PayrollTotals = {
         totalAssignedHours: 0,
         totalWorkedHours: 0,
         totalReimbursements: 0,
         totalBonus: 0,
         totalBottlesSold: 0,
+        ...(rateForAssignment ? { totalWage: 0 } : {}),
     };
     for (const a of assignments) {
+        const workedHours = computeWorkedHours(a);
         totals.totalAssignedHours += computeAssignedHours(a);
-        totals.totalWorkedHours += computeWorkedHours(a);
+        totals.totalWorkedHours += workedHours;
         totals.totalBonus += computeBonus(a);
         const { reimbursement, bottlesSold } = computeReimbursementAndBottles(a);
         totals.totalReimbursements += reimbursement;
         totals.totalBottlesSold += bottlesSold;
+        if (rateForAssignment) {
+            totals.totalWage = (totals.totalWage || 0) + workedHours * rateForAssignment(a);
+        }
     }
     return totals;
 }
@@ -118,6 +131,17 @@ export interface PayFigures {
 // taxable, reimbursement (expense repayment) isn't.
 export function computePayFigures(hourlyWage: number, totals: Pick<PayrollTotals, "totalWorkedHours" | "totalReimbursements" | "totalBonus">): PayFigures {
     const payForCycle = (totals.totalWorkedHours * hourlyWage) + totals.totalReimbursements + totals.totalBonus;
+    const taxablePay = payForCycle - totals.totalReimbursements;
+    return { payForCycle, taxablePay };
+}
+
+// Effective-dated-rate counterpart to computePayFigures — consumes a pre-computed totalWage
+// (hours already priced per-shift at the rate that was in effect on each shift's own date,
+// via accumulatePayrollTotals(assignments, rateForAssignment)) instead of one flat hourlyWage
+// applied to the whole cycle. computePayFigures above is left untouched for any caller that
+// doesn't need effective-dated rates.
+export function computePayFiguresFromWage(totals: Pick<PayrollTotals, "totalWage" | "totalReimbursements" | "totalBonus">): PayFigures {
+    const payForCycle = (totals.totalWage || 0) + totals.totalReimbursements + totals.totalBonus;
     const taxablePay = payForCycle - totals.totalReimbursements;
     return { payForCycle, taxablePay };
 }

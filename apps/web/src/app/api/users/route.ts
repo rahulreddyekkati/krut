@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { getCurrentCycleDates } from "@/lib/cycles";
+import { buildRateResolver, getWorkerRate } from "@/lib/payRate";
 
 // GET /api/users - List all users with counts
 export async function GET() {
@@ -61,12 +62,16 @@ export async function GET() {
             orderBy: { createdAt: "desc" }
         });
 
-        // Helper: calculate base hours for a user
+        // Batched once for the whole page, not per-user/per-shift — see payRate.ts.
+        const rateHistoryMap = await buildRateResolver(users.map((u: any) => u.id));
+
+        // Helper: calculate base hours (and rate-aware wage) for a user
         const calcHours = (user: any) => {
             let assignedHours = 0;
             let workedHours = 0;
             let totalReimbursement = 0;
             let totalBonus = 0;
+            let totalWage = 0;
 
             user.jobs.forEach((assignment: any) => {
                 const job = assignment.job;
@@ -77,17 +82,22 @@ export async function GET() {
                     if (durationMins < 0) durationMins += 24 * 60;
                     assignedHours += durationMins / 60;
 
+                    let assignmentWorkedHours = 0;
                     if (typeof assignment.workedHours === 'number') {
-                        workedHours += assignment.workedHours;
+                        assignmentWorkedHours = assignment.workedHours;
                     } else if (assignment.clockIn && assignment.clockOut) {
                         const cIn = new Date(assignment.clockIn);
                         const cOut = new Date(assignment.clockOut);
                         if (!isNaN(cIn.getTime()) && !isNaN(cOut.getTime())) {
                             const breakMinutes = assignment.breakTimeMinutes || 0;
                             const diffMins = (cOut.getTime() - cIn.getTime()) / 60000;
-                            workedHours += Math.max(0, (diffMins - breakMinutes) / 60);
+                            assignmentWorkedHours = Math.max(0, (diffMins - breakMinutes) / 60);
                         }
                     }
+                    workedHours += assignmentWorkedHours;
+                    // Price this shift at the rate in effect on its own date, not always
+                    // today's current rate — see apps/web/src/lib/payRate.ts.
+                    totalWage += assignmentWorkedHours * getWorkerRate(rateHistoryMap, user.id, assignment.date, user.hourlyWage);
 
                     // Only count bonus and reimbursement for completed/approved shifts
                     if (assignment.recap?.status === "APPROVED") {
@@ -98,7 +108,7 @@ export async function GET() {
                 }
             });
 
-            return { assignedHours, workedHours, totalReimbursement, totalBonus };
+            return { assignedHours, workedHours, totalReimbursement, totalBonus, totalWage };
         };
 
         // Fetch approved releases this week to subtract from assignedHours
@@ -119,7 +129,7 @@ export async function GET() {
         }
 
         const usersWithHours = users.map((user: any) => {
-            let { assignedHours, workedHours, totalReimbursement, totalBonus } = calcHours(user);
+            let { assignedHours, workedHours, totalReimbursement, totalBonus, totalWage } = calcHours(user);
 
             // Subtract released shift hours
             const userReleases = releasesByWorker[user.id] || [];
@@ -135,16 +145,26 @@ export async function GET() {
             if (assignedHours < 0) assignedHours = 0;
 
             const { jobs, ...userData } = user;
-            const finalWorkedHours = user.manualWorkedHours !== null && user.manualWorkedHours !== undefined
+            const hasManualOverride = user.manualWorkedHours !== null && user.manualWorkedHours !== undefined;
+            const finalWorkedHours = hasManualOverride
                 ? user.manualWorkedHours
                 : parseFloat(workedHours.toFixed(2));
+
+            // Known limitation: manualWorkedHours has no "manual total wage" concept, only
+            // manual hours × today's current rate — this legacy path is left untouched, so a
+            // worker with both a manual-hours override and a mid-period rate change will
+            // diverge from the rate-aware path below. See plan doc for why this is accepted.
+            const payForCycle = hasManualOverride
+                ? (user.manualWorkedHours * (user.hourlyWage || 0)) + totalReimbursement + totalBonus
+                : totalWage + totalReimbursement + totalBonus;
 
             return {
                 ...userData,
                 assignedHours: parseFloat(assignedHours.toFixed(2)),
                 workedHours: finalWorkedHours,
                 totalReimbursement: parseFloat(totalReimbursement.toFixed(2)),
-                totalBonus: parseFloat(totalBonus.toFixed(2))
+                totalBonus: parseFloat(totalBonus.toFixed(2)),
+                payForCycle: parseFloat(payForCycle.toFixed(2))
             };
         });
 

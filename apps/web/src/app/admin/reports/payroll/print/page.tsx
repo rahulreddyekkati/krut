@@ -8,8 +8,9 @@ import {
     buildCycleAssignmentWhere,
     assignmentBelongsToCyclePreciseCheck,
     accumulatePayrollTotals,
-    computePayFigures,
+    computePayFiguresFromWage,
 } from "@/lib/payroll";
+import { buildRateResolver, getWorkerRate } from "@/lib/payRate";
 
 export default async function PrintAllPayrollPage(props: {
     searchParams: Promise<{ startDate?: string; endDate?: string; market?: string }>;
@@ -58,6 +59,9 @@ export default async function PrintAllPayrollPage(props: {
         },
     });
 
+    // Batched once for the whole report, not per-user/per-shift — see payRate.ts.
+    const rateHistoryMap = await buildRateResolver(users.map((u) => u.id));
+
     const rows = users
         .map((user) => {
             const marketTz = user.market?.name ? getMarketTimezone(user.market.name) : DEFAULT_TZ;
@@ -67,9 +71,12 @@ export default async function PrintAllPayrollPage(props: {
                 assignmentBelongsToCyclePreciseCheck(a, preciseStart, preciseEnd)
             );
 
-            const totals = accumulatePayrollTotals(relevantAssignments);
             const wage = user.hourlyWage || 0;
-            const { payForCycle, taxablePay } = computePayFigures(wage, totals);
+            const totals = accumulatePayrollTotals(
+                relevantAssignments,
+                (a) => getWorkerRate(rateHistoryMap, user.id, a.date, wage)
+            );
+            const { payForCycle, taxablePay } = computePayFiguresFromWage(totals);
 
             return {
                 name: user.name || user.email,

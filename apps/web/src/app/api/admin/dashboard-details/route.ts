@@ -208,7 +208,8 @@ export async function GET(request: NextRequest) {
                 storeName: a.job.store.name,
                 marketName: a.job.store.market?.name || "—",
                 clockIn: a.clockIn,
-                shiftEnd: a.job.endTimeStr || "--"
+                shiftEnd: a.job.endTimeStr || "--",
+                timezone: a.job.store.timezone || "America/Chicago"
             }));
 
             return NextResponse.json({ data });

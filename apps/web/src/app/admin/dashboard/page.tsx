@@ -29,6 +29,10 @@ export default function AdminDashboardPage() {
     const [modalStores, setModalStores] = useState<any[]>([]);
     const [selectedWorkerId, setSelectedWorkerId] = useState("");
     const [selectedStoreId, setSelectedStoreId] = useState("");
+    const [clockingInRow, setClockingInRow] = useState<any>(null);
+    const [clockInTime, setClockInTime] = useState("");
+    const [clockInSaving, setClockInSaving] = useState(false);
+    const [clockInError, setClockInError] = useState("");
 
     const fetchStats = async (date: string) => {
         setLoading(true);
@@ -145,6 +149,40 @@ export default function AdminDashboardPage() {
         }
     };
 
+    const handleOpenClockIn = (row: any) => {
+        setClockingInRow(row);
+        setClockInTime("");
+        setClockInError("");
+    };
+
+    const handleSaveClockIn = async () => {
+        if (!clockingInRow?.assignmentId) return;
+        if (!clockInTime) {
+            setClockInError("Please enter a time");
+            return;
+        }
+        setClockInSaving(true);
+        setClockInError("");
+        try {
+            const res = await fetch(`/api/admin/assignments/${clockingInRow.assignmentId}/clock-in`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ time: clockInTime, date: selectedDate }),
+            });
+            if (res.ok) {
+                setClockingInRow(null);
+                fetchDetailData("jobs");
+            } else {
+                const d = await res.json();
+                setClockInError(d.error || "Failed to clock in");
+            }
+        } catch {
+            setClockInError("An unexpected error occurred");
+        } finally {
+            setClockInSaving(false);
+        }
+    };
+
     const handleDeleteAssignment = async (assignmentId: string, workerName: string) => {
         if (!confirm(`Are you sure you want to delete the shift for ${workerName}? This will only remove this specific-date shift, not the recurring pattern.`)) {
             return;
@@ -186,9 +224,18 @@ export default function AdminDashboardPage() {
         setSendingNotification(null);
     };
 
-    const formatTime = (dateStr: string | null) => {
+    // Renders a UTC timestamp in the shift's own store timezone, not the viewer's browser
+    // timezone -- an admin checking the dashboard from outside the US (or just a different
+    // US zone) would otherwise see a clock-in time shifted by their own local offset, which
+    // reads as a completely different (and sometimes even wrong-calendar-day) time than what
+    // actually happened at the store.
+    const formatTime = (dateStr: string | null, timeZone?: string) => {
         if (!dateStr) return "--";
-        return new Date(dateStr).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        return new Date(dateStr).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+            timeZone: timeZone || "America/Chicago"
+        });
     };
 
     const isMM = user?.role === "MARKET_MANAGER";
@@ -335,6 +382,12 @@ export default function AdminDashboardPage() {
                                                             Edit
                                                         </button>
                                                         <button
+                                                            onClick={() => handleOpenClockIn(row)}
+                                                            style={{ background: "#059669", color: "white", border: "none", borderRadius: "6px", padding: "0.25rem 0.75rem", fontSize: "0.8rem", cursor: "pointer", fontWeight: 600 }}
+                                                        >
+                                                            Clock In
+                                                        </button>
+                                                        <button
                                                             onClick={() => handleDeleteAssignment(row.assignmentId, row.assignedWorker)}
                                                             style={{ background: "#ef4444", color: "white", border: "none", borderRadius: "6px", padding: "0.25rem 0.75rem", fontSize: "0.8rem", cursor: "pointer", fontWeight: 600 }}
                                                         >
@@ -352,7 +405,7 @@ export default function AdminDashboardPage() {
                                             <td style={tdStyle}>{row.workerName}</td>
                                             <td style={tdStyle}>{row.storeName}</td>
                                             <td style={tdStyle}>{row.marketName}</td>
-                                            <td style={tdStyle}>{formatTime(row.clockIn)}</td>
+                                            <td style={tdStyle}>{formatTime(row.clockIn, row.timezone)}</td>
                                             <td style={tdStyle}>{row.shiftEnd}</td>
                                         </tr>
                                     ))}
@@ -439,6 +492,47 @@ export default function AdminDashboardPage() {
                             className="btn btn-primary"
                         >
                             {editSaving ? "Saving…" : "Save Changes"}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
+        {clockingInRow && (
+            <div
+                onClick={() => setClockingInRow(null)}
+                style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center" }}
+            >
+                <div
+                    onClick={e => e.stopPropagation()}
+                    className="card glass"
+                    style={{ width: "100%", maxWidth: "380px", padding: "1.75rem", borderRadius: "1rem" }}
+                >
+                    <h3 className="heading h4" style={{ marginBottom: "0.25rem" }}>Manual Clock In</h3>
+                    <p style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "1.5rem" }}>
+                        {clockingInRow.assignedWorker} · {clockingInRow.storeName}
+                    </p>
+
+                    <div style={{ marginBottom: "1rem" }}>
+                        <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, marginBottom: "0.375rem" }}>Clock-In Time</label>
+                        <input
+                            type="time"
+                            className="input"
+                            value={clockInTime}
+                            onChange={e => setClockInTime(e.target.value)}
+                            autoFocus
+                        />
+                    </div>
+
+                    {clockInError && <div className="alert alert-danger" style={{ marginBottom: "1rem", fontSize: "0.875rem" }}>{clockInError}</div>}
+
+                    <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
+                        <button onClick={() => setClockingInRow(null)} style={{ background: "#f3f4f6", color: "#374151", border: "none", borderRadius: "8px", padding: "0.5rem 1rem", fontWeight: 600, cursor: "pointer" }}>Cancel</button>
+                        <button
+                            onClick={handleSaveClockIn}
+                            disabled={clockInSaving}
+                            className="btn btn-primary"
+                        >
+                            {clockInSaving ? "Clocking in…" : "Clock In"}
                         </button>
                     </div>
                 </div>

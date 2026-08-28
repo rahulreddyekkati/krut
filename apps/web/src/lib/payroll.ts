@@ -3,12 +3,15 @@
 //   - apps/web/src/app/admin/reports/payroll/print/page.tsx      (print-all view)
 //   - apps/web/src/app/admin/reports/payroll/user/[id]/page.tsx  (per-worker drill-down)
 //   - apps/web/src/app/api/admin/reports/payroll/user/[id]/csv/route.ts (per-worker CSV)
+//   - apps/web/src/app/api/users/route.ts                        (admin-users pay column)
 //
 // Before this file existed, each of the 4 views above hand-copied the same math
 // independently, and drifted apart over time (custom shift times honored in some but not
 // others, a workedHours fallback present in some but not others, etc.) — see the payroll
 // audit findings. Routing all 4 through this one module is what stops that from happening
 // again: fix a formula here once, every view picks it up.
+
+import prisma from "@/lib/prisma";
 
 export interface PayrollAssignmentLike {
     date: Date | string | null;
@@ -197,4 +200,85 @@ export function assignmentBelongsToCyclePreciseCheck(
     if (!a.clockIn) return false;
     const ci = new Date(a.clockIn).getTime();
     return ci >= preciseRealTimeStart.getTime() && ci <= preciseRealTimeEnd.getTime();
+}
+
+// --- Released-shift hours subtraction ---
+//
+// A released shift's JobAssignment row survives the release itself: approving a release
+// only flips `status` to AVAILABLE and stamps `releasedByWorkerId` — `workerId` stays the
+// releasing worker's until another worker claims it (see
+// shift-assign-requests/[id]/approve/route.ts), at which point `workerId` on that SAME row
+// is TRANSFERRED to the claimant. Once that happens, the assignment silently drops out of
+// the original releaser's own assignment list — their totalAssignedHours no longer
+// includes it at all, with zero help needed from this file.
+//
+// A naive "subtract every approved release's duration from this worker's assigned hours"
+// step doesn't know that, and subtracts it anyway — double-subtracting hours that were
+// never counted for this worker in the current total. That can drive the total negative
+// and get clamped to 0, wiping out this worker's OTHER, completely unrelated, still-worked
+// shifts' assigned hours for the same cycle (confirmed in production: a worker's Assigned
+// Hours showed 0 despite one fully-worked, fully-approved shift, because an unrelated
+// released-and-reassigned shift's hours were subtracted from a total that never included
+// them). Only subtract a release's hours when its assignment is still actually owned by
+// the releasing worker right now.
+
+export interface ReleaseRequestLike {
+    workerId: string;
+    assignmentId: string | null;
+    jobId: string;
+    date: Date | string | null;
+    job: { startTimeStr: string; endTimeStr: string };
+}
+
+// Batch-resolves, once per report generation (never per-release), whether each release's
+// underlying assignment is still owned by the worker who released it. Returns a predicate
+// to pass into sumReleaseHoursToSubtract below.
+export async function resolveReleasesStillOwned(
+    releases: ReleaseRequestLike[]
+): Promise<(rel: ReleaseRequestLike) => boolean> {
+    const withAssignmentId = releases.filter((r) => r.assignmentId);
+    const assignments = withAssignmentId.length
+        ? await prisma.jobAssignment.findMany({
+              where: { id: { in: withAssignmentId.map((r) => r.assignmentId as string) } },
+              select: { id: true, workerId: true },
+          })
+        : [];
+    const ownerByAssignmentId = new Map(assignments.map((a) => [a.id, a.workerId]));
+
+    // Legacy releases with no assignmentId on file (rare — see the approve route's own
+    // fallback match) are resolved individually by job + date + worker; the volume here is
+    // expected to be small enough that per-release queries are fine.
+    const legacyKey = (jobId: string, date: Date | string) => `${jobId}|${new Date(date).toISOString().slice(0, 10)}`;
+    const legacyOwned = new Set<string>();
+    for (const rel of releases) {
+        if (rel.assignmentId || !rel.date) continue;
+        const dayStart = new Date(rel.date); dayStart.setUTCHours(0, 0, 0, 0);
+        const dayEnd = new Date(rel.date); dayEnd.setUTCHours(23, 59, 59, 999);
+        const found = await prisma.jobAssignment.findFirst({
+            where: { jobId: rel.jobId, workerId: rel.workerId, date: { gte: dayStart, lte: dayEnd } },
+            select: { id: true },
+        });
+        if (found) legacyOwned.add(legacyKey(rel.jobId, rel.date));
+    }
+
+    return (rel: ReleaseRequestLike) => {
+        if (rel.assignmentId) return ownerByAssignmentId.get(rel.assignmentId) === rel.workerId;
+        if (!rel.date) return false;
+        return legacyOwned.has(legacyKey(rel.jobId, rel.date));
+    };
+}
+
+// Sums the hours to subtract from one worker's assigned-hours total — every release in
+// `releases` for which `stillOwned(rel)` is true (see resolveReleasesStillOwned above).
+export function sumReleaseHoursToSubtract(
+    releases: ReleaseRequestLike[],
+    stillOwned: (rel: ReleaseRequestLike) => boolean
+): number {
+    let total = 0;
+    for (const rel of releases) {
+        if (!stillOwned(rel)) continue;
+        if (!rel.job.startTimeStr || !rel.job.endTimeStr) continue;
+        total += durationHours(rel.job.startTimeStr, rel.job.endTimeStr);
+    }
+    return total;
 }

@@ -9,6 +9,8 @@ import {
     assignmentBelongsToCyclePreciseCheck,
     accumulatePayrollTotals,
     computePayFiguresFromWage,
+    resolveReleasesStillOwned,
+    sumReleaseHoursToSubtract,
 } from "@/lib/payroll";
 import { buildRateResolver, getWorkerRate } from "@/lib/payRate";
 
@@ -86,6 +88,10 @@ export async function GET(request: NextRequest) {
             releasesByWorker[rel.workerId].push(rel);
         });
 
+        // Batched once for the whole report — see payroll.ts for why a release's hours must
+        // only be subtracted when its assignment is still actually owned by the releaser.
+        const releaseStillOwned = await resolveReleasesStillOwned(approvedReleases);
+
         // Batched once for the whole report, not per-user/per-shift — see payRate.ts.
         const rateHistoryMap = await buildRateResolver(users.map((u: any) => u.id));
 
@@ -106,16 +112,10 @@ export async function GET(request: NextRequest) {
                 (a) => getWorkerRate(rateHistoryMap, user.id, a.date, hourlyWage)
             );
 
-            // Subtract releases
+            // Subtract releases — only those still owned by this worker (see payroll.ts).
             let totalAssignedHours = totals.totalAssignedHours;
             const userReleases = releasesByWorker[user.id] || [];
-            userReleases.forEach(rel => {
-                const [sh, sm] = rel.job.startTimeStr.split(":").map(Number);
-                const [eh, em] = rel.job.endTimeStr.split(":").map(Number);
-                let durationMins = (eh * 60 + em) - (sh * 60 + sm);
-                if (durationMins < 0) durationMins += 24 * 60;
-                totalAssignedHours -= (durationMins / 60);
-            });
+            totalAssignedHours -= sumReleaseHoursToSubtract(userReleases, releaseStillOwned);
 
             const { payForCycle, taxablePay } = computePayFiguresFromWage(totals);
 

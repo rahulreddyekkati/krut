@@ -34,29 +34,59 @@ export async function GET(request: NextRequest) {
             statusFilter = { status: { in: statuses } };
         }
 
-        const recaps = await (prisma.recap as any).findMany({
-            where: {
-                ...dateFilter,
-                ...statusFilter,
-                job: jobWhere
-            },
-            include: {
-                assignment: {
-                    include: {
-                        worker: { select: { id: true, name: true, email: true } }
-                    }
-                },
-                job: {
-                    include: {
-                        store: {
-                            include: { market: { select: { name: true } } }
+        const where = {
+            ...dateFilter,
+            ...statusFilter,
+            job: jobWhere
+        };
+
+        // List view only ever renders worker/store/market/date/status/reimbursement —
+        // it never shows receiptUrl, managerSignature, customerFeedback, managerReview,
+        // skus, or consumersSampled/consumersAttended (those are detail-only, fetched
+        // separately by /api/admin/recaps/[id]). Using `select` instead of `include`
+        // keeps those heavy fields (receiptUrl can be several MB of base64 receipt
+        // photos per row) out of this query entirely, since pulling them for every
+        // row here previously made this endpoint take 30s+ to resolve.
+        const RECAP_LIST_TAKE = 500;
+
+        const [recaps, total] = await Promise.all([
+            (prisma.recap as any).findMany({
+                where,
+                select: {
+                    id: true,
+                    jobId: true,
+                    status: true,
+                    reimbursement: true,
+                    receiptTotal: true,
+                    rushLevel: true,
+                    createdAt: true,
+                    assignment: {
+                        select: {
+                            date: true,
+                            clockIn: true,
+                            clockOut: true,
+                            worker: { select: { id: true, name: true, email: true } }
+                        }
+                    },
+                    job: {
+                        select: {
+                            startTimeStr: true,
+                            endTimeStr: true,
+                            store: {
+                                select: { name: true, market: { select: { name: true } } }
+                            }
                         }
                     }
                 },
-                skus: true
-            },
-            orderBy: { createdAt: "desc" }
-        });
+                orderBy: { createdAt: "desc" },
+                take: RECAP_LIST_TAKE
+            }),
+            (prisma.recap as any).count({ where })
+        ]);
+
+        if (total > recaps.length) {
+            console.warn(`[admin/recaps] list truncated: returning ${recaps.length} of ${total} matching recaps (take=${RECAP_LIST_TAKE})`);
+        }
 
         const data = recaps.map((r: any) => {
             const assignment = r.assignment;
@@ -74,11 +104,6 @@ export async function GET(request: NextRequest) {
                 reimbursement: r.reimbursement,
                 receiptTotal: r.receiptTotal || 0,
                 rushLevel: r.rushLevel,
-                consumersSampled: r.consumersSampled,
-                customerFeedback: r.customerFeedback,
-                receiptUrl: r.receiptUrl,
-                managerReview: r.managerReview,
-                skus: r.skus || [],
                 createdAt: r.createdAt,
                 shiftDate: assignment?.date,
                 startTime: r.job.startTimeStr,
@@ -88,7 +113,7 @@ export async function GET(request: NextRequest) {
             };
         });
 
-        return NextResponse.json({ recaps: data });
+        return NextResponse.json({ recaps: data, total });
     } catch (error) {
         return handleApiError(error);
     }

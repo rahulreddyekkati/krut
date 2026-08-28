@@ -3,7 +3,11 @@ import prisma from "@/lib/prisma";
 import { localShiftEndToUTC, toLocalDateStr } from "@/lib/timezone";
 import { sendPushToUser } from "@/lib/notifications";
 
-const TZ = "America/Chicago";
+// Fallback only — every store should carry its own timezone (Store.timezone).
+// Used to exist as a single hardcoded constant here, which silently auto-clocked
+// out Mountain-time stores (e.g. El Paso, Colorado) an hour early. Do not revert
+// to a single shared TZ; always resolve per-assignment via assignment.job.store.timezone.
+const FALLBACK_TZ = "America/Chicago";
 
 export async function GET(request: NextRequest) {
     // Vercel cron sends Authorization: Bearer <CRON_SECRET>; keep x-cron-secret as a fallback
@@ -22,7 +26,7 @@ export async function GET(request: NextRequest) {
     const stuck = await prisma.jobAssignment.findMany({
         where: { clockIn: { not: null }, clockOut: null },
         include: {
-            job: { select: { id: true, startTimeStr: true, endTimeStr: true } },
+            job: { select: { id: true, startTimeStr: true, endTimeStr: true, store: { select: { timezone: true } } } },
             breaks: { where: { endTime: null } }
         }
     });
@@ -30,12 +34,13 @@ export async function GET(request: NextRequest) {
     // Send 1-hour warning to workers whose shift ends in ~1 hour
     for (const assignment of stuck) {
         try {
+            const tz = assignment.job.store?.timezone || FALLBACK_TZ;
             const startTimeStr = (assignment as any).customStartTimeStr ?? assignment.job.startTimeStr;
             const endTimeStr = (assignment as any).customEndTimeStr ?? assignment.job.endTimeStr;
             const shiftDateStr = assignment.date
                 ? new Date(assignment.date).toISOString().split('T')[0]
-                : toLocalDateStr(new Date(assignment.clockIn!), TZ);
-            const scheduledEnd = localShiftEndToUTC(shiftDateStr, startTimeStr, endTimeStr, TZ);
+                : toLocalDateStr(new Date(assignment.clockIn!), tz);
+            const scheduledEnd = localShiftEndToUTC(shiftDateStr, startTimeStr, endTimeStr, tz);
             const minutesUntilEnd = (scheduledEnd.getTime() - now.getTime()) / 60000;
 
             if (minutesUntilEnd >= 55 && minutesUntilEnd <= 65) {
@@ -59,15 +64,16 @@ export async function GET(request: NextRequest) {
 
     for (const assignment of stuck) {
         try {
+            const tz = assignment.job.store?.timezone || FALLBACK_TZ;
             const startTimeStr = (assignment as any).customStartTimeStr ?? assignment.job.startTimeStr;
             const endTimeStr = (assignment as any).customEndTimeStr ?? assignment.job.endTimeStr;
 
             const shiftDateStr = assignment.date
                 ? new Date(assignment.date).toISOString().split('T')[0]
-                : toLocalDateStr(new Date(assignment.clockIn!), TZ);
+                : toLocalDateStr(new Date(assignment.clockIn!), tz);
 
             // Compute when the shift should have ended in UTC
-            const scheduledClockOut = localShiftEndToUTC(shiftDateStr, startTimeStr, endTimeStr, TZ);
+            const scheduledClockOut = localShiftEndToUTC(shiftDateStr, startTimeStr, endTimeStr, tz);
 
             // Only auto-clock-out if that time has already passed
             if (scheduledClockOut.getTime() > now.getTime()) continue;

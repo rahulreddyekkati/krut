@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { getCurrentCycleDates } from "@/lib/cycles";
 import { buildRateResolver, getWorkerRate } from "@/lib/payRate";
+import { resolveReleasesStillOwned, sumReleaseHoursToSubtract } from "@/lib/payroll";
 
 // GET /api/users - List all users with counts
 export async function GET() {
@@ -128,20 +129,16 @@ export async function GET() {
             releasesByWorker[rel.workerId].push(rel);
         }
 
+        // Batched once for the whole page — see payroll.ts for why a release's hours must
+        // only be subtracted when its assignment is still actually owned by the releaser.
+        const releaseStillOwned = await resolveReleasesStillOwned(approvedReleases);
+
         const usersWithHours = users.map((user: any) => {
             let { assignedHours, workedHours, totalReimbursement, totalBonus, totalWage } = calcHours(user);
 
-            // Subtract released shift hours
+            // Subtract released shift hours — only those still owned by this worker.
             const userReleases = releasesByWorker[user.id] || [];
-            for (const rel of userReleases) {
-                if (rel.job.startTimeStr && rel.job.endTimeStr) {
-                    const [sh, sm] = rel.job.startTimeStr.split(":").map(Number);
-                    const [eh, em] = rel.job.endTimeStr.split(":").map(Number);
-                    let durationMins = (eh * 60 + em) - (sh * 60 + sm);
-                    if (durationMins < 0) durationMins += 24 * 60;
-                    assignedHours -= durationMins / 60;
-                }
-            }
+            assignedHours -= sumReleaseHoursToSubtract(userReleases, releaseStillOwned);
             if (assignedHours < 0) assignedHours = 0;
 
             const { jobs, ...userData } = user;

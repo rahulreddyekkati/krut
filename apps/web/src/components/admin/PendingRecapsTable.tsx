@@ -1,10 +1,12 @@
 "use client";
 
 import React, { useState } from "react";
+import ManualRecapModal from "./ManualRecapModal";
 
-export default function PendingRecapsTable({ recaps }: { recaps: any[] }) {
+export default function PendingRecapsTable({ recaps, onEntered }: { recaps: any[]; onEntered?: () => void }) {
     const [sentReminders, setSentReminders] = useState<Record<string, boolean>>({});
     const [sendingReminder, setSendingReminder] = useState<string | null>(null);
+    const [enteringRecapRow, setEnteringRecapRow] = useState<any>(null);
 
     const handleSendNotification = async (row: any) => {
         // Prevent double sending
@@ -120,7 +122,23 @@ export default function PendingRecapsTable({ recaps }: { recaps: any[] }) {
                                         {row.hoursOverdue}h overdue
                                     </td>
                                 )}
-                                <td style={tdStyle}>
+                                <td style={{ ...tdStyle, display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); setEnteringRecapRow(row); }}
+                                        style={{
+                                            padding: "0.375rem 0.875rem",
+                                            background: "#6366f1",
+                                            color: "white",
+                                            border: "none",
+                                            borderRadius: "8px",
+                                            fontSize: "0.75rem",
+                                            fontWeight: 700,
+                                            cursor: "pointer",
+                                            whiteSpace: "nowrap"
+                                        }}
+                                    >
+                                        Enter Recap
+                                    </button>
                                     <button
                                         onClick={(e) => { e.stopPropagation(); handleSendNotification(row); }}
                                         disabled={isSent || isSending}
@@ -145,6 +163,13 @@ export default function PendingRecapsTable({ recaps }: { recaps: any[] }) {
                     })}
                 </tbody>
             </table>
+            {enteringRecapRow && (
+                <ManualRecapModal
+                    row={enteringRecapRow}
+                    onClose={() => setEnteringRecapRow(null)}
+                    onSaved={() => onEntered && onEntered()}
+                />
+            )}
         </div>
     );
 }

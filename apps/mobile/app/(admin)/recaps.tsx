@@ -33,7 +33,7 @@ export default function RecapsScreen() {
         const res = await fetchWithAuth(`/admin/recaps?status=PENDING&noLimit=true`);
         if (res.ok) {
             const data = await res.json();
-            const sorted = (data.recaps || []).sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+            const sorted = (data.recaps || []).sort((a: any, b: any) => new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime());
             setPendingRecaps(sorted);
         }
     } catch (e) {
@@ -193,7 +193,7 @@ export default function RecapsScreen() {
                                 <Text style={styles.userName}>{r.workerName}</Text>
                                 <Text style={styles.storeName}>{r.storeName} • {r.marketName}</Text>
                             </View>
-                            <Text style={styles.subTimeText}>{getRelativeTime(r.createdAt)}</Text>
+                            <Text style={styles.subTimeText}>{getRelativeTime(r.submittedAt)}</Text>
                         </View>
                         <View style={styles.statsRow}>
                             <View style={styles.statCell}>
@@ -285,10 +285,15 @@ export default function RecapsScreen() {
                                 <Text style={styles.userName}>{r.workerName}</Text>
                                 <Text style={styles.storeName}>{r.storeName} • {r.marketName}</Text>
                             </View>
-                            <View style={[styles.badge, r.status === 'APPROVED' ? styles.badgeApproved : styles.badgeRejected]}>
-                                <Text style={[styles.badgeText, r.status === 'APPROVED' ? styles.textApproved : styles.textRejected]}>
-                                    {r.status}
-                                </Text>
+                            <View style={{ alignItems: 'flex-end' }}>
+                                <View style={[styles.badge, r.status === 'APPROVED' ? styles.badgeApproved : styles.badgeRejected]}>
+                                    <Text style={[styles.badgeText, r.status === 'APPROVED' ? styles.textApproved : styles.textRejected]}>
+                                        {r.status}
+                                    </Text>
+                                </View>
+                                {r.approvedAt && (
+                                    <Text style={styles.subTimeText}>{getRelativeTime(r.approvedAt)}</Text>
+                                )}
                             </View>
                         </View>
                         <View style={styles.statsRow}>

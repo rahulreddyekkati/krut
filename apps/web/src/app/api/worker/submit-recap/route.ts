@@ -100,7 +100,11 @@ export async function POST(request: NextRequest) {
                 customerFeedback: customerFeedback ?? null,
                 receiptUrl: receiptUrl ?? null,
                 comments: customerFeedback ?? null,
-                status: "PENDING"
+                status: "PENDING",
+                // Stamped on every submission, including a resubmission after rejection below
+                // (spread into both the create and update branches) — unlike createdAt (set
+                // once, at first submission), this always reflects the latest submission.
+                submittedAt: new Date(),
             };
 
             // Check for existing rejected recap for this assignment

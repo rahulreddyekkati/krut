@@ -288,6 +288,11 @@ model Recap {
   skus              RecapSKU[]
 
   createdAt         DateTime @default(now())
+  // Stamped on every submit-recap call, including a resubmission after rejection — unlike
+  // createdAt (set once, at first submission), this always reflects the latest submission.
+  submittedAt       DateTime?
+  // Stamped once, when an admin approves the recap. Null until then.
+  approvedAt        DateTime?
 
   @@index([status])
 }
@@ -399,7 +404,7 @@ model AuditLog {
   id         String   @id @default(cuid())
   actor      User     @relation(fields: [actorId], references: [id])
   actorId    String
-  action     String   // SHIFT_TIME_EDIT, BREAK_MINUTES_OVERRIDE, RECAP_APPROVED, RECAP_REJECTED
+  action     String   // SHIFT_TIME_EDIT, BREAK_MINUTES_OVERRIDE, RECAP_APPROVED, RECAP_REJECTED, RECAP_MANUAL_ENTRY
   entityType String   // JobAssignment, Recap, Break
   entityId   String
   oldValue   String?  // JSON serialized (SQLite has no Json type)

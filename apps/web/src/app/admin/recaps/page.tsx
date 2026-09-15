@@ -231,7 +231,7 @@ function RecapsPageInner() {
                                             <td style={tdStyle}>{r.storeName}</td>
                                             <td style={tdStyle}>{r.marketName}</td>
                                             <td style={tdStyle}>{r.shiftDate ? new Date(r.shiftDate).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }) : '—'}</td>
-                                            <td style={tdStyle}>{getRelativeTime(r.createdAt)}</td>
+                                            <td style={tdStyle}>{getRelativeTime(r.submittedAt)}</td>
                                             <td style={tdStyle}>${(r.reimbursement || 0).toFixed(2)}</td>
                                             <td style={tdStyle}>
                                                 <a
@@ -271,7 +271,10 @@ function RecapsPageInner() {
                             <p style={{ color: "#6b7280" }}>Every worker has submitted their recap for current shifts.</p>
                         </div>
                     ) : (
-                        <PendingRecapsTable recaps={incompleteRecaps} />
+                        <PendingRecapsTable
+                            recaps={incompleteRecaps}
+                            onEntered={() => { fetchIncomplete(); fetchPending(); }}
+                        />
                     )}
                 </div>
             )}
@@ -315,6 +318,7 @@ function RecapsPageInner() {
                                             <th style={thStyle}>Market</th>
                                             <th style={thStyle}>Shift Date</th>
                                             <th style={thStyle}>Status</th>
+                                            <th style={thStyle}>Approved</th>
                                             <th style={thStyle}>Reimbursement</th>
                                             <th style={thStyle}>Action</th>
                                         </tr>
@@ -327,6 +331,7 @@ function RecapsPageInner() {
                                                 <td style={tdStyle}>{r.marketName}</td>
                                                 <td style={tdStyle}>{r.shiftDate ? new Date(r.shiftDate).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }) : '—'}</td>
                                                 <td style={tdStyle}>{statusBadge(r.status)}</td>
+                                                <td style={tdStyle}>{r.approvedAt ? getRelativeTime(r.approvedAt) : '—'}</td>
                                                 <td style={tdStyle}>${(r.reimbursement || 0).toFixed(2)}</td>
                                                 <td style={tdStyle}>
                                                     <a

@@ -209,6 +209,16 @@ export default function RecapDetailPage() {
                     <span style={valueStyle}>{recap.shiftDate ? new Date(recap.shiftDate).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : "--"}</span>
                 </div>
                 <div style={rowStyle}>
+                    <span style={labelStyle}>Submitted</span>
+                    <span style={valueStyle}>{recap.submittedAt ? new Date(recap.submittedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : "--"}</span>
+                </div>
+                {recap.approvedAt && (
+                    <div style={rowStyle}>
+                        <span style={labelStyle}>Approved</span>
+                        <span style={valueStyle}>{new Date(recap.approvedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                    </div>
+                )}
+                <div style={rowStyle}>
                     <span style={labelStyle}>Clock In</span>
                     {recap.status === "PENDING" ? (
                         <input

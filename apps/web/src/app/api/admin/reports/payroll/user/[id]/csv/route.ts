@@ -9,6 +9,7 @@ import {
     computeAssignedHours,
     computeWorkedHours,
     computeBonus,
+    hasWithheldHours,
 } from "@/lib/payroll";
 import { buildRateResolver, getWorkerRate } from "@/lib/payRate";
 
@@ -71,7 +72,7 @@ export async function GET(
         csvContent += `Pay Report for ${user.name}\n`;
         csvContent += `Pay Cycle: ${startDate} to ${endDate}\n`;
         csvContent += `Current Hourly Wage: $${hourlyWage.toFixed(2)}/hr\n\n`;
-        csvContent += `Date,Store,Clock In,Clock Out,Break (min),Assigned Hours,Hours Worked,Rate/hr,Reimbursement,Bonus,Shift Pay,Total Shift Pay,Taxable Pay\n`;
+        csvContent += `Date,Store,Clock In,Clock Out,Break (min),Assigned Hours,Hours Worked,Rate/hr,Reimbursement,Bonus,Shift Pay,Total Shift Pay,Taxable Pay,Hours Status\n`;
 
         // Runs server-side — must pass timeZone explicitly or this defaults to the server's
         // system timezone (UTC on Vercel), not the store's actual local time.
@@ -109,10 +110,13 @@ export async function GET(
             const dateLabel = assignment.date ? assignment.date.toLocaleDateString(undefined, { timeZone: "UTC" }) : "--";
             const storeLabel = assignment.job.store.name.replace(/"/g, '""');
             const breakMins = Math.round(assignment.breakTimeMinutes || 0);
-            csvContent += `${dateLabel},"${storeLabel}",${formatClockTime(assignment.clockIn)},${formatClockTime(assignment.clockOut)},${breakMins},${assignedH.toFixed(2)},${worked.toFixed(2)},${rate.toFixed(2)},${reimb.toFixed(2)},${bonus.toFixed(2)},${shiftPay.toFixed(2)},${totalPay.toFixed(2)},${taxablePay.toFixed(2)}\n`;
+            // Trailing column, appended rather than inserted mid-row, so any downstream
+            // positional import of the existing columns isn't broken by this addition.
+            const hoursStatus = hasWithheldHours(assignment) ? "Awaiting Recap" : "";
+            csvContent += `${dateLabel},"${storeLabel}",${formatClockTime(assignment.clockIn)},${formatClockTime(assignment.clockOut)},${breakMins},${assignedH.toFixed(2)},${worked.toFixed(2)},${rate.toFixed(2)},${reimb.toFixed(2)},${bonus.toFixed(2)},${shiftPay.toFixed(2)},${totalPay.toFixed(2)},${taxablePay.toFixed(2)},${hoursStatus}\n`;
         }
 
-        csvContent += `\nTotal,,,,,${sumAssigned.toFixed(2)},${sumWorked.toFixed(2)},,${sumReimb.toFixed(2)},${sumBonus.toFixed(2)},${sumShiftPay.toFixed(2)},${(sumShiftPay + sumReimb + sumBonus).toFixed(2)},${(sumShiftPay + sumBonus).toFixed(2)}\n`;
+        csvContent += `\nTotal,,,,,${sumAssigned.toFixed(2)},${sumWorked.toFixed(2)},,${sumReimb.toFixed(2)},${sumBonus.toFixed(2)},${sumShiftPay.toFixed(2)},${(sumShiftPay + sumReimb + sumBonus).toFixed(2)},${(sumShiftPay + sumBonus).toFixed(2)},\n`;
 
         const filename = `Payroll_Report_${user.name.replace(/\s+/g, '_')}_${startDate}_to_${endDate}.csv`;
 

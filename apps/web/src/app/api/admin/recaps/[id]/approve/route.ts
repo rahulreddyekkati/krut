@@ -59,8 +59,9 @@ export async function POST(
             // 1. Update and Approve recap
             await tx.recap.update({
                 where: { id: recapId },
-                data: { 
-                    status: "APPROVED", 
+                data: {
+                    status: "APPROVED",
+                    approvedAt: new Date(),
                     managerReview: managerNotes || null,
                     // Apply manager edits if provided
                     consumersSampled: consumersSampled !== undefined ? Number(consumersSampled) : undefined,

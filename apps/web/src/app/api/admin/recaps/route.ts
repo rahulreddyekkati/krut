@@ -60,6 +60,8 @@ export async function GET(request: NextRequest) {
                     receiptTotal: true,
                     rushLevel: true,
                     createdAt: true,
+                    submittedAt: true,
+                    approvedAt: true,
                     assignment: {
                         select: {
                             date: true,
@@ -105,6 +107,10 @@ export async function GET(request: NextRequest) {
                 receiptTotal: r.receiptTotal || 0,
                 rushLevel: r.rushLevel,
                 createdAt: r.createdAt,
+                // Falls back to createdAt for any pre-migration row that somehow missed
+                // backfill — submittedAt should otherwise always be set.
+                submittedAt: r.submittedAt || r.createdAt,
+                approvedAt: r.approvedAt,
                 shiftDate: assignment?.date,
                 startTime: r.job.startTimeStr,
                 endTime: r.job.endTimeStr,

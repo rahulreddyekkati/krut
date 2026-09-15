@@ -96,6 +96,13 @@ export default function AdminRecapDetail() {
     return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  // Unlike formatDate above (used for the shift's UTC-midnight calendar marker),
+  // submittedAt/approvedAt are real timestamps — render in the viewer's own local time.
+  const formatDateTime = (isoString?: string) => {
+    if (!isoString) return '—';
+    return new Date(isoString).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' } as any);
+  };
+
   const formatDate = (isoString?: string) => {
     if (!isoString) return '—';
     return new Date(isoString).toLocaleDateString(undefined, { timeZone: 'UTC' });
@@ -141,6 +148,10 @@ export default function AdminRecapDetail() {
           <View style={styles.row}><Text style={styles.label}>Store</Text><Text style={styles.val}>{recap.storeName}</Text></View>
           <View style={styles.row}><Text style={styles.label}>Market</Text><Text style={styles.val}>{recap.marketName}</Text></View>
           <View style={styles.row}><Text style={styles.label}>Date</Text><Text style={styles.val}>{formatDate(recap.shiftDate || recap.createdAt)}</Text></View>
+          <View style={styles.row}><Text style={styles.label}>Submitted</Text><Text style={styles.val}>{formatDateTime(recap.submittedAt)}</Text></View>
+          {!!recap.approvedAt && (
+            <View style={styles.row}><Text style={styles.label}>Approved</Text><Text style={styles.val}>{formatDateTime(recap.approvedAt)}</Text></View>
+          )}
           <View style={styles.row}><Text style={styles.label}>Clock In</Text><Text style={styles.val}>{formatTime(recap.clockIn)}</Text></View>
           <View style={[styles.row, { borderBottomWidth: 0 }]}><Text style={styles.label}>Clock Out</Text><Text style={styles.val}>{formatTime(recap.clockOut)}</Text></View>
         </View>

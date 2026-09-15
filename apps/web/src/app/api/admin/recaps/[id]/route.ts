@@ -63,6 +63,8 @@ export async function GET(
             managerReview: recap.managerReview,
             skus: recap.skus || [],
             createdAt: recap.createdAt,
+            submittedAt: recap.submittedAt || recap.createdAt,
+            approvedAt: recap.approvedAt,
             shiftDate: assignment?.date,
             clockIn: assignment?.clockIn,
             clockOut: assignment?.clockOut

@@ -4,7 +4,7 @@ import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import PrintButton from "./PrintButton";
-import { computeAssignedHours, computeWorkedHours, computeBonus, buildDateMarkerRange, buildCycleAssignmentWhere, assignmentBelongsToCyclePreciseCheck } from "@/lib/payroll";
+import { computeAssignedHours, computeWorkedHours, computeBonus, hasWithheldHours, buildDateMarkerRange, buildCycleAssignmentWhere, assignmentBelongsToCyclePreciseCheck } from "@/lib/payroll";
 import { getMarketTimezone, localTimeToUTC } from "@/lib/timezone";
 import { buildRateResolver, getWorkerRate } from "@/lib/payRate";
 
@@ -91,6 +91,7 @@ export default async function UserPayrollDetailsPage(props: {
         const rawReimb = assignment.recap?.reimbursement || 0;
         const reimb = recapStatus === "APPROVED" ? rawReimb : 0;
         const reimbPendingApproval = recapStatus && recapStatus !== "APPROVED" && rawReimb > 0;
+        const hoursPending = hasWithheldHours(assignment);
         const bonus = computeBonus(assignment);
         // Price this shift at the rate in effect on its own date, not always today's
         // current rate — see apps/web/src/lib/payRate.ts.
@@ -114,6 +115,7 @@ export default async function UserPayrollDetailsPage(props: {
             store: assignment.job.store.name,
             market: assignment.job.store.market?.name || "--",
             hours: workedH.toFixed(2),
+            hoursPending,
             assignedHours: assignedH.toFixed(2),
             clockIn: formatClockTime(assignment.clockIn),
             clockOut: formatClockTime(assignment.clockOut),
@@ -280,7 +282,9 @@ export default async function UserPayrollDetailsPage(props: {
                                         <td style={{ padding: "1rem" }}>{row.clockIn}</td>
                                         <td style={{ padding: "1rem" }}>{row.clockOut}</td>
                                         <td style={{ padding: "1rem" }}>{row.breakTime}</td>
-                                        <td style={{ padding: "1rem" }}>{row.hours}h</td>
+                                        <td style={{ padding: "1rem", ...(row.hoursPending ? { color: "#b45309", fontStyle: "italic" } : {}) }}>
+                                            {row.hoursPending ? "Recap needed" : `${row.hours}h`}
+                                        </td>
                                         <td style={{ padding: "1rem", textAlign: "right" }}>${row.rate}</td>
                                         <td style={{ padding: "1rem", textAlign: "right", ...(row.reimbPendingApproval ? { color: "#b45309", fontStyle: "italic" } : {}) }}>
                                             {row.reimbPendingApproval ? "Not approved" : `$${row.reimb}`}

@@ -12,6 +12,7 @@
 // again: fix a formula here once, every view picks it up.
 
 import prisma from "@/lib/prisma";
+import { getCurrentCycleDates } from "@/lib/cycles";
 
 export interface PayrollAssignmentLike {
     date: Date | string | null;
@@ -52,11 +53,30 @@ export function computeAssignedHours(a: PayrollAssignmentLike): number {
     return durationHours(startTimeStr, endTimeStr);
 }
 
-// Trust the stored workedHours (stamped once at clock-out) when present; otherwise fall
-// back to a live clockOut-clockIn-break computation. Every view must have this fallback —
-// without it, any assignment with real clock times but a null workedHours (legacy data, or
-// the recap-approval staleness case below) silently shows 0 hours instead of the real total.
-export function computeWorkedHours(a: PayrollAssignmentLike): number {
+// Only the currently-open cycle gets the incomplete-recap hours gate below — there's no
+// "cycle closed/finalized" flag anywhere in this app (getClosedCycles()/isCurrent in
+// cycles.ts are pure date arithmetic, nothing locks a past cycle), so gating on live recap
+// status for a past cycle would silently rewrite numbers that were already reported. `a.date`
+// is a UTC-midnight calendar marker, directly comparable to these UTC-built boundaries (same
+// convention as buildDateMarkerRange below).
+function isInCurrentCycle(a: PayrollAssignmentLike): boolean {
+    if (!a.date) return false;
+    const { start, end } = getCurrentCycleDates();
+    const d = new Date(a.date);
+    return d >= start && d <= end;
+}
+
+// Same "Incomplete" definition as the admin Recaps > Incomplete tab
+// (apps/web/src/app/api/admin/recaps/incomplete/route.ts): no recap submitted at all, or the
+// most recent one was rejected and hasn't been resubmitted. A recap that's merely PENDING
+// review still pays hours — only reimbursement is held back that far (see
+// computeReimbursementAndBottles below). Recap.assignmentId is @unique, so `a.recap` is
+// always the single current row for this assignment — resubmission updates it in place.
+export function hasIncompleteRecap(a: PayrollAssignmentLike): boolean {
+    return !a.recap || a.recap.status === "REJECTED";
+}
+
+function rawWorkedHours(a: PayrollAssignmentLike): number {
     if (typeof a.workedHours === "number") return a.workedHours;
     if (a.clockIn && a.clockOut) {
         const diffMins = (new Date(a.clockOut).getTime() - new Date(a.clockIn).getTime()) / 60000;
@@ -64,6 +84,28 @@ export function computeWorkedHours(a: PayrollAssignmentLike): number {
         return Math.max(0, (diffMins - breakMins) / 60);
     }
     return 0;
+}
+
+// True only when something real is actually being withheld: worked hours exist, the recap
+// is incomplete, AND the shift is in the still-open cycle. Never true for a future/unworked
+// shift (rawWorkedHours would be 0 regardless) or a past closed cycle — this is what should
+// drive UI "Recap needed" flags, never hasIncompleteRecap() alone (which is also true for
+// every not-yet-worked shift and would be noise there).
+export function hasWithheldHours(a: PayrollAssignmentLike): boolean {
+    return isInCurrentCycle(a) && hasIncompleteRecap(a) && rawWorkedHours(a) > 0;
+}
+
+// Trust the stored workedHours (stamped once at clock-out) when present; otherwise fall
+// back to a live clockOut-clockIn-break computation. Every view must have this fallback —
+// without it, any assignment with real clock times but a null workedHours (legacy data, or
+// the recap-approval staleness case below) silently shows 0 hours instead of the real total.
+//
+// Worked hours (and the wages derived from them) are withheld the same way reimbursement
+// already is, but only for a shift in the currently-open cycle whose recap is incomplete —
+// see isInCurrentCycle/hasIncompleteRecap above for the exact rationale and boundaries.
+export function computeWorkedHours(a: PayrollAssignmentLike): number {
+    if (isInCurrentCycle(a) && hasIncompleteRecap(a)) return 0;
+    return rawWorkedHours(a);
 }
 
 // Per-assignment bonus (set when the shift was assigned to this worker) overrides the

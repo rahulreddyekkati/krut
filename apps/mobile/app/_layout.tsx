@@ -14,6 +14,7 @@ export default function Layout() {
         <Stack.Screen name="notifications" options={{ presentation: 'modal' }} />
         <Stack.Screen name="shift/[id]" />
         <Stack.Screen name="recap/[id]" />
+        <Stack.Screen name="pay-reports" />
       </Stack>
     </AuthProvider>
   );

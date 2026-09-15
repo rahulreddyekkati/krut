@@ -88,6 +88,11 @@ export default function ProfileTab() {
             <Text style={styles.menuText}>Notifications</Text>
             <Text style={styles.menuArrow}>›</Text>
           </TouchableOpacity>
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/pay-reports')}>
+            <Text style={styles.menuIcon}>💵</Text>
+            <Text style={styles.menuText}>My Pay Reports</Text>
+            <Text style={styles.menuArrow}>›</Text>
+          </TouchableOpacity>
           <TouchableOpacity style={styles.menuItem} onPress={() => setShowPasswordModal(true)}>
             <Text style={styles.menuIcon}>🔑</Text>
             <Text style={styles.menuText}>Change Password</Text>

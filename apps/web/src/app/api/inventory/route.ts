@@ -1,21 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getSession } from "@/lib/auth";
+import { getSession, requireAuth } from "@/lib/auth";
+import { handleApiError } from "@/lib/apiError";
 
 // GET /api/inventory - List all inventory items
 export async function GET(request: NextRequest) {
     try {
-        const session = await getSession();
-        if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        await requireAuth(request);
 
         const items = await prisma.inventoryItem.findMany({
             orderBy: { name: "asc" }
         });
 
         return NextResponse.json(items);
-    } catch (error: any) {
-        console.error("GET Inventory error:", error);
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    } catch (error) {
+        return handleApiError(error);
     }
 }
 

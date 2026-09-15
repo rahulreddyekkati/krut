@@ -140,6 +140,11 @@ function getBase64ByteSize(dataUri: string): number {
     return Math.ceil((base64Data.length * 3) / 4);
 }
 
+export const sampleRequestSchema = z.object({
+    jobAssignmentId: z.string().min(1, "jobAssignmentId is required"),
+    inventoryItemIds: z.array(z.string().min(1)).min(1, "Select at least one item"),
+});
+
 export const recapSchema = z.object({
     jobId: z.string().min(1, "jobId is required"),
     assignmentId: z.string().optional(),

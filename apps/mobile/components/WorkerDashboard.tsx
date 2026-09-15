@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Dimensions, ScrollView, Alert, AppState } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Dimensions, ScrollView, Alert, AppState, Modal, FlatList } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../providers/AuthProvider';
 import { fetchWithAuth } from '../utils/apiClient';
@@ -53,6 +53,12 @@ export default function HomeTab() {
   const [loading, setLoading] = useState(true);
   const [clockLoading, setClockLoading] = useState(false);
   const [pendingRecaps, setPendingRecaps] = useState<any[]>([]);
+  const [samplesModalVisible, setSamplesModalVisible] = useState(false);
+  const [inventoryItems, setInventoryItems] = useState<any[]>([]);
+  const [inventoryLoading, setInventoryLoading] = useState(false);
+  const [inventoryError, setInventoryError] = useState<string | null>(null);
+  const [cartItemIds, setCartItemIds] = useState<Set<string>>(new Set());
+  const [submittingRequest, setSubmittingRequest] = useState(false);
 
   // Derived clock state — must be computed before effects that depend on them
   const isDone = !!(activeAssignment?.clockIn && activeAssignment?.clockOut);
@@ -221,6 +227,65 @@ export default function HomeTab() {
       }
     } catch (e) {
       console.log('Failed to check pending recaps', e);
+    }
+  };
+
+  const loadInventoryItems = async () => {
+    setInventoryLoading(true);
+    setInventoryError(null);
+    try {
+      const res = await fetchWithAuth('/inventory');
+      if (res.ok) {
+        const data = await res.json();
+        setInventoryItems(Array.isArray(data) ? data : []);
+      } else {
+        setInventoryError("Couldn't load items.");
+      }
+    } catch (e) {
+      setInventoryError("Couldn't load items.");
+    } finally {
+      setInventoryLoading(false);
+    }
+  };
+
+  const openSamplesModal = () => {
+    setCartItemIds(new Set());
+    setSamplesModalVisible(true);
+    loadInventoryItems();
+  };
+
+  const toggleCartItem = (id: string) => {
+    setCartItemIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleRequestItems = async () => {
+    if (cartItemIds.size === 0 || !activeAssignment) return;
+    setSubmittingRequest(true);
+    try {
+      const res = await fetchWithAuth('/sample-requests', {
+        method: 'POST',
+        body: JSON.stringify({
+          jobAssignmentId: activeAssignment.id,
+          inventoryItemIds: Array.from(cartItemIds),
+        }),
+      });
+      if (res.ok) {
+        Alert.alert('Request Sent', 'Your sample request has been sent to the team.');
+        setCartItemIds(new Set());
+        setSamplesModalVisible(false);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        Alert.alert('Error', data.error || 'Failed to send request');
+      }
+    } catch (e) {
+      Alert.alert('Network Error', 'Please check your internet connection.');
+    } finally {
+      setSubmittingRequest(false);
     }
   };
 
@@ -443,7 +508,92 @@ export default function HomeTab() {
             <Text style={styles.emptyText}>Take a break, you have no shifts today!</Text>
           )}
         </View>
+
+        {/* ─── Order Samples ─── */}
+        {isClockedIn && (
+          <TouchableOpacity style={styles.samplesCard} onPress={openSamplesModal} activeOpacity={0.8}>
+            <View>
+              <Text style={styles.samplesCardTitle}>Order Samples</Text>
+              <Text style={styles.samplesCardSubtitle}>Request items for this shift</Text>
+            </View>
+            <Text style={styles.samplesCardArrow}>→</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
+
+      {/* ─── Order Samples Modal ─── */}
+      <Modal visible={samplesModalVisible} animationType="slide" presentationStyle="pageSheet">
+        <View style={styles.container}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setSamplesModalVisible(false)} style={styles.modalBackBtn}>
+              <Text style={styles.modalBackText}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalHeaderTitle}>Order Samples</Text>
+            <View style={{ width: 60 }} />
+          </View>
+
+          {inventoryLoading ? (
+            <ActivityIndicator style={{ marginTop: 30 }} size="large" color="#6366F1" />
+          ) : inventoryError ? (
+            <View style={styles.modalEmptyState}>
+              <Text style={styles.modalEmptyTitle}>{inventoryError}</Text>
+              <TouchableOpacity style={styles.retryBtn} onPress={loadInventoryItems}>
+                <Text style={styles.retryBtnText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <FlatList
+              data={inventoryItems}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 100 }}
+              ListEmptyComponent={
+                <View style={styles.modalEmptyState}>
+                  <Text style={styles.modalEmptyTitle}>No inventory items available.</Text>
+                </View>
+              }
+              renderItem={({ item }) => {
+                const inCart = cartItemIds.has(item.id);
+                return (
+                  <View style={styles.itemRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.itemName}>{item.name}</Text>
+                      {(item.category || item.volume) && (
+                        <Text style={styles.itemMeta}>
+                          {[item.category, item.volume && `${item.volume}${item.unit || ''}`].filter(Boolean).join(' • ')}
+                        </Text>
+                      )}
+                    </View>
+                    <TouchableOpacity
+                      style={[styles.itemToggle, inCart && styles.itemToggleActive]}
+                      onPress={() => toggleCartItem(item.id)}
+                    >
+                      <Text style={[styles.itemToggleText, inCart && styles.itemToggleTextActive]}>
+                        {inCart ? '✓' : '+'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                );
+              }}
+            />
+          )}
+
+          <View style={styles.requestBar}>
+            <TouchableOpacity
+              style={[styles.requestBtn, cartItemIds.size === 0 && styles.requestBtnDisabled]}
+              onPress={handleRequestItems}
+              disabled={cartItemIds.size === 0 || submittingRequest}
+            >
+              {submittingRequest ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.requestBtnText}>
+                  Request Items{cartItemIds.size > 0 ? ` (${cartItemIds.size})` : ''}
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -516,4 +666,54 @@ const styles = StyleSheet.create({
   recapBannerTitle: { fontSize: 15, fontWeight: '700', color: '#9A3412', marginBottom: 2 },
   recapBannerText: { fontSize: 13, color: '#C2410C' },
   recapBannerBtn: { fontSize: 15, fontWeight: '700', color: '#EA580C' },
+
+  /* ── Order Samples ── */
+  samplesCard: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    backgroundColor: '#EEF2FF', marginHorizontal: 20, marginTop: 16,
+    padding: 18, borderRadius: 14, borderWidth: 1, borderColor: '#C7D2FE',
+  },
+  samplesCardTitle: { fontSize: 15, fontWeight: '700', color: '#3730A3', marginBottom: 2 },
+  samplesCardSubtitle: { fontSize: 12, color: '#6366F1' },
+  samplesCardArrow: { fontSize: 20, color: '#6366F1', fontWeight: '600' },
+
+  /* ── Order Samples Modal ── */
+  modalHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderColor: '#F3F4F6',
+  },
+  modalBackBtn: { width: 60 },
+  modalBackText: { fontSize: 15, color: '#6366F1', fontWeight: '600' },
+  modalHeaderTitle: { fontSize: 16, fontWeight: '700', color: '#111827' },
+  modalEmptyState: { alignItems: 'center', justifyContent: 'center', marginTop: 60, paddingHorizontal: 24 },
+  modalEmptyTitle: { fontSize: 14, color: '#6B7280', textAlign: 'center', marginBottom: 16 },
+  retryBtn: {
+    backgroundColor: '#EEF2FF', borderWidth: 1, borderColor: '#C7D2FE',
+    paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10,
+  },
+  retryBtnText: { fontSize: 14, fontWeight: '600', color: '#6366F1' },
+  itemRow: {
+    flexDirection: 'row', alignItems: 'center', padding: 14,
+    borderRadius: 12, marginBottom: 8, backgroundColor: '#F9FAFB',
+    borderWidth: 1, borderColor: '#E5E7EB',
+  },
+  itemName: { fontSize: 15, fontWeight: '600', color: '#111827' },
+  itemMeta: { fontSize: 12, color: '#9CA3AF', marginTop: 2 },
+  itemToggle: {
+    width: 36, height: 36, borderRadius: 18, backgroundColor: '#EEF2FF',
+    borderWidth: 1, borderColor: '#C7D2FE', justifyContent: 'center', alignItems: 'center',
+  },
+  itemToggleActive: { backgroundColor: '#22C55E', borderColor: '#22C55E' },
+  itemToggleText: { fontSize: 20, fontWeight: '600', color: '#6366F1', marginTop: -2 },
+  itemToggleTextActive: { color: '#fff' },
+  requestBar: {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    padding: 16, paddingBottom: 32, backgroundColor: '#fff',
+    borderTopWidth: 1, borderColor: '#F3F4F6',
+  },
+  requestBtn: {
+    backgroundColor: '#6366F1', borderRadius: 14, paddingVertical: 16, alignItems: 'center',
+  },
+  requestBtnDisabled: { backgroundColor: '#C7D2FE' },
+  requestBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });

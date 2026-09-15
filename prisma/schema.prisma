@@ -35,6 +35,7 @@ model User {
   // onDelete: Restrict — preserve request audit trail
   releaseRequests ReleaseRequest[]
   shiftRequests   ShiftRequest[]
+  sampleRequests  SampleRequest[]
 
   // onDelete: Cascade — messages/notifications are owned by the user
   sentMessages     Message[]      @relation("SentMessages")
@@ -189,6 +190,9 @@ model JobAssignment {
 
   // onDelete: Cascade — recap is tied to assignment; if assignment deleted, recap is moot
   recap     Recap?
+
+  // onDelete: Restrict — sample request must stay tied to the shift it was made during
+  sampleRequests SampleRequest[]
 
   createdAt DateTime @default(now())
 
@@ -396,6 +400,42 @@ model InventoryItem {
   unit      String?  // e.g. "ml"
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  sampleRequestItems SampleRequestItem[]
+}
+
+// A worker's in-shift request for sample items, sent to admins by email.
+model SampleRequest {
+  id       String @id @default(cuid())
+  // onDelete: Restrict — preserve request audit trail
+  worker   User   @relation(fields: [workerId], references: [id], onDelete: Restrict)
+  workerId String
+  // onDelete: Restrict — request must stay tied to the shift it was made during
+  assignment   JobAssignment @relation(fields: [assignmentId], references: [id], onDelete: Restrict)
+  assignmentId String
+
+  // Snapshot at request time so the record/email stay accurate if the store is later renamed
+  storeName    String
+  storeAddress String
+
+  createdAt DateTime @default(now())
+
+  items SampleRequestItem[]
+
+  @@index([workerId])
+  @@index([assignmentId])
+}
+
+model SampleRequestItem {
+  id              String @id @default(cuid())
+  // onDelete: Cascade — item rows have no meaning without the parent request
+  sampleRequest   SampleRequest @relation(fields: [sampleRequestId], references: [id], onDelete: Cascade)
+  sampleRequestId String
+  // onDelete: Restrict — keep historical record even if a catalog item is later deleted
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
+  inventoryItemId String
+
+  @@unique([sampleRequestId, inventoryItemId])
 }
 
 // Immutable log of admin actions that affect payroll calculations.

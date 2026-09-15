@@ -36,6 +36,15 @@ export async function getAdminAndMarketManagerEmails(marketId: string | null | u
     return recipients.map((r) => r.email);
 }
 
+// Recipients for sample-request emails: all active ADMIN users (no market-manager scoping).
+export async function getAdminEmails(): Promise<string[]> {
+    const admins = await prisma.user.findMany({
+        where: { role: "ADMIN", status: "ACTIVE" },
+        select: { email: true },
+    });
+    return admins.map((a) => a.email);
+}
+
 async function sendExpoNotification(token: string, title: string, body: string) {
     try {
         await fetch("https://exp.host/--/api/v2/push/send", {

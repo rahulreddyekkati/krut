@@ -418,6 +418,9 @@ model SampleRequest {
   storeName    String
   storeAddress String
 
+  // Free-text request for mixers/items not in the InventoryItem catalog
+  notes String?
+
   createdAt DateTime @default(now())
 
   items SampleRequestItem[]

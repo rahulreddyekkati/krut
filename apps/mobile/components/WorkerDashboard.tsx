@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Dimensions, ScrollView, Alert, AppState, Modal, FlatList } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Dimensions, ScrollView, Alert, AppState, Modal, FlatList, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../providers/AuthProvider';
 import { fetchWithAuth } from '../utils/apiClient';
@@ -58,6 +58,7 @@ export default function HomeTab() {
   const [inventoryLoading, setInventoryLoading] = useState(false);
   const [inventoryError, setInventoryError] = useState<string | null>(null);
   const [cartItemIds, setCartItemIds] = useState<Set<string>>(new Set());
+  const [requestNotes, setRequestNotes] = useState('');
   const [submittingRequest, setSubmittingRequest] = useState(false);
 
   // Derived clock state — must be computed before effects that depend on them
@@ -250,6 +251,7 @@ export default function HomeTab() {
 
   const openSamplesModal = () => {
     setCartItemIds(new Set());
+    setRequestNotes('');
     setSamplesModalVisible(true);
     loadInventoryItems();
   };
@@ -264,7 +266,8 @@ export default function HomeTab() {
   };
 
   const handleRequestItems = async () => {
-    if (cartItemIds.size === 0 || !activeAssignment) return;
+    const trimmedNotes = requestNotes.trim();
+    if ((cartItemIds.size === 0 && !trimmedNotes) || !activeAssignment) return;
     setSubmittingRequest(true);
     try {
       const res = await fetchWithAuth('/sample-requests', {
@@ -272,11 +275,13 @@ export default function HomeTab() {
         body: JSON.stringify({
           jobAssignmentId: activeAssignment.id,
           inventoryItemIds: Array.from(cartItemIds),
+          notes: trimmedNotes || undefined,
         }),
       });
       if (res.ok) {
         Alert.alert('Request Sent', 'Your sample request has been sent to the team.');
         setCartItemIds(new Set());
+        setRequestNotes('');
         setSamplesModalVisible(false);
       } else {
         const data = await res.json().catch(() => ({}));
@@ -523,7 +528,7 @@ export default function HomeTab() {
 
       {/* ─── Order Samples Modal ─── */}
       <Modal visible={samplesModalVisible} animationType="slide" presentationStyle="pageSheet">
-        <View style={styles.container}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setSamplesModalVisible(false)} style={styles.modalBackBtn}>
               <Text style={styles.modalBackText}>Cancel</Text>
@@ -535,20 +540,49 @@ export default function HomeTab() {
           {inventoryLoading ? (
             <ActivityIndicator style={{ marginTop: 30 }} size="large" color="#6366F1" />
           ) : inventoryError ? (
-            <View style={styles.modalEmptyState}>
-              <Text style={styles.modalEmptyTitle}>{inventoryError}</Text>
-              <TouchableOpacity style={styles.retryBtn} onPress={loadInventoryItems}>
-                <Text style={styles.retryBtnText}>Retry</Text>
-              </TouchableOpacity>
-            </View>
+            <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 100 }} keyboardShouldPersistTaps="handled">
+              <View style={styles.modalEmptyState}>
+                <Text style={styles.modalEmptyTitle}>{inventoryError}</Text>
+                <TouchableOpacity style={styles.retryBtn} onPress={loadInventoryItems}>
+                  <Text style={styles.retryBtnText}>Retry</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.notesSectionTitle}>MIXERS / OTHER ITEMS</Text>
+              <TextInput
+                style={styles.notesInput}
+                multiline
+                numberOfLines={4}
+                placeholder="Anything else not listed above? (e.g. mixers, garnishes...)"
+                placeholderTextColor="#9CA3AF"
+                value={requestNotes}
+                onChangeText={setRequestNotes}
+                textAlignVertical="top"
+              />
+            </ScrollView>
           ) : (
             <FlatList
               data={inventoryItems}
               keyExtractor={(item) => item.id}
               contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 100 }}
+              keyboardShouldPersistTaps="handled"
               ListEmptyComponent={
                 <View style={styles.modalEmptyState}>
                   <Text style={styles.modalEmptyTitle}>No inventory items available.</Text>
+                </View>
+              }
+              ListFooterComponent={
+                <View>
+                  <Text style={styles.notesSectionTitle}>MIXERS / OTHER ITEMS</Text>
+                  <TextInput
+                    style={styles.notesInput}
+                    multiline
+                    numberOfLines={4}
+                    placeholder="Anything else not listed above? (e.g. mixers, garnishes...)"
+                    placeholderTextColor="#9CA3AF"
+                    value={requestNotes}
+                    onChangeText={setRequestNotes}
+                    textAlignVertical="top"
+                  />
                 </View>
               }
               renderItem={({ item }) => {
@@ -579,9 +613,9 @@ export default function HomeTab() {
 
           <View style={styles.requestBar}>
             <TouchableOpacity
-              style={[styles.requestBtn, cartItemIds.size === 0 && styles.requestBtnDisabled]}
+              style={[styles.requestBtn, (cartItemIds.size === 0 && !requestNotes.trim()) && styles.requestBtnDisabled]}
               onPress={handleRequestItems}
-              disabled={cartItemIds.size === 0 || submittingRequest}
+              disabled={(cartItemIds.size === 0 && !requestNotes.trim()) || submittingRequest}
             >
               {submittingRequest ? (
                 <ActivityIndicator color="#fff" />
@@ -592,7 +626,7 @@ export default function HomeTab() {
               )}
             </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -716,4 +750,9 @@ const styles = StyleSheet.create({
   },
   requestBtnDisabled: { backgroundColor: '#C7D2FE' },
   requestBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  notesSectionTitle: { fontSize: 12, fontWeight: '800', color: '#6B7280', letterSpacing: 1, marginTop: 8, marginBottom: 8 },
+  notesInput: {
+    backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 10,
+    padding: 12, fontSize: 15, color: '#111827', minHeight: 90,
+  },
 });

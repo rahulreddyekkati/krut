@@ -456,7 +456,7 @@ export async function sendRecapReminderEmail(email: string, storeName: string): 
 
 export async function sendSampleRequestEmail(
     recipientEmails: string[],
-    data: { workerName: string; storeName: string; storeAddress: string; items: string[] }
+    data: { workerName: string; storeName: string; storeAddress: string; items: string[]; notes?: string | null }
 ): Promise<boolean> {
     const transporter = createTransporter();
     const from = process.env.SMTP_FROM || '"Kruto Tastes" <noreply@krutotastes.com>';
@@ -466,9 +466,10 @@ export async function sendSampleRequestEmail(
     }
     if (recipientEmails.length === 0) return false;
     try {
-        const { workerName, storeName, storeAddress, items } = data;
+        const { workerName, storeName, storeAddress, items, notes } = data;
         const subject = `Sample Request: ${storeName}`;
-        const textBody = `Hello!\n\n${workerName} has requested samples at ${storeName} (${storeAddress}):\n\n${items.map((i) => `- ${i}`).join("\n")}\n\nThe Kruto Tastes Team`;
+        const itemsText = items.length > 0 ? items.map((i) => `- ${i}`).join("\n") : "(no catalog items selected)";
+        const textBody = `Hello!\n\n${workerName} has requested samples at ${storeName} (${storeAddress}):\n\n${itemsText}${notes ? `\n\nAdditional notes:\n${notes}` : ""}\n\nThe Kruto Tastes Team`;
         const htmlBody = `
             <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 32px 24px; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px;">
                 <div style="text-align: center; margin-bottom: 28px;">
@@ -479,11 +480,17 @@ export async function sendSampleRequestEmail(
                     <strong style="color: #0f172a;">${workerName}</strong> requested samples at
                     <strong style="color: #0f172a;">${storeName}</strong> (${storeAddress}).
                 </p>
+                ${items.length > 0 ? `
                 <div style="background-color: #f0fdf4; border-left: 4px solid #22c55e; padding: 14px 16px; border-radius: 4px; margin-bottom: 24px;">
                     <ul style="color: #166534; font-size: 15px; margin: 0; padding-left: 18px;">
                         ${items.map((i) => `<li>${i}</li>`).join("")}
                     </ul>
-                </div>
+                </div>` : ""}
+                ${notes ? `
+                <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; padding: 14px 16px; border-radius: 4px; margin-bottom: 24px;">
+                    <p style="color: #92400e; font-size: 14px; font-weight: 600; margin: 0 0 4px 0;">Additional notes</p>
+                    <p style="color: #92400e; font-size: 15px; margin: 0; white-space: pre-wrap;">${notes}</p>
+                </div>` : ""}
                 <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; color: #64748b; font-size: 14px;">
                     <p style="margin: 0 0 4px 0;">Thank you,</p>
                     <p style="margin: 0; font-weight: 600; color: #475569;">The Kruto Tastes Team</p>

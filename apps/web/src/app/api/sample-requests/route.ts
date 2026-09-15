@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
         const user = await requireAuth(request, ["WORKER"]);
 
         const body = await request.json();
-        const { jobAssignmentId, inventoryItemIds } = validate(sampleRequestSchema, body);
+        const { jobAssignmentId, inventoryItemIds, notes } = validate(sampleRequestSchema, body);
 
         const assignment = await prisma.jobAssignment.findFirst({
             where: { id: jobAssignmentId, workerId: user.id },
@@ -44,6 +44,7 @@ export async function POST(request: NextRequest) {
                 assignmentId: assignment.id,
                 storeName: assignment.job.store.name,
                 storeAddress: assignment.job.store.address,
+                notes: notes || null,
                 items: { create: items.map((i) => ({ inventoryItemId: i.id })) },
             },
             include: { items: { include: { inventoryItem: true } } },
@@ -58,6 +59,7 @@ export async function POST(request: NextRequest) {
                 storeName: assignment.job.store.name,
                 storeAddress: assignment.job.store.address,
                 items: items.map((i) => i.name),
+                notes: notes || null,
             }).catch((e) => console.error("[sample-requests] email send failed", e));
         }
 

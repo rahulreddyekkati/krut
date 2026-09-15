@@ -189,6 +189,40 @@ export const recapSchema = z.object({
     inventoryData: z.record(z.string(), z.any()).optional(),
 });
 
+// Admin manually entering a recap on a worker's behalf (e.g. transcribing a paper
+// recap for a shift stuck in RECAP_PENDING with no submission). Same shape as
+// recapSchema's worker-facing fields, minus jobId (derived from the assignment),
+// plus optional clock-time/break corrections since these shifts often also need
+// their clockIn/clockOut fixed up.
+export const manualRecapSchema = z.object({
+    clockIn: z.string().datetime().optional(),
+    clockOut: z.string().datetime().optional(),
+    breakTimeMinutes: z
+        .union([z.number(), z.string()])
+        .transform(Number)
+        .pipe(z.number().int().min(0))
+        .optional(),
+    rushLevel: z.string().optional(),
+    customersSampled: z
+        .union([z.number(), z.string()])
+        .transform(Number)
+        .pipe(z.number().int().min(0))
+        .default(0),
+    receiptTotal: z
+        .union([z.number(), z.string()])
+        .transform(Number)
+        .pipe(z.number().min(0))
+        .default(0),
+    reimbursementTotal: z
+        .union([z.number(), z.string()])
+        .transform(Number)
+        .pipe(z.number().min(0))
+        .default(0),
+    comments: z.string().max(2000).optional(),
+    managerNote: z.string().max(2000).optional(),
+    inventoryData: z.record(z.string(), z.any()).optional(),
+});
+
 // ─── Messages ────────────────────────────────────────────────────────────────
 
 export const messageSchema = z.object({

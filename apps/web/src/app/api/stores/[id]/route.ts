@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { STORE_CHAINS } from "@/lib/storeChain";
+import { validateTimezone } from "@/lib/timezone";
 
 // PUT /api/stores/[id] - Update a store
 export async function PUT(
@@ -16,13 +17,17 @@ export async function PUT(
 
         const { id } = await context.params;
         const data = await request.json();
-        const { name, address, latitude, longitude, marketId, radius, chain } = data;
+        const { name, address, latitude, longitude, marketId, radius, chain, timezone } = data;
 
         // No Zod adoption on this route today — a manual check consistent with its existing
         // style, but sourced from the same shared list POST's Zod enum uses (storeChain.ts),
         // so the two routes can't silently enforce different allowed values over time.
         if (chain !== undefined && !STORE_CHAINS.includes(chain)) {
             return NextResponse.json({ error: `Invalid chain: must be one of ${STORE_CHAINS.join(", ")}` }, { status: 400 });
+        }
+
+        if (timezone !== undefined && !validateTimezone(timezone)) {
+            return NextResponse.json({ error: "Invalid IANA timezone" }, { status: 400 });
         }
 
         const store = await prisma.store.update({
@@ -34,7 +39,8 @@ export async function PUT(
                 longitude: longitude ? parseFloat(longitude) : undefined,
                 marketId,
                 radius: radius ? parseFloat(radius) : undefined,
-                chain
+                chain,
+                timezone: timezone || undefined
             }
         });
 

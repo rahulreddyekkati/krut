@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { STORE_CHAINS } from "@/lib/storeChain";
+import { validateTimezone } from "@/lib/timezone";
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
@@ -65,6 +66,14 @@ export const storeSchema = z.object({
         .min(10, "Geofence radius must be at least 10 meters")
         .default(100),
     chain: z.enum(STORE_CHAINS).default("OTHER"),
+    // Optional — the store creation form pre-fills this from the market's default
+    // timezone, but a store can straddle a different zone than its market (e.g. El
+    // Paso inside an otherwise-Central Texas market), so it's still overridable and
+    // not required. When omitted, the API route falls back to the market's timezone.
+    timezone: z
+        .string()
+        .refine(validateTimezone, "Invalid IANA timezone")
+        .optional(),
 });
 
 // ─── Jobs ────────────────────────────────────────────────────────────────────

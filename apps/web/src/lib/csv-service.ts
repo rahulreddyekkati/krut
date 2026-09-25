@@ -1,5 +1,6 @@
 import prisma from "./prisma";
 import { STORE_CHAINS, guessChainFromName, type StoreChain } from "./storeChain";
+import { validateTimezone } from "./timezone";
 
 export interface StoreImportRow {
     name: string;
@@ -8,6 +9,7 @@ export interface StoreImportRow {
     longitude: number;
     marketName: string;
     chain?: string;
+    timezone?: string;
 }
 
 export async function importStores(rows: StoreImportRow[]) {
@@ -36,6 +38,13 @@ export async function importStores(rows: StoreImportRow[]) {
                 ? (row.chain as StoreChain)
                 : guessChainFromName(row.name);
 
+            // Same reasoning as chain above, but for timezone: explicit column wins if given
+            // and valid, otherwise fall back to the market's default rather than leaving it
+            // to the Store column's own hardcoded default (America/Chicago regardless of
+            // market) — that's what silently mistimezoned bulk-imported Mountain-time stores
+            // in the past.
+            const timezone = row.timezone && validateTimezone(row.timezone) ? row.timezone : market.timezone;
+
             await prisma.store.create({
                 data: {
                     name: row.name,
@@ -43,7 +52,8 @@ export async function importStores(rows: StoreImportRow[]) {
                     latitude: row.latitude,
                     longitude: row.longitude,
                     marketId: market.id,
-                    chain
+                    chain,
+                    timezone
                 }
             });
             results.success++;

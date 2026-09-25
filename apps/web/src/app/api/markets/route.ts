@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
-import { handleApiError } from "@/lib/apiError";
+import { handleApiError, AppError } from "@/lib/apiError";
+import { validateTimezone } from "@/lib/timezone";
 
 // GET /api/markets - List all markets
 export async function GET(request: NextRequest) {
@@ -34,13 +35,16 @@ export async function POST(request: NextRequest) {
     try {
         const user = await requireAuth(request, ["ADMIN"]);
 
-        const { name } = await request.json();
+        const { name, timezone } = await request.json();
         if (!name) {
             return NextResponse.json({ error: "Name is required" }, { status: 400 });
         }
+        if (timezone && !validateTimezone(timezone)) {
+            throw new AppError("Invalid IANA timezone", 400);
+        }
 
         const market = await prisma.market.create({
-            data: { name }
+            data: { name, timezone: timezone || undefined }
         });
 
         return NextResponse.json(market);

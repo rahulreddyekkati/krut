@@ -69,6 +69,15 @@ model User {
 model Market {
   id        String   @id @default(cuid())
   name      String   @unique
+
+  // IANA timezone this market predominantly operates in, e.g. "America/Denver" for
+  // Colorado. Used as the default when creating a new Store in this market, and as a
+  // secondary fallback (after Store.timezone) in any place that needs a shift's local
+  // time — see the Store.timezone comment for why per-store still wins: a market can
+  // straddle two zones (e.g. a catch-all "Texas (Other)" market with both Central
+  // Houston-area stores and Mountain El Paso stores).
+  timezone  String   @default("America/Chicago")
+
   // onDelete: Restrict — can't delete store if it still has jobs; require cleanup first
   stores    Store[]
   users     User[]   @relation("UserMarket")

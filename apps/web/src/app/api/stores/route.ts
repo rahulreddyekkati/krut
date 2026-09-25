@@ -51,7 +51,21 @@ export async function POST(request: NextRequest) {
             marketId: data.marketId,
             radius: data.radius != null ? (typeof data.radius === "string" ? parseFloat(data.radius) : data.radius) : 100,
             chain: data.chain,
+            timezone: data.timezone || undefined,
         });
+
+        // The create form pre-fills the timezone from the selected market, but fall back to
+        // it here too in case a caller omits the field entirely (e.g. a script, or CSV import) —
+        // this is the actual fix for the bug where new stores silently inherited the unrelated
+        // Store.timezone column default (America/Chicago) regardless of what market they were in.
+        let timezone = validated.timezone;
+        if (!timezone) {
+            const market = await prisma.market.findUnique({
+                where: { id: validated.marketId },
+                select: { timezone: true }
+            });
+            timezone = market?.timezone;
+        }
 
         const store = await prisma.store.create({
             data: {
@@ -62,6 +76,7 @@ export async function POST(request: NextRequest) {
                 marketId: validated.marketId,
                 radius: validated.radius,
                 chain: validated.chain,
+                timezone: timezone || undefined,
             }
         });
 

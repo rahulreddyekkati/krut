@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { validateTimezone } from "@/lib/timezone";
 
 // PUT /api/markets/[id] - Update a market
 export async function PUT(
@@ -14,15 +15,18 @@ export async function PUT(
         }
 
         const { id } = await context.params;
-        const { name } = await request.json();
+        const { name, timezone } = await request.json();
 
         if (!name) {
             return NextResponse.json({ error: "Name is required" }, { status: 400 });
         }
+        if (timezone && !validateTimezone(timezone)) {
+            return NextResponse.json({ error: "Invalid IANA timezone" }, { status: 400 });
+        }
 
         const market = await prisma.market.update({
             where: { id },
-            data: { name }
+            data: { name, timezone: timezone || undefined }
         });
 
         return NextResponse.json(market);

@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import styles from "./stores.module.css";
 import Papa from "papaparse";
 import { STORE_CHAINS, STORE_CHAIN_LABELS, type StoreChain } from "@/lib/storeChain";
+import { COMMON_US_TIMEZONES } from "@/lib/timezone";
 
 interface Store {
     id: string;
@@ -15,12 +16,14 @@ interface Store {
     marketId: string;
     market: { name: string };
     chain: StoreChain;
+    timezone: string;
     _count: { jobs: number };
 }
 
 interface Market {
     id: string;
     name: string;
+    timezone: string;
 }
 
 export default function StoresPage() {
@@ -36,7 +39,7 @@ export default function StoresPage() {
     const [showImport, setShowImport] = useState(false);
     const [editingStore, setEditingStore] = useState<Store | null>(null);
     const [formData, setFormData] = useState({
-        name: "", address: "", latitude: "", longitude: "", radius: "100", marketId: "", chain: "OTHER" as StoreChain
+        name: "", address: "", latitude: "", longitude: "", radius: "100", marketId: "", chain: "OTHER" as StoreChain, timezone: ""
     });
 
     useEffect(() => {
@@ -118,7 +121,9 @@ export default function StoresPage() {
                     longitude: parseFloat(row.Longitude || row.longitude || 0),
                     marketName: row.Market || row.market || "General",
                     // Optional — server falls back to a name-based guess when omitted.
-                    chain: row.Chain || row.chain || undefined
+                    chain: row.Chain || row.chain || undefined,
+                    // Optional — server falls back to the market's default timezone when omitted.
+                    timezone: row.Timezone || row.timezone || undefined
                 }));
 
                 try {
@@ -141,7 +146,7 @@ export default function StoresPage() {
     };
 
     const resetForm = () => {
-        setFormData({ name: "", address: "", latitude: "", longitude: "", radius: "100", marketId: "", chain: "OTHER" });
+        setFormData({ name: "", address: "", latitude: "", longitude: "", radius: "100", marketId: "", chain: "OTHER", timezone: "" });
         setEditingStore(null);
         setShowForm(false);
     };
@@ -155,9 +160,23 @@ export default function StoresPage() {
             longitude: store.longitude.toString(),
             radius: store.radius.toString(),
             marketId: store.marketId,
-            chain: store.chain || "OTHER"
+            chain: store.chain || "OTHER",
+            timezone: store.timezone
         });
         setShowForm(true);
+    };
+
+    // Pre-fills the timezone from the selected market's default when adding a new store —
+    // still editable right after, so a store that straddles a different zone than its
+    // market (e.g. El Paso in an otherwise-Central market) can be corrected on the spot
+    // instead of silently inheriting the wrong value like before this field existed.
+    const handleMarketChange = (marketId: string) => {
+        const market = markets.find(m => m.id === marketId);
+        setFormData(prev => ({
+            ...prev,
+            marketId,
+            timezone: !editingStore ? (market?.timezone || prev.timezone) : prev.timezone
+        }));
     };
 
     const filteredStores = useMemo(() => {
@@ -191,7 +210,7 @@ export default function StoresPage() {
             {showImport && (
                 <div className="card glass animate-fade-in" style={{ padding: "1.5rem", marginBottom: "1rem" }}>
                     <h3 className="heading h4">Upload Store CSV</h3>
-                    <p className="text-secondary" style={{ fontSize: "0.875rem" }}>Required columns: Name, Address, Latitude, Longitude, Market. Optional: Chain (WB_LIQUORS, TOTAL_WINE, OTHER — guessed from the name if omitted).</p>
+                    <p className="text-secondary" style={{ fontSize: "0.875rem" }}>Required columns: Name, Address, Latitude, Longitude, Market. Optional: Chain (WB_LIQUORS, TOTAL_WINE, OTHER — guessed from the name if omitted), Timezone (IANA name like America/Denver — defaults to the market's timezone if omitted).</p>
                     <input type="file" accept=".csv" onChange={handleCsvUpload} className={styles.fileInput} />
                 </div>
             )}
@@ -207,15 +226,21 @@ export default function StoresPage() {
                             <input type="number" step="any" placeholder="Longitude" value={formData.longitude} onChange={e => setFormData({ ...formData, longitude: e.target.value })} className="input" required />
                         </div>
                         <div className={styles.row}>
-                            <select value={formData.marketId} onChange={e => setFormData({ ...formData, marketId: e.target.value })} className="input" required>
+                            <select value={formData.marketId} onChange={e => handleMarketChange(e.target.value)} className="input" required>
                                 <option value="">Select Market</option>
                                 {markets.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                             </select>
                             <input type="number" placeholder="Radius (meters)" value={formData.radius} onChange={e => setFormData({ ...formData, radius: e.target.value })} className="input" required />
                         </div>
-                        <select value={formData.chain} onChange={e => setFormData({ ...formData, chain: e.target.value as StoreChain })} className="input" required>
-                            {STORE_CHAINS.map(c => <option key={c} value={c}>{STORE_CHAIN_LABELS[c]}</option>)}
-                        </select>
+                        <div className={styles.row}>
+                            <select value={formData.chain} onChange={e => setFormData({ ...formData, chain: e.target.value as StoreChain })} className="input" required>
+                                {STORE_CHAINS.map(c => <option key={c} value={c}>{STORE_CHAIN_LABELS[c]}</option>)}
+                            </select>
+                            <select value={formData.timezone} onChange={e => setFormData({ ...formData, timezone: e.target.value })} className="input" required title="Defaults from the selected market, but overridable — e.g. an El Paso store inside an otherwise-Central Texas market">
+                                <option value="">Select Timezone</option>
+                                {COMMON_US_TIMEZONES.map(tz => <option key={tz.value} value={tz.value}>{tz.label}</option>)}
+                            </select>
+                        </div>
                         <div className={styles.formActions}>
                             <button type="submit" className="btn btn-primary">Save Store</button>
                             <button type="button" onClick={resetForm} className="btn btn-secondary">Cancel</button>
@@ -234,6 +259,7 @@ export default function StoresPage() {
                             <th>Name</th>
                             <th>Market</th>
                             <th>Chain</th>
+                            <th>Timezone</th>
                             <th>Address</th>
                             <th>Location</th>
                             <th>Actions</th>
@@ -245,6 +271,7 @@ export default function StoresPage() {
                                 <td><strong>{store.name}</strong></td>
                                 <td><span className="badge">{store.market.name}</span></td>
                                 <td><span className="badge">{STORE_CHAIN_LABELS[store.chain] || store.chain}</span></td>
+                                <td>{COMMON_US_TIMEZONES.find(tz => tz.value === store.timezone)?.label || store.timezone}</td>
                                 <td className={styles.addressCell}>{store.address}</td>
                                 <td className={styles.coordCell}>{store.latitude.toFixed(4)}, {store.longitude.toFixed(4)}</td>
                                 <td className={styles.actionsCell}>

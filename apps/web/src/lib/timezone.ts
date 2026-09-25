@@ -196,3 +196,16 @@ export function getMarketTimezone(marketName: string, storeAddress?: string): st
     }
     return "America/Chicago";
 }
+
+// Timezones actually in use across markets/stores today, for the admin Market/Store
+// creation & edit dropdowns — keeps the picker to real, relevant options instead of the
+// full ~600-entry IANA list. Add to this if a market opens in a new zone.
+export const COMMON_US_TIMEZONES: { value: string; label: string }[] = [
+    { value: "America/New_York", label: "Eastern (New York)" },
+    { value: "America/Chicago", label: "Central (Chicago)" },
+    { value: "America/Denver", label: "Mountain (Denver)" },
+    { value: "America/Phoenix", label: "Mountain, no DST (Phoenix)" },
+    { value: "America/Los_Angeles", label: "Pacific (Los Angeles)" },
+    { value: "America/Anchorage", label: "Alaska" },
+    { value: "Pacific/Honolulu", label: "Hawaii" },
+];

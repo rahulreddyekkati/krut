@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from "react";
 import styles from "./markets.module.css";
+import { COMMON_US_TIMEZONES } from "@/lib/timezone";
 
 interface Market {
     id: string;
     name: string;
+    timezone: string;
     _count: {
         stores: number;
         managers: number;
@@ -17,6 +19,7 @@ export default function MarketsPage() {
     const [markets, setMarkets] = useState<Market[]>([]);
     const [loading, setLoading] = useState(true);
     const [newMarketName, setNewMarketName] = useState("");
+    const [newMarketTimezone, setNewMarketTimezone] = useState("");
     const [editingMarket, setEditingMarket] = useState<Market | null>(null);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
@@ -48,10 +51,11 @@ export default function MarketsPage() {
             const res = await fetch("/api/markets", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: newMarketName }),
+                body: JSON.stringify({ name: newMarketName, timezone: newMarketTimezone }),
             });
             if (res.ok) {
                 setNewMarketName("");
+                setNewMarketTimezone("");
                 setSuccess("Market created successfully");
                 fetchMarkets();
             } else {
@@ -72,7 +76,7 @@ export default function MarketsPage() {
             const res = await fetch(`/api/markets/${editingMarket.id}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: editingMarket.name }),
+                body: JSON.stringify({ name: editingMarket.name, timezone: editingMarket.timezone }),
             });
             if (res.ok) {
                 setEditingMarket(null);
@@ -131,6 +135,19 @@ export default function MarketsPage() {
                         className="input"
                         required
                     />
+                    <select
+                        value={editingMarket ? editingMarket.timezone : newMarketTimezone}
+                        onChange={(e) => editingMarket
+                            ? setEditingMarket({ ...editingMarket, timezone: e.target.value })
+                            : setNewMarketTimezone(e.target.value)
+                        }
+                        className="input"
+                        required
+                        title="The default timezone new stores in this market will pre-fill with"
+                    >
+                        <option value="">Select Default Timezone</option>
+                        {COMMON_US_TIMEZONES.map(tz => <option key={tz.value} value={tz.value}>{tz.label}</option>)}
+                    </select>
                     <div className={styles.formActions}>
                         <button type="submit" className="btn btn-primary">
                             {editingMarket ? "Update Market" : "Create Market"}
@@ -157,6 +174,9 @@ export default function MarketsPage() {
                             <div key={market.id} className="card glass animate-fade-in">
                                 <div className={styles.marketInfo}>
                                     <h3 className="heading h4">{market.name}</h3>
+                                    <p className="text-secondary" style={{ fontSize: "0.8125rem", margin: "0.125rem 0 0.5rem" }}>
+                                        {COMMON_US_TIMEZONES.find(tz => tz.value === market.timezone)?.label || market.timezone}
+                                    </p>
                                     <div className={styles.stats}>
                                         <span><strong>{market._count.stores}</strong> Stores</span>
                                         <span><strong>{market._count.managers}</strong> Managers</span>

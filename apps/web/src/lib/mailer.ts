@@ -506,3 +506,46 @@ export async function sendSampleRequestEmail(
     }
 }
 
+export async function sendLateClockInAlertEmail(
+    recipientEmails: string[],
+    workers: { name: string; storeName: string; startTime: string; minutesLate: number }[]
+): Promise<boolean> {
+    const transporter = createTransporter();
+    const from = process.env.SMTP_FROM || '"Kruto Tastes" <noreply@krutotastes.com>';
+    if (!transporter) {
+        console.warn("⚠️ SMTP not configured. Skipping late clock-in alert email.");
+        return false;
+    }
+    if (recipientEmails.length === 0 || workers.length === 0) return false;
+    try {
+        const subject = `Late Clock-In Alert: ${workers.length} worker${workers.length === 1 ? "" : "s"} not clocked in`;
+        const textBody = `The following worker(s) have not clocked in more than 30 minutes after their shift start time:\n\n${workers
+            .map((w) => `- ${w.name} — ${w.storeName}, scheduled ${w.startTime} (${w.minutesLate} min late)`)
+            .join("\n")}\n\nThe Kruto Tastes System`;
+        const htmlBody = `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 32px 24px; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px;">
+                <div style="text-align: center; margin-bottom: 28px;">
+                    <span style="font-size: 28px; font-weight: 800; letter-spacing: -0.025em; color: #0f172a; text-transform: uppercase;">Kruto Tastes</span>
+                </div>
+                <p style="color: #0f172a; font-size: 18px; font-weight: 600; margin-top: 0; margin-bottom: 16px;">Late Clock-In Alert</p>
+                <p style="color: #334155; font-size: 15px; line-height: 24px; margin-top: 0; margin-bottom: 16px;">
+                    The following worker${workers.length === 1 ? " has" : "s have"} not clocked in more than 30 minutes after their shift start time:
+                </p>
+                <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 14px 16px; border-radius: 4px; margin-bottom: 24px;">
+                    <ul style="color: #991b1b; font-size: 15px; margin: 0; padding-left: 18px;">
+                        ${workers.map((w) => `<li><strong>${w.name}</strong> — ${w.storeName}, scheduled ${w.startTime} (${w.minutesLate} min late)</li>`).join("")}
+                    </ul>
+                </div>
+                <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; color: #64748b; font-size: 14px;">
+                    <p style="margin: 0; font-weight: 600; color: #475569;">The Kruto Tastes System</p>
+                </div>
+            </div>`;
+
+        await transporter.sendMail({ from, to: recipientEmails.join(", "), subject, text: textBody, html: htmlBody });
+        return true;
+    } catch (error) {
+        console.error(`❌ Failed to send late clock-in alert email:`, error);
+        return false;
+    }
+}
+

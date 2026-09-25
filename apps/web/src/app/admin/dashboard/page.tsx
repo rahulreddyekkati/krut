@@ -30,9 +30,14 @@ export default function AdminDashboardPage() {
     const [selectedWorkerId, setSelectedWorkerId] = useState("");
     const [selectedStoreId, setSelectedStoreId] = useState("");
     const [clockingInRow, setClockingInRow] = useState<any>(null);
+    const [clockInMode, setClockInMode] = useState<"new" | "edit">("new");
     const [clockInTime, setClockInTime] = useState("");
     const [clockInSaving, setClockInSaving] = useState(false);
     const [clockInError, setClockInError] = useState("");
+    const [clockingOutRow, setClockingOutRow] = useState<any>(null);
+    const [clockOutTime, setClockOutTime] = useState("");
+    const [clockOutSaving, setClockOutSaving] = useState(false);
+    const [clockOutError, setClockOutError] = useState("");
 
     const fetchStats = async (date: string) => {
         setLoading(true);
@@ -149,9 +154,32 @@ export default function AdminDashboardPage() {
         }
     };
 
+    // Renders a UTC timestamp as "HH:MM" in the given timezone, for prefilling an
+    // <input type="time"> — distinct from formatTime, which is for display (12-hour, "--" fallback).
+    const toTimeInputValue = (dateStr: string, timeZone?: string) => {
+        const parts = new Intl.DateTimeFormat("en-GB", {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+            timeZone: timeZone || "America/Chicago"
+        }).formatToParts(new Date(dateStr));
+        const hour = parts.find(p => p.type === "hour")?.value ?? "00";
+        const minute = parts.find(p => p.type === "minute")?.value ?? "00";
+        // Some locales render midnight as "24:00" with hour12:false — normalize it.
+        return `${hour === "24" ? "00" : hour}:${minute}`;
+    };
+
     const handleOpenClockIn = (row: any) => {
         setClockingInRow(row);
+        setClockInMode("new");
         setClockInTime("");
+        setClockInError("");
+    };
+
+    const handleOpenEditClockIn = (row: any) => {
+        setClockingInRow(row);
+        setClockInMode("edit");
+        setClockInTime(row.clockIn ? toTimeInputValue(row.clockIn, row.timezone) : "");
         setClockInError("");
     };
 
@@ -171,7 +199,8 @@ export default function AdminDashboardPage() {
             });
             if (res.ok) {
                 setClockingInRow(null);
-                fetchDetailData("jobs");
+                if (activeDetail) fetchDetailData(activeDetail);
+                fetchStats(selectedDate);
             } else {
                 const d = await res.json();
                 setClockInError(d.error || "Failed to clock in");
@@ -180,6 +209,41 @@ export default function AdminDashboardPage() {
             setClockInError("An unexpected error occurred");
         } finally {
             setClockInSaving(false);
+        }
+    };
+
+    const handleOpenClockOut = (row: any) => {
+        setClockingOutRow(row);
+        setClockOutTime("");
+        setClockOutError("");
+    };
+
+    const handleSaveClockOut = async () => {
+        if (!clockingOutRow?.assignmentId) return;
+        if (!clockOutTime) {
+            setClockOutError("Please enter a time");
+            return;
+        }
+        setClockOutSaving(true);
+        setClockOutError("");
+        try {
+            const res = await fetch(`/api/admin/assignments/${clockingOutRow.assignmentId}/clock-out`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ time: clockOutTime, date: selectedDate }),
+            });
+            if (res.ok) {
+                setClockingOutRow(null);
+                if (activeDetail) fetchDetailData(activeDetail);
+                fetchStats(selectedDate);
+            } else {
+                const d = await res.json();
+                setClockOutError(d.error || "Failed to clock out");
+            }
+        } catch {
+            setClockOutError("An unexpected error occurred");
+        } finally {
+            setClockOutSaving(false);
         }
     };
 
@@ -354,6 +418,7 @@ export default function AdminDashboardPage() {
                                             <th style={thStyle}>Market</th>
                                             <th style={thStyle}>Clocked In</th>
                                             <th style={thStyle}>Shift Ends</th>
+                                            <th style={thStyle}>Actions</th>
                                         </tr>
                                     )}
                                 </thead>
@@ -407,6 +472,22 @@ export default function AdminDashboardPage() {
                                             <td style={tdStyle}>{row.marketName}</td>
                                             <td style={tdStyle}>{formatTime(row.clockIn, row.timezone)}</td>
                                             <td style={tdStyle}>{row.shiftEnd}</td>
+                                            <td style={tdStyle}>
+                                                <div style={{ display: "flex", gap: "0.5rem" }}>
+                                                    <button
+                                                        onClick={() => handleOpenEditClockIn(row)}
+                                                        style={{ background: "#6366f1", color: "white", border: "none", borderRadius: "6px", padding: "0.25rem 0.75rem", fontSize: "0.8rem", cursor: "pointer", fontWeight: 600 }}
+                                                    >
+                                                        Edit Clock In
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleOpenClockOut(row)}
+                                                        style={{ background: "#ef4444", color: "white", border: "none", borderRadius: "6px", padding: "0.25rem 0.75rem", fontSize: "0.8rem", cursor: "pointer", fontWeight: 600 }}
+                                                    >
+                                                        Clock Out
+                                                    </button>
+                                                </div>
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -507,9 +588,9 @@ export default function AdminDashboardPage() {
                     className="card glass"
                     style={{ width: "100%", maxWidth: "380px", padding: "1.75rem", borderRadius: "1rem" }}
                 >
-                    <h3 className="heading h4" style={{ marginBottom: "0.25rem" }}>Manual Clock In</h3>
+                    <h3 className="heading h4" style={{ marginBottom: "0.25rem" }}>{clockInMode === "edit" ? "Edit Clock In" : "Manual Clock In"}</h3>
                     <p style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "1.5rem" }}>
-                        {clockingInRow.assignedWorker} · {clockingInRow.storeName}
+                        {clockingInRow.assignedWorker || clockingInRow.workerName} · {clockingInRow.storeName}
                     </p>
 
                     <div style={{ marginBottom: "1rem" }}>
@@ -532,7 +613,48 @@ export default function AdminDashboardPage() {
                             disabled={clockInSaving}
                             className="btn btn-primary"
                         >
-                            {clockInSaving ? "Clocking in…" : "Clock In"}
+                            {clockInSaving ? "Saving…" : (clockInMode === "edit" ? "Save" : "Clock In")}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
+        {clockingOutRow && (
+            <div
+                onClick={() => setClockingOutRow(null)}
+                style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center" }}
+            >
+                <div
+                    onClick={e => e.stopPropagation()}
+                    className="card glass"
+                    style={{ width: "100%", maxWidth: "380px", padding: "1.75rem", borderRadius: "1rem" }}
+                >
+                    <h3 className="heading h4" style={{ marginBottom: "0.25rem" }}>Manual Clock Out</h3>
+                    <p style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "1.5rem" }}>
+                        {clockingOutRow.assignedWorker || clockingOutRow.workerName} · {clockingOutRow.storeName}
+                    </p>
+
+                    <div style={{ marginBottom: "1rem" }}>
+                        <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, marginBottom: "0.375rem" }}>Clock-Out Time</label>
+                        <input
+                            type="time"
+                            className="input"
+                            value={clockOutTime}
+                            onChange={e => setClockOutTime(e.target.value)}
+                            autoFocus
+                        />
+                    </div>
+
+                    {clockOutError && <div className="alert alert-danger" style={{ marginBottom: "1rem", fontSize: "0.875rem" }}>{clockOutError}</div>}
+
+                    <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
+                        <button onClick={() => setClockingOutRow(null)} style={{ background: "#f3f4f6", color: "#374151", border: "none", borderRadius: "8px", padding: "0.5rem 1rem", fontWeight: 600, cursor: "pointer" }}>Cancel</button>
+                        <button
+                            onClick={handleSaveClockOut}
+                            disabled={clockOutSaving}
+                            className="btn btn-primary"
+                        >
+                            {clockOutSaving ? "Clocking out…" : "Clock Out"}
                         </button>
                     </div>
                 </div>

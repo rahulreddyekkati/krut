@@ -204,6 +204,7 @@ export async function GET(request: NextRequest) {
 
             const data = assignments.map((a: any) => ({
                 id: a.id,
+                assignmentId: a.id,
                 workerName: a.worker?.name || "Unknown",
                 storeName: a.job.store.name,
                 marketName: a.job.store.market?.name || "—",

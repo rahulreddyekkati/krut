@@ -315,8 +315,21 @@ export default function AssignJobPage() {
                                                 style={{ color: "#ef4444", fontSize: "0.75rem", fontWeight: 600, background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: "8px", padding: "0.4rem 0.9rem", cursor: "pointer" }}
                                                 onClick={async () => {
                                                     if (!confirm(`Remove all future ${DAY_NAMES[group.weekday]} shifts for this worker?\n\nCompleted past shifts will NOT be deleted.`)) return;
-                                                    const res = await fetch(`/api/users/${userId}/assignments?jobId=${group.jobId}&weekday=${group.weekday}`, { method: "DELETE" });
-                                                    if (res.ok) fetchAssignments();
+                                                    try {
+                                                        const res = await fetch(`/api/users/${userId}/assignments?jobId=${group.jobId}&weekday=${group.weekday}`, { method: "DELETE" });
+                                                        if (!res.ok) {
+                                                            const err = await res.json().catch(() => ({}));
+                                                            alert(err.error || `Failed to remove pattern (${res.status}).`);
+                                                            return;
+                                                        }
+                                                        const result = await res.json().catch(() => ({}));
+                                                        if ((result.deleted ?? 0) === 0 && (result.updated ?? 0) === 0) {
+                                                            alert("Nothing was removed. These shifts may already be worked, released, or otherwise not in an ASSIGNED state.");
+                                                        }
+                                                        fetchAssignments();
+                                                    } catch (err) {
+                                                        alert("Network error — could not remove pattern.");
+                                                    }
                                                 }}
                                             >
                                                 Remove Pattern

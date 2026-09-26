@@ -265,3 +265,143 @@
     color: var(--primary);
     border-bottom-color: var(--primary);
 }
+
+/* Paid toggle */
+.paidCell {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
+    min-width: 150px;
+}
+
+.paidToggle {
+    position: relative;
+    width: 40px;
+    height: 22px;
+    border-radius: 999px;
+    border: none;
+    background: #e5e7eb;
+    cursor: pointer;
+    padding: 0;
+    transition: background 0.2s;
+}
+
+.paidToggleOn { background: #16a34a; }
+
+.paidKnob {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    transition: transform 0.2s;
+}
+
+.paidToggleOn .paidKnob { transform: translateX(18px); }
+
+.paidToggle:focus-visible,
+.paidLabel:focus-visible {
+    outline: 2px solid #4f46e5;
+    outline-offset: 2px;
+}
+
+.paidLabel {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 0.75rem;
+    color: #15803d;
+    text-align: left;
+    cursor: pointer;
+    text-decoration: underline dotted;
+}
+
+.paidWarn {
+    font-size: 0.75rem;
+    color: #d97706;
+    font-weight: 500;
+}
+
+.paidHint {
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+/* Paid dialog */
+.modalOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(17, 24, 39, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    z-index: 1000;
+}
+
+.modal {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 1.5rem;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.modalTitle {
+    margin: 0 0 0.25rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.modalSubtitle {
+    margin: 0 0 1.25rem;
+    font-size: 0.85rem;
+    color: #6b7280;
+}
+
+.modalField {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #374151;
+}
+
+.modalBody {
+    font-size: 0.9rem;
+    color: #374151;
+    margin: 0;
+}
+
+.modalError {
+    margin: 0.75rem 0 0;
+    font-size: 0.85rem;
+    color: #dc2626;
+}
+
+.modalActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+}
+
+.dangerBtn {
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    background: #dc2626;
+    color: white;
+}
+
+.dangerBtn:hover { background: #b91c1c; }

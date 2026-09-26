@@ -142,3 +142,20 @@ export function getDatesForWeekdays(weekdays: number[], start: Date, end: Date):
   }
   return results;
 }
+
+/**
+ * True when [startStr, endStr] (YYYY-MM-DD) is exactly one semi-monthly pay cycle:
+ * the 1st–15th or the 16th–last day of the same month. Pure string/calendar math so it
+ * gives the same answer on the server and in any browser timezone.
+ */
+export function isCanonicalCycle(startStr: string, endStr: string): boolean {
+  const re = /^(\d{4})-(\d{2})-(\d{2})$/;
+  const s = re.exec(startStr);
+  const e = re.exec(endStr);
+  if (!s || !e) return false;
+  const [, sy, sm, sd] = s.map(Number);
+  const [, ey, em, ed] = e.map(Number);
+  if (sy !== ey || sm !== em || sm < 1 || sm > 12) return false;
+  const lastDay = new Date(Date.UTC(sy, sm, 0)).getUTCDate();
+  return (sd === 1 && ed === 15) || (sd === 16 && ed === lastDay);
+}

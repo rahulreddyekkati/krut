@@ -13,6 +13,7 @@ import {
     sumReleaseHoursToSubtract,
 } from "@/lib/payroll";
 import { buildRateResolver, getWorkerRate } from "@/lib/payRate";
+import { isCanonicalCycle } from "@/lib/cycles";
 
 export async function GET(request: NextRequest) {
     try {
@@ -95,6 +96,25 @@ export async function GET(request: NextRequest) {
         // Batched once for the whole report, not per-user/per-shift — see payRate.ts.
         const rateHistoryMap = await buildRateResolver(users.map((u: any) => u.id));
 
+        // "Paid" marks: exact match for a canonical cycle; otherwise every payment whose
+        // cycle overlaps the viewed range, so a custom range never shows a clean "unpaid"
+        // for someone already paid inside it. YYYY-MM-DD strings compare lexically.
+        const canonicalCycle = isCanonicalCycle(startDateStr, endDateStr);
+        const payments = await prisma.payrollPayment.findMany({
+            where: {
+                workerId: { in: users.map((u: any) => u.id) },
+                ...(canonicalCycle
+                    ? { periodStart: startDateStr, periodEnd: endDateStr }
+                    : { periodStart: { lte: endDateStr }, periodEnd: { gte: startDateStr } }),
+            },
+            select: { workerId: true, paidAt: true, amountPaid: true, hoursPaid: true, periodStart: true, periodEnd: true },
+            orderBy: { periodStart: "asc" },
+        });
+        const paymentsByWorker: Record<string, any[]> = {};
+        payments.forEach(({ workerId, ...p }) => {
+            (paymentsByWorker[workerId] ||= []).push(p);
+        });
+
         const payrollData = users.map((user: any) => {
             // Precise per-market real-time boundary for this user's own market, used only to
             // re-check the rare date-less assignment that matched via the padded window above.
@@ -130,7 +150,9 @@ export async function GET(request: NextRequest) {
                 reimb: parseFloat(totals.totalReimbursements.toFixed(2)),
                 bottlesSold: totals.totalBottlesSold,
                 payForCycle: parseFloat(payForCycle.toFixed(2)),
-                taxablePay: parseFloat(taxablePay.toFixed(2))
+                taxablePay: parseFloat(taxablePay.toFixed(2)),
+                payment: canonicalCycle ? (paymentsByWorker[user.id]?.[0] ?? null) : null,
+                overlappingPayments: canonicalCycle ? [] : (paymentsByWorker[user.id] ?? []),
             } as any;
         });
 

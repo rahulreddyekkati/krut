@@ -54,6 +54,10 @@ model User {
   payRateHistory       PayRateHistory[] @relation("WorkerPayRateHistory")
   payRateChangesLogged PayRateHistory[] @relation("PayRateHistoryChangedBy")
 
+  // Pay Reports "Paid" marks — see PayrollPayment
+  payrollPayments       PayrollPayment[] @relation("PayrollPaymentWorker")
+  payrollPaymentsMarked PayrollPayment[] @relation("PayrollPaymentMarkedBy")
+
   expoPushToken String?
 
   // Live location status — updated by the background location task while worker is clocked in
@@ -489,6 +493,33 @@ model PayRateHistory {
   createdAt     DateTime @default(now())
 
   @@unique([workerId, effectiveFrom])
+}
+
+// Records that a worker was paid for one pay cycle (Pay Reports "Paid" toggle).
+// periodStart/periodEnd are canonical cycle bounds as YYYY-MM-DD strings (1st–15th
+// or 16th–last day; see isCanonicalCycle in apps/web/src/lib/cycles.ts). paidAt is the
+// admin-entered real instant the payment happened (may be in the past).
+// amountPaid/hoursPaid snapshot the report totals at marking time so later edits to
+// shifts or rates show up as a mismatch instead of silently sitting next to "Paid".
+model PayrollPayment {
+  id          String   @id @default(cuid())
+  // onDelete: Restrict — preserve payroll audit trail
+  worker      User     @relation("PayrollPaymentWorker", fields: [workerId], references: [id], onDelete: Restrict)
+  workerId    String
+  periodStart String
+  periodEnd   String
+  paidAt      DateTime
+  amountPaid  Float
+  hoursPaid   Float
+
+  // onDelete: SetNull — keep the payment record if the admin who marked it is deleted
+  markedBy    User?    @relation("PayrollPaymentMarkedBy", fields: [markedById], references: [id], onDelete: SetNull)
+  markedById  String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([workerId, periodStart, periodEnd])
 }
 
 model Block {

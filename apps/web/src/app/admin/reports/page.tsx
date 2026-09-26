@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import * as XLSX from "xlsx";
 import styles from "./reports.module.css";
 import { getClosedCycles } from "@/lib/cycles";
-import PayrollTable from "./PayrollTable";
+import PayrollTable, { PayrollPaymentInfo } from "./PayrollTable";
 import AnalyticsDashboard from "./AnalyticsDashboard";
 
 const getLastName = (fullName: string) => {
@@ -87,16 +87,19 @@ export default function AdminReportsPage() {
                 "Bottles Sold": member.role === "WORKER" ? member.bottlesSold : "N/A",
                 "Pay For Cycle": member.role === "WORKER" ? member.payForCycle : "N/A",
                 "Taxable Pay": member.role === "WORKER" ? member.taxablePay : "N/A",
+                "Paid At": member.payment ? new Date(member.payment.paidAt).toLocaleString() : "",
+                "Amount Paid": member.payment ? member.payment.amountPaid : "",
             }));
 
         const ws = XLSX.utils.json_to_sheet(rows);
         ws['!cols'] = [
             { wch: 22 }, { wch: 16 }, { wch: 20 }, { wch: 10 },
-            { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 13 }, { wch: 14 }, { wch: 14 }
+            { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 13 }, { wch: 14 }, { wch: 14 },
+            { wch: 22 }, { wch: 14 }
         ];
 
-        // Apply currency formatting to Pay/Hr (D), Reimbursement (G), Pay For Cycle (I), Taxable Pay (J)
-        const currencyCols = ["D", "G", "I", "J"];
+        // Apply currency formatting to Pay/Hr (D), Reimbursement (G), Pay For Cycle (I), Taxable Pay (J), Amount Paid (L)
+        const currencyCols = ["D", "G", "I", "J", "L"];
         const range = XLSX.utils.decode_range(ws['!ref'] || "A1");
         for (let r = range.s.r + 1; r <= range.e.r; r++) {
             for (const col of currencyCols) {
@@ -142,6 +145,11 @@ export default function AdminReportsPage() {
             fetchPayrollData();
         }
     }, [startDate, endDate, activeTab]);
+
+    // Patch one row in place after the Paid toggle saves, instead of refetching the report
+    const handlePaymentChange = (workerId: string, payment: PayrollPaymentInfo | null) => {
+        setPayrollData(prev => prev.map(m => (m.id === workerId ? { ...m, payment } : m)));
+    };
 
     // Filter payroll data by selected market
     const filteredPayrollData = useMemo(() => {
@@ -262,7 +270,7 @@ export default function AdminReportsPage() {
                     <AnalyticsDashboard startDate={startDate} endDate={endDate} />
                 ) : (
                     <>
-                        <PayrollTable data={filteredPayrollData} isLoading={isLoading} startDate={startDate} endDate={endDate} />
+                        <PayrollTable data={filteredPayrollData} isLoading={isLoading} startDate={startDate} endDate={endDate} onPaymentChange={handlePaymentChange} />
                         {!isLoading && filteredPayrollData.length > 0 && (
                             <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "1.5rem" }}>
                                 <button

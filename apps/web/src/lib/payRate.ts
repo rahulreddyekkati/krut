@@ -52,12 +52,13 @@ export async function buildRateResolver(workerIds: string[]): Promise<Map<string
  * rate change tracked through this flow.
  *
  * Why the earliest-row fallback is safe: "date predates every row" can only happen when
- * pricing a shift dated before the worker's account even existed (e.g. imported data) —
- * never when resolving "today's" live rate for a worker whose only history row is a
- * future-dated raise. That's because PATCH /api/users/[id] always lazily backfills a
- * createdAt-anchored base row before writing any admin-submitted row, and rejects any
- * submitted effectiveFrom earlier than createdAt — so the earliest row for any touched
- * worker is always anchored at-or-before "today," never in the future.
+ * pricing a shift dated before the worker's tracking start (e.g. imported data) — never
+ * when resolving "today's" live rate for a worker whose only history row is a future-dated
+ * raise. That's because PATCH /api/users/[id] always lazily backfills a base row anchored
+ * at the earlier of account creation and the worker's first dated shift before writing any
+ * admin-submitted row, and rejects any submitted effectiveFrom earlier than that anchor —
+ * so the earliest row for any touched worker is always at-or-before "today," never in the
+ * future.
  */
 export function resolveRateForDate(
     history: RateHistoryRow[] | undefined,

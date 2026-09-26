@@ -904,6 +904,11 @@ export default function AdminUsersPage() {
                                                         onChange={e => setEditForm({ ...editForm, hourlyWage: e.target.value })}
                                                     />
                                                     {editForm.hourlyWage !== editForm.originalHourlyWage && (
+                                                        <span className="text-secondary" style={{ fontSize: "0.7rem" }}>
+                                                            Effective from (past dates OK)
+                                                        </span>
+                                                    )}
+                                                    {editForm.hourlyWage !== editForm.originalHourlyWage && (
                                                         <input
                                                             type="date"
                                                             className="input input-sm"

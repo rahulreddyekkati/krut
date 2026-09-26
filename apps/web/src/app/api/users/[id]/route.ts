@@ -107,14 +107,25 @@ export async function PATCH(
                 return NextResponse.json({ error: "wageEffectiveFrom is not a valid date" }, { status: 400 });
             }
 
-            // Reject a date earlier than the worker's account creation — otherwise an admin
-            // could submit a date earlier than the lazy-backfill base row below, silently
-            // redefining what "before tracking" means and undermining the earliest-row
-            // fallback that apps/web/src/lib/payRate.ts relies on.
+            // Tracking starts at the earlier of account creation and the worker's first dated
+            // shift (imported/backfilled shifts can predate the account), so admins can
+            // correct the rate for every shift on record. Reject anything earlier — otherwise
+            // an admin could submit a date earlier than the lazy-backfill base row below,
+            // silently redefining what "before tracking" means and undermining the
+            // earliest-row fallback that apps/web/src/lib/payRate.ts relies on.
             createdAtMarker = new Date(`${toUTCLocalDateStr(existingUser.createdAt)}T00:00:00.000Z`);
+            const firstShift = await prisma.jobAssignment.findFirst({
+                where: { workerId: id, date: { not: null } },
+                orderBy: { date: "asc" },
+                select: { date: true },
+            });
+            // JobAssignment.date is already a UTC-midnight calendar marker — compare as-is.
+            if (firstShift?.date && firstShift.date.getTime() < createdAtMarker.getTime()) {
+                createdAtMarker = firstShift.date;
+            }
             if (wageEffectiveFromDate.getTime() < createdAtMarker.getTime()) {
                 return NextResponse.json({
-                    error: `Effective date can't be before this worker's account was created (${toUTCLocalDateStr(existingUser.createdAt)})`
+                    error: `Effective date can't be before this worker's first day on record (${toUTCLocalDateStr(createdAtMarker)})`
                 }, { status: 400 });
             }
         }

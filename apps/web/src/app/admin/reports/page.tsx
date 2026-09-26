@@ -146,9 +146,9 @@ export default function AdminReportsPage() {
         }
     }, [startDate, endDate, activeTab]);
 
-    // Patch one row in place after the Paid toggle saves, instead of refetching the report
-    const handlePaymentChange = (workerId: string, payment: PayrollPaymentInfo | null) => {
-        setPayrollData(prev => prev.map(m => (m.id === workerId ? { ...m, payment } : m)));
+    // Patch rows in place after the Paid switch saves, instead of refetching the report
+    const handlePaymentsChange = (payments: Record<string, PayrollPaymentInfo | null>) => {
+        setPayrollData(prev => prev.map(m => (m.id in payments ? { ...m, payment: payments[m.id] } : m)));
     };
 
     // Filter payroll data by selected market
@@ -270,7 +270,7 @@ export default function AdminReportsPage() {
                     <AnalyticsDashboard startDate={startDate} endDate={endDate} />
                 ) : (
                     <>
-                        <PayrollTable data={filteredPayrollData} isLoading={isLoading} startDate={startDate} endDate={endDate} onPaymentChange={handlePaymentChange} />
+                        <PayrollTable data={filteredPayrollData} isLoading={isLoading} startDate={startDate} endDate={endDate} onPaymentsChange={handlePaymentsChange} />
                         {!isLoading && filteredPayrollData.length > 0 && (
                             <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "1.5rem" }}>
                                 <button

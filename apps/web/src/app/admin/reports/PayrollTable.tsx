@@ -39,7 +39,7 @@ interface PayrollTableProps {
     isLoading: boolean;
     startDate: string;
     endDate: string;
-    onPaymentChange?: (workerId: string, payment: PayrollPaymentInfo | null) => void;
+    onPaymentsChange?: (payments: Record<string, PayrollPaymentInfo | null>) => void;
 }
 
 // datetime-local wants the viewer's *local* wall-clock time — toISOString() would be UTC.
@@ -60,10 +60,10 @@ const formatPeriod = (start: string, end: string) => {
 const money = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 type ModalState =
-    | { mode: "mark"; member: PayrollMember; value: string }
-    | { mode: "unmark"; member: PayrollMember };
+    | { mode: "mark"; value: string }
+    | { mode: "unmark" };
 
-export default function PayrollTable({ data, isLoading, startDate, endDate, onPaymentChange }: PayrollTableProps) {
+export default function PayrollTable({ data, isLoading, startDate, endDate, onPaymentsChange }: PayrollTableProps) {
     const [sortDir, setSortDir] = useState<"asc" | "desc" | null>(null);
     const [modal, setModal] = useState<ModalState | null>(null);
     const [modalError, setModalError] = useState("");
@@ -85,15 +85,28 @@ export default function PayrollTable({ data, isLoading, startDate, endDate, onPa
         setSortDir(prev => (prev === "asc" ? "desc" : "asc"));
     };
 
-    const openMark = (member: PayrollMember) => {
-        const initial = member.payment ? new Date(member.payment.paidAt) : new Date();
+    // The one Paid switch applies to every worker currently listed (Market / Active-only filters included).
+    const workers = useMemo(() => (data || []).filter(m => m.role === "WORKER"), [data]);
+    const paidWorkers = workers.filter(m => m.payment);
+    const allPaid = workers.length > 0 && paidWorkers.length === workers.length;
+    const paidTimes = new Set(paidWorkers.map(m => m.payment!.paidAt));
+    const sharedPaidAt = paidTimes.size === 1 ? [...paidTimes][0] : null;
+    const totalPaid = paidWorkers.reduce((sum, m) => sum + m.payment!.amountPaid, 0);
+    const changedSincePaid = paidWorkers.filter(m =>
+        Math.abs(m.payment!.amountPaid - m.payForCycle) > 0.01 || Math.abs(m.payment!.hoursPaid - m.worked) > 0.01
+    );
+    const overlapping = workers.flatMap(m => m.overlappingPayments || []);
+    const overlapPeriods = [...new Map(overlapping.map(p => [`${p.periodStart}|${p.periodEnd}`, p])).values()];
+
+    const openMark = () => {
+        const initial = sharedPaidAt ? new Date(sharedPaidAt) : new Date();
         setModalError("");
-        setModal({ mode: "mark", member, value: toLocalInputValue(initial) });
+        setModal({ mode: "mark", value: toLocalInputValue(initial) });
     };
 
-    const openUnmark = (member: PayrollMember) => {
+    const openUnmark = () => {
         setModalError("");
-        setModal({ mode: "unmark", member });
+        setModal({ mode: "unmark" });
     };
 
     const closeModal = () => {
@@ -102,10 +115,9 @@ export default function PayrollTable({ data, isLoading, startDate, endDate, onPa
 
     const submitModal = async () => {
         if (!modal) return;
-        const { member } = modal;
         setModalError("");
 
-        let body: any = { workerId: member.id, startDate, endDate };
+        let body: any;
         if (modal.mode === "mark") {
             const paidAt = new Date(modal.value);
             if (!modal.value || isNaN(paidAt.getTime())) {
@@ -116,7 +128,14 @@ export default function PayrollTable({ data, isLoading, startDate, endDate, onPa
                 setModalError("Paid date and time cannot be in the future.");
                 return;
             }
-            body = { ...body, paidAt: paidAt.toISOString(), amountPaid: member.payForCycle, hoursPaid: member.worked };
+            body = {
+                startDate,
+                endDate,
+                paidAt: paidAt.toISOString(),
+                workers: workers.map(m => ({ workerId: m.id, amountPaid: m.payForCycle, hoursPaid: m.worked })),
+            };
+        } else {
+            body = { startDate, endDate, workerIds: paidWorkers.map(m => m.id) };
         }
 
         setSaving(true);
@@ -131,7 +150,11 @@ export default function PayrollTable({ data, isLoading, startDate, endDate, onPa
                 setModalError(result.error || "Something went wrong. Please try again.");
                 return;
             }
-            onPaymentChange?.(member.id, modal.mode === "mark" ? result.payment : null);
+            if (modal.mode === "mark") {
+                onPaymentsChange?.(result.payments || {});
+            } else {
+                onPaymentsChange?.(Object.fromEntries(paidWorkers.map(m => [m.id, null])));
+            }
             setModal(null);
         } catch {
             setModalError("Network error. Please try again.");
@@ -140,46 +163,64 @@ export default function PayrollTable({ data, isLoading, startDate, endDate, onPa
         }
     };
 
-    const renderPaidCell = (member: PayrollMember) => {
-        if (member.role !== "WORKER") return "N/A";
+    const renderPaidBar = () => {
+        if (workers.length === 0) return null;
 
         if (!canonical) {
             return (
-                <div className={styles.paidCell}>
-                    <span className={styles.paidHint}>Pick a pay cycle to mark paid</span>
-                    {(member.overlappingPayments || []).map(p => (
-                        <span key={p.periodStart} className={styles.paidHint}>
-                            Paid for {formatPeriod(p.periodStart, p.periodEnd)} on {formatPaidAt(p.paidAt)}
-                        </span>
-                    ))}
+                <div className={styles.paidBar}>
+                    <div className={styles.paidBarText}>
+                        <strong>Paid</strong>
+                        <span className={styles.paidHint}>Pick a pay cycle to mark this payroll as paid.</span>
+                        {overlapPeriods.map(p => (
+                            <span key={`${p.periodStart}|${p.periodEnd}`} className={styles.paidHint}>
+                                {overlapping.filter(o => o.periodStart === p.periodStart && o.periodEnd === p.periodEnd).length} of these
+                                workers were paid for {formatPeriod(p.periodStart, p.periodEnd)}.
+                            </span>
+                        ))}
+                    </div>
                 </div>
             );
         }
 
-        const p = member.payment;
-        const mismatch = p && (Math.abs(p.amountPaid - member.payForCycle) > 0.01 || Math.abs(p.hoursPaid - member.worked) > 0.01);
-
         return (
-            <div className={styles.paidCell}>
+            <div className={`${styles.paidBar} ${allPaid ? styles.paidBarOn : ""}`}>
                 <button
                     type="button"
                     role="switch"
-                    aria-checked={!!p}
-                    aria-label={`Paid — ${member.name}`}
-                    className={`${styles.paidToggle} ${p ? styles.paidToggleOn : ""}`}
-                    onClick={() => (p ? openUnmark(member) : openMark(member))}
+                    aria-checked={allPaid}
+                    aria-label="Paid — all listed workers"
+                    className={`${styles.paidToggle} ${allPaid ? styles.paidToggleOn : ""}`}
+                    onClick={() => (allPaid ? openUnmark() : openMark())}
                 >
                     <span className={styles.paidKnob} />
                 </button>
-                {p && (
-                    <button type="button" className={styles.paidLabel} onClick={() => openMark(member)} title="Edit paid date and time">
-                        Paid {formatPaidAt(p.paidAt)} · {money(p.amountPaid)}
+                <div className={styles.paidBarText}>
+                    <strong>{allPaid ? "Paid" : "Mark payroll as paid"}</strong>
+                    {allPaid ? (
+                        <span>
+                            {sharedPaidAt ? `on ${formatPaidAt(sharedPaidAt)}` : "(different times)"}
+                            {" · "}{workers.length} worker{workers.length === 1 ? "" : "s"} · {money(totalPaid)}
+                        </span>
+                    ) : paidWorkers.length > 0 ? (
+                        <span>{paidWorkers.length} of {workers.length} listed workers paid</span>
+                    ) : (
+                        <span className={styles.paidHint}>
+                            Applies to all {workers.length} worker{workers.length === 1 ? "" : "s"} listed below
+                        </span>
+                    )}
+                    {changedSincePaid.length > 0 && (
+                        <span className={styles.paidWarn}>
+                            ⚠ Total changed since paid for {changedSincePaid.map(m =>
+                                `${m.name} (${money(m.payment!.amountPaid)} → ${money(m.payForCycle)})`
+                            ).join(", ")}
+                        </span>
+                    )}
+                </div>
+                {allPaid && (
+                    <button type="button" className={styles.viewBtn} onClick={openMark}>
+                        Edit time
                     </button>
-                )}
-                {mismatch && (
-                    <span className={styles.paidWarn}>
-                        ⚠ Total changed since paid ({money(p!.amountPaid)} → {money(member.payForCycle)})
-                    </span>
                 )}
             </div>
         );
@@ -203,6 +244,8 @@ export default function PayrollTable({ data, isLoading, startDate, endDate, onPa
     }
 
     return (
+        <>
+        {renderPaidBar()}
         <div className={styles.tableWrapper}>
             <table className={styles.payrollTable}>
                 <thead>
@@ -219,7 +262,6 @@ export default function PayrollTable({ data, isLoading, startDate, endDate, onPa
                         <th>BOTTLES SOLD</th>
                         <th>PAY FOR CYCLE</th>
                         <th title="Pay for Cycle minus Reimbursement — what should be reported as taxable income">TAXABLE PAY</th>
-                        <th>PAID</th>
                         <th>ACTIONS</th>
                     </tr>
                 </thead>
@@ -251,7 +293,6 @@ export default function PayrollTable({ data, isLoading, startDate, endDate, onPa
                                     {member.role === "WORKER" ? money(member.taxablePay) : 'N/A'}
                                 </span>
                             </td>
-                            <td>{renderPaidCell(member)}</td>
                             <td>
                                 <div className={styles.actionButtons}>
                                     <Link href={`/admin/reports/payroll/user/${member.id}?startDate=${startDate}&endDate=${endDate}&print=true`} target="_blank">
@@ -272,11 +313,13 @@ export default function PayrollTable({ data, isLoading, startDate, endDate, onPa
                     <div className={styles.modal} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
                         <h3 className={styles.modalTitle}>
                             {modal.mode === "mark"
-                                ? `${modal.member.payment ? "Edit payment for" : "Mark"} ${modal.member.name}${modal.member.payment ? "" : " as paid"}`
-                                : `Mark ${modal.member.name} as unpaid?`}
+                                ? `${allPaid ? "Edit paid time for" : "Mark as paid:"} ${workers.length} worker${workers.length === 1 ? "" : "s"}`
+                                : `Mark ${paidWorkers.length} worker${paidWorkers.length === 1 ? "" : "s"} as unpaid?`}
                         </h3>
                         <p className={styles.modalSubtitle}>
-                            Pay cycle {formatPeriod(startDate, endDate)} · {money(modal.member.payForCycle)}
+                            Pay cycle {formatPeriod(startDate, endDate)} · {money(
+                                (modal.mode === "mark" ? workers : paidWorkers).reduce((sum, m) => sum + m.payForCycle, 0)
+                            )} total
                         </p>
 
                         {modal.mode === "mark" ? (
@@ -296,7 +339,14 @@ export default function PayrollTable({ data, isLoading, startDate, endDate, onPa
                             </label>
                         ) : (
                             <p className={styles.modalBody}>
-                                This removes the paid record from {formatPaidAt(modal.member.payment!.paidAt)}.
+                                This removes the paid record for every worker listed in this report.
+                            </p>
+                        )}
+
+                        {modal.mode === "mark" && (
+                            <p className={styles.modalBody} style={{ marginTop: "0.75rem", fontSize: "0.8rem", color: "#6b7280" }}>
+                                Applies to every worker currently listed (respects the Market and Active-only filters).
+                                {paidWorkers.length > 0 && !allPaid && ` ${paidWorkers.length} already-paid worker${paidWorkers.length === 1 ? "" : "s"} will get this time too.`}
                             </p>
                         )}
 
@@ -319,5 +369,6 @@ export default function PayrollTable({ data, isLoading, startDate, endDate, onPa
                 </div>
             )}
         </div>
+        </>
     );
 }

@@ -32,6 +32,23 @@ export async function POST(request: NextRequest) {
                 include: { job: true }
             });
         } else {
+            // No assignmentId (e.g. "Log Recap" right after clock-out on older app builds).
+            // Prefer the completed shift still awaiting its recap — for recurring jobs the
+            // newest assignment is often a future date that hasn't been clocked into yet.
+            assignment = await prisma.jobAssignment.findFirst({
+                where: {
+                    jobId,
+                    workerId: user.id,
+                    status: "RECAP_PENDING",
+                    clockIn: { not: null },
+                    clockOut: { not: null },
+                    recap: { is: null },
+                },
+                include: { job: true },
+                orderBy: { clockOut: "desc" }
+            });
+        }
+        if (!assignment && !assignmentId) {
             const tz = resolveTimezone(request);
             const { start: startOfToday, end: endOfToday } = getLocalDayBoundsUTC(tz);
             assignment = await prisma.jobAssignment.findFirst({

@@ -69,7 +69,7 @@ export default function ShiftDetails() {
         setEndTime(formatTime(new Date()));
         setHasClockedIn(false);
         Alert.alert("Clocked Out", "Great work today!", [
-           { text: "Log Recap", onPress: () => router.replace({ pathname: "/recap/[id]", params: { id, date } }) },
+           { text: "Log Recap", onPress: () => router.replace({ pathname: "/recap/[id]", params: { id, date, assignmentId: data.assignmentId } }) },
            { text: "Done", style: "cancel" }
         ]);
       } else {

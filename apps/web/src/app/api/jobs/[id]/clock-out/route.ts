@@ -71,7 +71,7 @@ export async function POST(
                 data: { status: "RECAP_PENDING" }
             });
 
-            return { clockOut: clockOutTime, workedHours };
+            return { clockOut: clockOutTime, workedHours, assignmentId: assignment.id };
         });
 
         return NextResponse.json({ success: true, ...result });

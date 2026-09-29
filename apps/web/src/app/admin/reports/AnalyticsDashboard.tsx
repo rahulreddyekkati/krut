@@ -159,9 +159,9 @@ export default function AnalyticsDashboard({ startDate, endDate }: AnalyticsDash
             {/* Top Metric Cards */}
             <div className={styles.metricRow}>
                 <div className="card glass">
-                    <p className="text-secondary" style={{ fontSize: "0.875rem", fontWeight: 600 }}>TOTAL SALES</p>
+                    <p className="text-secondary" style={{ fontSize: "0.875rem", fontWeight: 600 }}>BOTTLES SOLD</p>
                     <h3 style={{ fontSize: "2rem", fontWeight: 800, color: "var(--accent)", marginTop: "0.5rem" }}>
-                        ${data.summary.totalSales.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        {data.summary.totalSales.toLocaleString()}
                     </h3>
                 </div>
                 <div className="card glass">
@@ -171,9 +171,9 @@ export default function AnalyticsDashboard({ startDate, endDate }: AnalyticsDash
                     </h3>
                 </div>
                 <div className="card glass">
-                    <p className="text-secondary" style={{ fontSize: "0.875rem", fontWeight: 600 }}>EFFICIENCY (Sales/Customer)</p>
+                    <p className="text-secondary" style={{ fontSize: "0.875rem", fontWeight: 600 }}>EFFICIENCY (Bottles/Customer)</p>
                     <h3 style={{ fontSize: "2rem", fontWeight: 800, color: "var(--success)", marginTop: "0.5rem" }}>
-                        ${data.summary.totalCustomers > 0 ? (data.summary.totalSales / data.summary.totalCustomers).toFixed(2) : "0.00"}
+                        {data.summary.totalCustomers > 0 ? (data.summary.totalSales / data.summary.totalCustomers).toFixed(2) : "0.00"}
                     </h3>
                 </div>
                 <div className="card glass">
@@ -189,7 +189,7 @@ export default function AnalyticsDashboard({ startDate, endDate }: AnalyticsDash
                 <div className="card glass" style={{ minWidth: 0 }}>
                     <div className={styles.cardHeader}>
                         <h4 className="heading h4">Top Performing Stores</h4>
-                        <p className="text-secondary">By Gross Sales</p>
+                        <p className="text-secondary">By Bottles Sold</p>
                     </div>
                     <table style={{ width: "100%", marginTop: "1rem", borderCollapse: "collapse" }}>
                         <tbody>
@@ -199,7 +199,7 @@ export default function AnalyticsDashboard({ startDate, endDate }: AnalyticsDash
                                         <div style={{ fontWeight: 600 }}>{store.name}</div>
                                     </td>
                                     <td style={{ padding: "0.75rem 0", textAlign: "right" }}>
-                                        <div style={{ fontWeight: 800, color: "var(--accent)" }}>${store.sales.toLocaleString()}</div>
+                                        <div style={{ fontWeight: 800, color: "var(--accent)" }}>{store.sales.toLocaleString()} sold</div>
                                     </td>
                                 </tr>
                             ))}
@@ -239,7 +239,7 @@ export default function AnalyticsDashboard({ startDate, endDate }: AnalyticsDash
                     {data.trend.map((day: any) => (
                         <div key={day.date} className="card" style={{ minWidth: "120px", textAlign: "center", background: "var(--bg-secondary)" }}>
                             <p style={{ fontSize: "0.75rem", fontWeight: 600 }}>{new Date(day.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</p>
-                            <p style={{ fontSize: "1.125rem", fontWeight: 800, marginTop: "0.25rem" }}>${day.sales.toFixed(0)}</p>
+                            <p style={{ fontSize: "1.125rem", fontWeight: 800, marginTop: "0.25rem" }}>{day.sales} sold</p>
                             <p style={{ fontSize: "0.75rem", color: "var(--secondary)" }}>{day.customers} cust.</p>
                         </div>
                     ))}
@@ -251,7 +251,7 @@ export default function AnalyticsDashboard({ startDate, endDate }: AnalyticsDash
                 <div className="card glass" style={{ marginTop: "1.5rem" }}>
                     <div className={styles.cardHeader}>
                         <h4 className="heading h4">Worker Performance</h4>
-                        <p className="text-secondary">Ranked by avg sales per shift — based on approved recaps</p>
+                        <p className="text-secondary">Ranked by avg bottles sold per shift — based on approved recaps</p>
                     </div>
                     <div style={{ overflowX: "auto", marginTop: "1rem" }}>
                         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.875rem" }}>
@@ -260,7 +260,7 @@ export default function AnalyticsDashboard({ startDate, endDate }: AnalyticsDash
                                     <th style={{ padding: "0.5rem 0.75rem", textAlign: "left", fontWeight: 700, color: "var(--secondary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>#</th>
                                     <th style={{ padding: "0.5rem 0.75rem", textAlign: "left", fontWeight: 700, color: "var(--secondary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Worker</th>
                                     <th style={{ padding: "0.5rem 0.75rem", textAlign: "center", fontWeight: 700, color: "var(--secondary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Shifts</th>
-                                    <th style={{ padding: "0.5rem 0.75rem", textAlign: "right", fontWeight: 700, color: "var(--secondary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Avg Sales</th>
+                                    <th style={{ padding: "0.5rem 0.75rem", textAlign: "right", fontWeight: 700, color: "var(--secondary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Avg Sold</th>
                                     <th style={{ padding: "0.5rem 0.75rem", textAlign: "right", fontWeight: 700, color: "var(--secondary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Avg Customers</th>
                                     <th style={{ padding: "0.5rem 0.75rem", textAlign: "right", fontWeight: 700, color: "var(--secondary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Avg Reimb</th>
                                     <th style={{ padding: "0.5rem 0.75rem", textAlign: "center", fontWeight: 700, color: "var(--secondary)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Typical Rush</th>
@@ -269,7 +269,7 @@ export default function AnalyticsDashboard({ startDate, endDate }: AnalyticsDash
                             </thead>
                             <tbody>
                                 {[...workers]
-                                    .sort((a, b) => b.avgReceiptSales - a.avgReceiptSales)
+                                    .sort((a, b) => b.avgBottlesSold - a.avgBottlesSold)
                                     .map((w, i) => {
                                         const rank = i + 1;
                                         const total = workers.length;
@@ -288,11 +288,11 @@ export default function AnalyticsDashboard({ startDate, endDate }: AnalyticsDash
                                                     <div style={{ fontSize: "0.75rem", color: "var(--secondary)" }}>{w.workerEmail}</div>
                                                 </td>
                                                 <td style={{ padding: "0.75rem", textAlign: "center", fontWeight: 600 }}>{w.shifts}</td>
-                                                <td style={{ padding: "0.75rem", textAlign: "right", fontWeight: 700, color: "var(--accent)" }}>${w.avgReceiptSales.toFixed(2)}</td>
+                                                <td style={{ padding: "0.75rem", textAlign: "right", fontWeight: 700, color: "var(--accent)" }}>{w.avgBottlesSold}</td>
                                                 <td style={{ padding: "0.75rem", textAlign: "right", fontWeight: 600 }}>{w.avgCustomersSampled}</td>
-                                                <td style={{ padding: "0.75rem", textAlign: "right", color: w.avgReimbursement > w.avgReceiptSales ? "#dc2626" : "var(--text)", fontWeight: w.avgReimbursement > w.avgReceiptSales ? 700 : 500 }}>
+                                                <td style={{ padding: "0.75rem", textAlign: "right", color: w.avgReimbursement > 0 && w.totalBottlesSold === 0 ? "#dc2626" : "var(--text)", fontWeight: w.avgReimbursement > 0 && w.totalBottlesSold === 0 ? 700 : 500 }}>
                                                     ${w.avgReimbursement.toFixed(2)}
-                                                    {w.avgReimbursement > w.avgReceiptSales && <span title="Reimbursements exceed sales"> ⚠</span>}
+                                                    {w.avgReimbursement > 0 && w.totalBottlesSold === 0 && <span title="Reimbursements with no bottles sold"> ⚠</span>}
                                                 </td>
                                                 <td style={{ padding: "0.75rem", textAlign: "center" }}>
                                                     <span style={{
@@ -325,7 +325,7 @@ export default function AnalyticsDashboard({ startDate, endDate }: AnalyticsDash
                         </table>
                     </div>
                     <p style={{ fontSize: "0.75rem", color: "var(--secondary)", marginTop: "0.75rem", padding: "0 0.25rem" }}>
-                        🥇 Top 30% performers &nbsp;·&nbsp; 🔻 Bottom 30% &nbsp;·&nbsp; Risk = fraud signals across reimbursements, missing receipts, missing manager signatures
+                        🥇 Top 30% performers &nbsp;·&nbsp; 🔻 Bottom 30% &nbsp;·&nbsp; Risk = fraud signals across shifts with 0 bottles sold, missing receipts, missing manager signatures
                     </p>
                 </div>
             )}

@@ -395,13 +395,16 @@ export default function RecapDetailPage() {
                 const hasReceipt = recap.receiptUrl && recap.receiptUrl !== "[]" && recap.receiptUrl !== "null" && recap.receiptUrl !== "";
                 const hasSig = !!recap.managerSignature;
                 const reimb = recap.reimbursement ?? 0;
-                const sales = recap.receiptTotal ?? 0;
+                // Sales = bottles in the Inventory Tracking "Sold" column, not the receipt total
+                // (the receipt is what the worker spent, not what they sold).
+                const bottlesSold = (recap.skus || []).reduce((sum: number, s: any) => sum + (s.bottlesSold || 0), 0);
 
                 if (!hasReceipt) flags.push({ label: "No receipt photo uploaded", level: "warn" });
                 if (!hasSig) flags.push({ label: recap.storeManagerName ? `Manager "${recap.storeManagerName}" did not sign` : "Store manager sign-off missing", level: "warn" });
-                if (reimb > 0 && sales === 0) flags.push({ label: `Claims $${reimb.toFixed(2)} reimbursement with $0.00 in sales`, level: "danger" });
-                if (reimb > sales && sales > 0) flags.push({ label: `Reimbursement ($${reimb.toFixed(2)}) exceeds sales ($${sales.toFixed(2)})`, level: "warn" });
-
+                if (bottlesSold === 0) flags.push({
+                    label: reimb > 0 ? `Claims $${reimb.toFixed(2)} reimbursement with 0 bottles sold` : "No bottles sold this shift",
+                    level: reimb > 0 ? "danger" : "warn",
+                });
 
 
                 if (flags.length === 0) return (

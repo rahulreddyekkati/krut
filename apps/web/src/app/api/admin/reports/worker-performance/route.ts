@@ -7,8 +7,11 @@ import { handleApiError } from "@/lib/apiError";
  * GET /api/admin/reports/worker-performance
  *
  * Returns per-worker recap analytics for the requested date range:
- *  - performance metrics (customers, sales, reimbursement per shift)
- *  - fraud risk flags (high reimb/low sales, missing receipts, no manager signature)
+ *  - performance metrics (customers, bottles sold, reimbursement per shift)
+ *  - fraud risk flags (no bottles sold, missing receipts, no manager signature)
+ *
+ * "Sold" is the sum of the Inventory Tracking Sold column (RecapSku.bottlesSold),
+ * never receiptTotal — the receipt is what the worker spent, not what they sold.
  *  - trend across shifts so admin can see improvement or decline
  *
  * Query params: startDate, endDate (YYYY-MM-DD)
@@ -53,18 +56,18 @@ export async function GET(request: NextRequest) {
             workerEmail: string;
             shifts: number;
             totalCustomersSampled: number;
-            totalReceiptSales: number;
+            totalBottlesSold: number;
             totalReimbursement: number;
             rushLevels: string[];
             missingReceiptCount: number;      // no receipt photo uploaded
             managerUnavailableCount: number;   // manager signature missing
-            highReimbLowSalesCount: number;    // reimb > sales on same shift
-            zeroSalesWithReimbCount: number;   // $0 sales but claimed reimb
+            zeroSoldCount: number;             // 0 bottles sold, no reimb claimed
+            zeroSoldWithReimbCount: number;    // 0 bottles sold but claimed reimb
             recentShifts: {
                 date: string;
                 store: string;
                 customersSampled: number;
-                receiptTotal: number;
+                bottlesSold: number;
                 reimbursement: number;
                 rushLevel: string;
                 hasReceipt: boolean;
@@ -84,21 +87,23 @@ export async function GET(request: NextRequest) {
                     workerEmail: worker.email,
                     shifts: 0,
                     totalCustomersSampled: 0,
-                    totalReceiptSales: 0,
+                    totalBottlesSold: 0,
                     totalReimbursement: 0,
                     rushLevels: [],
                     missingReceiptCount: 0,
                     managerUnavailableCount: 0,
-                    highReimbLowSalesCount: 0,
-                    zeroSalesWithReimbCount: 0,
+                    zeroSoldCount: 0,
+                    zeroSoldWithReimbCount: 0,
                     recentShifts: [],
                 };
             }
 
+            const bottlesSold = (recap.skus || []).reduce((sum: number, s: any) => sum + (s.bottlesSold || 0), 0);
+
             const w = workerMap[worker.id];
             w.shifts++;
             w.totalCustomersSampled += recap.consumersSampled ?? 0;
-            w.totalReceiptSales += recap.receiptTotal ?? 0;
+            w.totalBottlesSold += bottlesSold;
             w.totalReimbursement += recap.reimbursement ?? 0;
             if (recap.rushLevel) w.rushLevels.push(recap.rushLevel);
 
@@ -106,21 +111,20 @@ export async function GET(request: NextRequest) {
             const hasReceipt = !!(recap.receiptUrl && recap.receiptUrl !== "[]" && recap.receiptUrl !== "null");
             const hasManagerSig = !!(recap.managerSignature);
             const reimb = recap.reimbursement ?? 0;
-            const sales = recap.receiptTotal ?? 0;
 
             const shiftFlags: string[] = [];
             if (!hasReceipt) { w.missingReceiptCount++; shiftFlags.push("No receipt"); }
             if (!hasManagerSig) { w.managerUnavailableCount++; shiftFlags.push("No manager sig"); }
-            if (reimb > 0 && sales === 0) { w.zeroSalesWithReimbCount++; shiftFlags.push("Reimb with $0 sales"); }
-            if (reimb > sales && sales > 0) { w.highReimbLowSalesCount++; shiftFlags.push("Reimb > sales"); }
-
-
+            if (bottlesSold === 0) {
+                if (reimb > 0) { w.zeroSoldWithReimbCount++; shiftFlags.push("Reimb with 0 bottles sold"); }
+                else { w.zeroSoldCount++; shiftFlags.push("0 bottles sold"); }
+            }
 
             w.recentShifts.push({
                 date: recap.createdAt.toISOString().split("T")[0],
                 store: recap.job?.store?.name ?? "—",
                 customersSampled: recap.consumersSampled ?? 0,
-                receiptTotal: sales,
+                bottlesSold,
                 reimbursement: reimb,
                 rushLevel: recap.rushLevel ?? "—",
                 hasReceipt,
@@ -132,7 +136,7 @@ export async function GET(request: NextRequest) {
         // Compute derived metrics and risk score
         const workers = Object.values(workerMap).map(w => {
             const avgCustomers = w.shifts > 0 ? +(w.totalCustomersSampled / w.shifts).toFixed(1) : 0;
-            const avgSales = w.shifts > 0 ? +(w.totalReceiptSales / w.shifts).toFixed(2) : 0;
+            const avgBottles = w.shifts > 0 ? +(w.totalBottlesSold / w.shifts).toFixed(1) : 0;
             const avgReimb = w.shifts > 0 ? +(w.totalReimbursement / w.shifts).toFixed(2) : 0;
 
             // Risk score 0–100: each flag type adds points
@@ -140,8 +144,8 @@ export async function GET(request: NextRequest) {
             if (w.shifts > 0) {
                 riskScore += Math.round((w.missingReceiptCount / w.shifts) * 25);
                 riskScore += Math.round((w.managerUnavailableCount / w.shifts) * 20);
-                riskScore += Math.round((w.zeroSalesWithReimbCount / w.shifts) * 35);
-                riskScore += Math.round((w.highReimbLowSalesCount / w.shifts) * 20);
+                riskScore += Math.round((w.zeroSoldWithReimbCount / w.shifts) * 35);
+                riskScore += Math.round((w.zeroSoldCount / w.shifts) * 20);
             }
             riskScore = Math.min(riskScore, 100);
 
@@ -156,7 +160,8 @@ export async function GET(request: NextRequest) {
                 workerEmail: w.workerEmail,
                 shifts: w.shifts,
                 avgCustomersSampled: avgCustomers,
-                avgReceiptSales: avgSales,
+                avgBottlesSold: avgBottles,
+                totalBottlesSold: w.totalBottlesSold,
                 avgReimbursement: avgReimb,
                 totalReimbursement: +w.totalReimbursement.toFixed(2),
                 typicalRushLevel: typicalRush,
@@ -164,8 +169,8 @@ export async function GET(request: NextRequest) {
                 flags: {
                     missingReceiptCount: w.missingReceiptCount,
                     managerUnavailableCount: w.managerUnavailableCount,
-                    highReimbLowSalesCount: w.highReimbLowSalesCount,
-                    zeroSalesWithReimbCount: w.zeroSalesWithReimbCount,
+                    zeroSoldCount: w.zeroSoldCount,
+                    zeroSoldWithReimbCount: w.zeroSoldWithReimbCount,
                 },
                 recentShifts: w.recentShifts.slice(-10), // last 10
             };

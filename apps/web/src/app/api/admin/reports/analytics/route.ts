@@ -46,8 +46,11 @@ export async function GET(request: Request) {
         const skusSold: Record<string, number> = {};
         const dailyData: Record<string, { date: string, sales: number, customers: number }> = {};
 
+        // "Sales" = bottles from the Inventory Tracking Sold column, not receiptTotal
+        // (the receipt is what the worker spent, not what they sold).
         recaps.forEach(recap => {
-            totalSales += recap.receiptTotal;
+            const bottlesSold = recap.skus.reduce((sum, s) => sum + (s.bottlesSold || 0), 0);
+            totalSales += bottlesSold;
             totalCustomers += recap.consumersSampled;
             totalReimb += recap.reimbursement;
 
@@ -56,7 +59,7 @@ export async function GET(request: Request) {
             if (!salesByStore[storeId]) {
                 salesByStore[storeId] = { name: recap.job.store.name, sales: 0 };
             }
-            salesByStore[storeId].sales += recap.receiptTotal;
+            salesByStore[storeId].sales += bottlesSold;
 
             // SKU data
             recap.skus.forEach(sku => {
@@ -68,7 +71,7 @@ export async function GET(request: Request) {
             if (!dailyData[dateKey]) {
                 dailyData[dateKey] = { date: dateKey, sales: 0, customers: 0 };
             }
-            dailyData[dateKey].sales += recap.receiptTotal;
+            dailyData[dateKey].sales += bottlesSold;
             dailyData[dateKey].customers += recap.consumersSampled;
         });
 

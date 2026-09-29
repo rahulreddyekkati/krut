@@ -12,7 +12,7 @@ const TZ = "America/Chicago";
 // silently misdating rollover-generated shifts near local midnight during DST. This uses
 // Intl.DateTimeFormat instead (built into V8, no external library, so it doesn't carry
 // whatever overhead caused the original timeout) and stays DST-correct year-round.
-function getLocalDateStrNative(date: Date, timeZone: string): string {
+export function getLocalDateStrNative(date: Date, timeZone: string): string {
     // en-CA formats as YYYY-MM-DD directly.
     return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
 }

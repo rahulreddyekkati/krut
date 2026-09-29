@@ -538,7 +538,7 @@ export default function WorkerDashboard({
 
     const renderMyShifts = () => {
         const cycleHeader = myShifts.cycleStart && myShifts.cycleEnd
-            ? `${new Date(myShifts.cycleStart).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} - ${new Date(myShifts.cycleEnd).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
+            ? `${new Date(myShifts.cycleStart).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' })} - ${new Date(myShifts.cycleEnd).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' })}`
             : "Current Cycle";
 
         const cycleShifts = [...(myShifts.currentCycle || [])].sort((a, b) => {

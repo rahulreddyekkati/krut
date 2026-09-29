@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { localTimeToUTC } from "@/lib/timezone";
+import {
+    buildDateMarkerRange,
+    buildCycleAssignmentWhere,
+    assignmentBelongsToCyclePreciseCheck,
+    shiftDayKey,
+} from "@/lib/payroll";
 
 export async function GET(request: Request) {
     try {
@@ -17,25 +24,41 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: "Missing date range" }, { status: 400 });
         }
 
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
+        // Recaps are attributed to the SHIFT's day, not the day they were submitted — same range
+        // logic as brand-spend/payroll (see lib/payroll.ts). Previously this filtered on
+        // createdAt with `end.setHours(23,59,59,999)` on a UTC server and bucketed by the UTC
+        // day, so evening recaps landed on the next day and dropped out of the range.
+        const dateMarkerRange = buildDateMarkerRange(startDate, endDate);
+        const DEFAULT_TZ = "America/Chicago";
+        const PAD_MS = 3 * 60 * 60 * 1000;
+        const paddedRealStart = new Date(localTimeToUTC(startDate, "00:00", DEFAULT_TZ).getTime() - PAD_MS);
+        const paddedRealEnd = new Date(localTimeToUTC(endDate, "23:59", DEFAULT_TZ).getTime() + PAD_MS);
 
-        // Fetch all approved recaps in the range
-        const recaps = await prisma.recap.findMany({
+        const candidates = await prisma.recap.findMany({
             where: {
                 status: "APPROVED",
-                createdAt: { gte: start, lte: end }
+                assignment: buildCycleAssignmentWhere(dateMarkerRange, paddedRealStart, paddedRealEnd)
             },
             include: {
+                assignment: { select: { date: true, clockIn: true } },
                 job: {
                     include: {
-                        store: { select: { name: true, id: true } },
+                        store: { select: { name: true, id: true, timezone: true } },
                         market: { select: { name: true, id: true } }
                     }
                 },
                 skus: true
             }
+        });
+
+        // Precise per-market re-check of the padded window, then key each recap by its shift day
+        // and drop any whose day falls outside the range, so the filter and buckets always agree.
+        const recaps = candidates.flatMap(recap => {
+            const tz = recap.job.store?.timezone || DEFAULT_TZ;
+            if (!assignmentBelongsToCyclePreciseCheck(recap.assignment, localTimeToUTC(startDate, "00:00", tz), localTimeToUTC(endDate, "23:59", tz))) return [];
+            const dateKey = shiftDayKey(recap.assignment, recap.createdAt, tz);
+            if (dateKey < startDate || dateKey > endDate) return [];
+            return [{ ...recap, dateKey }];
         });
 
         // Aggregations
@@ -67,7 +90,7 @@ export async function GET(request: Request) {
             });
 
             // Daily trend
-            const dateKey = recap.createdAt.toISOString().split('T')[0];
+            const dateKey = recap.dateKey;
             if (!dailyData[dateKey]) {
                 dailyData[dateKey] = { date: dateKey, sales: 0, customers: 0 };
             }

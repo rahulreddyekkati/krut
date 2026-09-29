@@ -238,7 +238,7 @@ export default function AnalyticsDashboard({ startDate, endDate }: AnalyticsDash
                 <div style={{ padding: "1rem 0", display: "flex", gap: "1rem", overflowX: "auto" }}>
                     {data.trend.map((day: any) => (
                         <div key={day.date} className="card" style={{ minWidth: "120px", textAlign: "center", background: "var(--bg-secondary)" }}>
-                            <p style={{ fontSize: "0.75rem", fontWeight: 600 }}>{new Date(day.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</p>
+                            <p style={{ fontSize: "0.75rem", fontWeight: 600 }}>{new Date(day.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' })}</p>
                             <p style={{ fontSize: "1.125rem", fontWeight: 800, marginTop: "0.25rem" }}>{day.sales} sold</p>
                             <p style={{ fontSize: "0.75rem", color: "var(--secondary)" }}>{day.customers} cust.</p>
                         </div>

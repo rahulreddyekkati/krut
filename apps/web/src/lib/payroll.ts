@@ -13,6 +13,8 @@
 
 import prisma from "@/lib/prisma";
 import { getCurrentCycleDates } from "@/lib/cycles";
+import { toUTCLocalDateStr } from "@/lib/timezone";
+import { getLocalDateStrNative } from "@/lib/recurringShifts";
 
 export interface PayrollAssignmentLike {
     date: Date | string | null;
@@ -223,6 +225,21 @@ export function buildCycleAssignmentWhere(dateMarkerRange: DateMarkerRange, real
             { date: null, clockIn: { gte: realTimeStart, lte: realTimeEnd } },
         ],
     };
+}
+
+// The calendar day ("YYYY-MM-DD") a shift belongs to, for bucketing reports by day. Uses the
+// shift's own `date` marker when it has one (read in UTC — it's a UTC-midnight marker, see
+// buildDateMarkerRange). A recurring shift with no marker falls back to the local day of its
+// clockIn in the market's timezone, and — if it was never clocked in — the local day the recap
+// was submitted. Never the UTC day of a real timestamp: an 8pm Central clock-in is already
+// the next day in UTC.
+export function shiftDayKey(
+    a: { date: Date | string | null; clockIn: Date | string | null },
+    fallback: Date | string,
+    timeZone: string
+): string {
+    if (a.date) return toUTCLocalDateStr(new Date(a.date));
+    return getLocalDateStrNative(new Date(a.clockIn ?? fallback), timeZone);
 }
 
 // A single Prisma query can't apply a different exact real-time boundary per market, so the

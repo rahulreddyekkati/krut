@@ -111,7 +111,7 @@ export default async function PrintAllPayrollPage(props: {
                     <h1 style={{ fontSize: "1.5rem", fontWeight: 800, color: "#111827", margin: 0 }}>Payroll Report</h1>
                     <p style={{ color: "#6b7280", margin: "4px 0 0", fontSize: "0.875rem" }}>
                         {market && market !== "all" ? `Market: ${market}` : "All Markets"} &nbsp;·&nbsp;
-                        {new Date(startDateStr).toLocaleDateString()} – {new Date(endDateStr).toLocaleDateString()}
+                        {new Date(startDateStr).toLocaleDateString(undefined, { timeZone: "UTC" })} – {new Date(endDateStr).toLocaleDateString(undefined, { timeZone: "UTC" })}
                     </p>
                 </div>
                 <p style={{ color: "#9ca3af", fontSize: "0.8rem", margin: 0 }}>

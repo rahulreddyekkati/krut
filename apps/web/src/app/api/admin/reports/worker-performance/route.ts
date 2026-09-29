@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { handleApiError } from "@/lib/apiError";
+import { localTimeToUTC } from "@/lib/timezone";
+import {
+    buildDateMarkerRange,
+    buildCycleAssignmentWhere,
+    assignmentBelongsToCyclePreciseCheck,
+    shiftDayKey,
+} from "@/lib/payroll";
 
 /**
  * GET /api/admin/reports/worker-performance
@@ -28,26 +35,39 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: "startDate and endDate required" }, { status: 400 });
         }
 
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-
         const marketId = user.managedMarketId || user.marketId;
         const marketFilter = user.role === "MARKET_MANAGER" ? { store: { marketId: marketId ?? undefined } } : {};
 
-        // Fetch all approved recaps in range with full context
-        const recaps = await prisma.recap.findMany({
+        // Attribute each recap to its SHIFT's day, not the day it was submitted — same range
+        // logic as analytics/brand-spend/payroll (see lib/payroll.ts).
+        const dateMarkerRange = buildDateMarkerRange(startDate, endDate);
+        const DEFAULT_TZ = "America/Chicago";
+        const PAD_MS = 3 * 60 * 60 * 1000;
+        const paddedRealStart = new Date(localTimeToUTC(startDate, "00:00", DEFAULT_TZ).getTime() - PAD_MS);
+        const paddedRealEnd = new Date(localTimeToUTC(endDate, "23:59", DEFAULT_TZ).getTime() + PAD_MS);
+
+        const candidates = await prisma.recap.findMany({
             where: {
                 status: "APPROVED",
-                createdAt: { gte: start, lte: end },
+                assignment: buildCycleAssignmentWhere(dateMarkerRange, paddedRealStart, paddedRealEnd),
                 job: marketFilter,
             },
             include: {
-                job: { include: { store: { select: { name: true } } } },
+                job: { include: { store: { select: { name: true, timezone: true } } } },
                 assignment: { include: { worker: { select: { id: true, name: true, email: true } } } },
                 skus: true,
             },
         }) as any[];
+
+        // Precise per-store re-check of the padded window; drop anything whose shift day falls
+        // outside the range so the filter and the per-shift dates always agree.
+        const recaps = candidates.flatMap(recap => {
+            const tz = recap.job?.store?.timezone || DEFAULT_TZ;
+            if (!assignmentBelongsToCyclePreciseCheck(recap.assignment, localTimeToUTC(startDate, "00:00", tz), localTimeToUTC(endDate, "23:59", tz))) return [];
+            const dateKey = shiftDayKey(recap.assignment, recap.createdAt, tz);
+            if (dateKey < startDate || dateKey > endDate) return [];
+            return [{ ...recap, dateKey }];
+        });
 
         // Build per-worker stats
         const workerMap: Record<string, {
@@ -121,7 +141,7 @@ export async function GET(request: NextRequest) {
             }
 
             w.recentShifts.push({
-                date: recap.createdAt.toISOString().split("T")[0],
+                date: recap.dateKey,
                 store: recap.job?.store?.name ?? "—",
                 customersSampled: recap.consumersSampled ?? 0,
                 bottlesSold,

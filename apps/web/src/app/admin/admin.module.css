@@ -81,6 +81,7 @@
 
 .main {
     flex: 1;
+    min-width: 0; /* let wide content scroll in its own wrapper instead of stretching the page */
     padding: 2.5rem;
     margin-left: 260px;
 }

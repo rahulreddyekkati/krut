@@ -184,9 +184,9 @@ export default function AnalyticsDashboard({ startDate, endDate }: AnalyticsDash
                 </div>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem", marginTop: "1.5rem" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1.5rem", marginTop: "1.5rem" }}>
                 {/* Top Stores Table */}
-                <div className="card glass">
+                <div className="card glass" style={{ minWidth: 0 }}>
                     <div className={styles.cardHeader}>
                         <h4 className="heading h4">Top Performing Stores</h4>
                         <p className="text-secondary">By Gross Sales</p>
@@ -208,7 +208,7 @@ export default function AnalyticsDashboard({ startDate, endDate }: AnalyticsDash
                 </div>
 
                 {/* Top SKUs Table */}
-                <div className="card glass">
+                <div className="card glass" style={{ minWidth: 0 }}>
                     <div className={styles.cardHeader}>
                         <h4 className="heading h4">Inventory Summary</h4>
                         <p className="text-secondary">Quantity Sold</p>

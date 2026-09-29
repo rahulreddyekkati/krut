@@ -52,16 +52,21 @@ interface Employee {
   role: string;
 }
 
-// Timezone-aware time formatting — server-side `toLocaleTimeString` can't be trusted to
-// honor `timeZone` consistently across engines, same rationale as AdminDashboard.tsx's
-// identically-named helper (duplicated locally here per this codebase's convention of
-// per-screen formatters rather than a shared one).
+// Timezone-aware time formatting — formats directly in the store's zone via Intl. Never
+// round-trip through `new Date(d.toLocaleString(...))`: Hermes can't parse that locale
+// string ("9/16/2026, 10:02:00 AM") and yields an Invalid Date, which rendered as
+// "Invalid Date" for every clocked-in shift.
 const formatTime = (dateStr: string | null, timeZone?: string) => {
   if (!dateStr) return '--';
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return '--';
-  const zoned = timeZone ? new Date(d.toLocaleString('en-US', { timeZone })) : d;
-  return zoned.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const opts: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' };
+  try {
+    return d.toLocaleTimeString('en-US', timeZone ? { ...opts, timeZone } : opts);
+  } catch {
+    // Unknown/invalid IANA zone → fall back to device-local time rather than crash.
+    return d.toLocaleTimeString('en-US', opts);
+  }
 };
 
 // `date` is a UTC-midnight calendar marker, not a real clock time — format it in UTC so it

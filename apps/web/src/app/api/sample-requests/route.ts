@@ -27,6 +27,11 @@ export async function POST(request: NextRequest) {
             throw new AppError("You must be clocked in to request samples", 400);
         }
 
+        // Samples can only be ordered on the taster's behalf at Total Wine stores
+        if (assignment.job.store.chain !== "TOTAL_WINE") {
+            throw new AppError("Sample requests are only available at Total Wine stores", 400);
+        }
+
         // Dedupe before validating — a malformed/replayed request with a repeated id must not
         // reach the @@unique([sampleRequestId, inventoryItemId]) constraint as a raw DB error
         const uniqueIds = [...new Set(inventoryItemIds)];

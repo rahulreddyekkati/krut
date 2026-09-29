@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
             include: {
                 job: {
                     include: {
-                        store: { select: { name: true, address: true, latitude: true, longitude: true, radius: true } }
+                        store: { select: { name: true, address: true, latitude: true, longitude: true, radius: true, chain: true } }
                     }
                 }
             },
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
                 include: {
                     job: {
                         include: {
-                            store: { select: { name: true, address: true, latitude: true, longitude: true, radius: true } }
+                            store: { select: { name: true, address: true, latitude: true, longitude: true, radius: true, chain: true } }
                         }
                     }
                 },
@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
                     include: {
                         job: {
                             include: {
-                                store: { select: { name: true, address: true, latitude: true, longitude: true, radius: true } }
+                                store: { select: { name: true, address: true, latitude: true, longitude: true, radius: true, chain: true } }
                             }
                         }
                     }
@@ -157,7 +157,7 @@ export async function GET(request: NextRequest) {
                     where: { id: activeAssignment.id },
                     data: { clockOut: finalClockOut, workedHours, status: "RECAP_PENDING" } as any,
                     include: {
-                        job: { include: { store: { select: { name: true, address: true, latitude: true, longitude: true, radius: true } } } }
+                        job: { include: { store: { select: { name: true, address: true, latitude: true, longitude: true, radius: true, chain: true } } } }
                     }
                 }) as any;
 
@@ -200,7 +200,7 @@ export async function POST(request: NextRequest) {
 
         const assignment = await prisma.jobAssignment.findUnique({
             where: { id: assignmentId },
-            include: { job: { include: { store: { select: { name: true, address: true, latitude: true, longitude: true, radius: true } } } } }
+            include: { job: { include: { store: { select: { name: true, address: true, latitude: true, longitude: true, radius: true, chain: true } } } } }
         });
 
         if (!assignment || assignment.workerId !== user.id) {

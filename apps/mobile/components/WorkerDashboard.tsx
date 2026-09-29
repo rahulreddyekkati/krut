@@ -514,8 +514,8 @@ export default function HomeTab() {
           )}
         </View>
 
-        {/* ─── Order Samples ─── */}
-        {isClockedIn && (
+        {/* ─── Order Samples ─── (only Total Wine stores let us order on the taster's behalf) */}
+        {isClockedIn && activeAssignment?.job?.store?.chain === 'TOTAL_WINE' && (
           <TouchableOpacity style={styles.samplesCard} onPress={openSamplesModal} activeOpacity={0.8}>
             <View>
               <Text style={styles.samplesCardTitle}>Order Samples</Text>

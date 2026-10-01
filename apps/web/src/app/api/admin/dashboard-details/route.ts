@@ -147,6 +147,19 @@ export async function GET(request: NextRequest) {
                         return false;
                     });
 
+                    // Exact-date matches first, then most recent same-weekday pattern, so the
+                    // dedupe below keeps the real row for this date — not an old past
+                    // occurrence whose one-off custom times would leak into this date.
+                    const isExact = (a: any) => {
+                        const d = new Date(a.date);
+                        return d >= dayStart && d <= dayEnd;
+                    };
+                    relevant.sort((a: any, b: any) => {
+                        const exactDiff = Number(isExact(b)) - Number(isExact(a));
+                        if (exactDiff !== 0) return exactDiff;
+                        return new Date(b.date).getTime() - new Date(a.date).getTime();
+                    });
+
                     // Deduplicate by workerId so recurring patterns don't show the same worker N times
                     const seen = new Set<string>();
                     assignments = relevant.filter((a: any) => {

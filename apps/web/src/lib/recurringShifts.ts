@@ -1,7 +1,6 @@
 import prisma from "@/lib/prisma";
 import { getCurrentCycleDates, getPreviousCycleDates, getNextCycleDates, getDatesForWeekdays } from "@/lib/cycles";
 
-const NEXT_CYCLE_PREVIEW_DAYS = 4;
 const TZ = "America/Chicago";
 
 // Native (no date-fns-tz) local-date computation — this file's rollover functions run on
@@ -15,6 +14,66 @@ const TZ = "America/Chicago";
 export function getLocalDateStrNative(date: Date, timeZone: string): string {
     // en-CA formats as YYYY-MM-DD directly.
     return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+}
+
+type RecurringPattern = { jobId: string; weekday: number };
+
+/**
+ * Creates every dated recurring assignment the given (jobId, weekday) patterns call for
+ * in [start, end] that doesn't exist yet — all in one transaction, so a crash or timeout
+ * partway through can't leave a half-generated cycle behind. That matters because both
+ * callers below treat "this cycle has at least one recurring row" as "fully generated"
+ * and never revisit it.
+ */
+async function createMissingRecurringAssignments(
+    workerId: string,
+    patterns: RecurringPattern[],
+    start: Date,
+    end: Date
+): Promise<void> {
+    if (patterns.length === 0) return;
+    const rangeStart = new Date(start); rangeStart.setUTCHours(0, 0, 0, 0);
+    const rangeEnd = new Date(end); rangeEnd.setUTCHours(23, 59, 59, 999);
+    const dayKey = (jobId: string, d: Date) => `${jobId}|${d.toISOString().slice(0, 10)}`;
+
+    // Two attempts: a concurrent call for the same worker can win the race between the
+    // "what's missing" read and the insert. The @@unique constraint on (workerId, jobId,
+    // date) turns that into a P2002 (rolling this whole batch back) instead of duplicate
+    // shifts — so re-read what's missing now and try once more.
+    for (let attempt = 0; attempt < 2; attempt++) {
+        const existing = await prisma.jobAssignment.findMany({
+            where: {
+                workerId,
+                jobId: { in: patterns.map(p => p.jobId) },
+                date: { gte: rangeStart, lte: rangeEnd }
+            },
+            select: { jobId: true, date: true }
+        });
+        const existingKeys = new Set(existing.filter(a => a.date).map(a => dayKey(a.jobId, new Date(a.date!))));
+
+        const missing: { jobId: string; date: Date }[] = [];
+        for (const { jobId, weekday } of patterns) {
+            for (const d of getDatesForWeekdays([weekday], rangeStart, rangeEnd)) {
+                if (!existingKeys.has(dayKey(jobId, d))) missing.push({ jobId, date: d });
+            }
+        }
+        console.log(`[ROLLOVER] ${missing.length} assignment(s) to create for workerId: ${workerId}`);
+        if (missing.length === 0) return;
+
+        try {
+            await prisma.$transaction(async (tx) => {
+                for (const m of missing) {
+                    await tx.jobAssignment.create({
+                        data: { workerId, jobId: m.jobId, date: m.date, isRecurring: true }
+                    });
+                }
+            });
+            return;
+        } catch (e) {
+            if ((e as any).code !== "P2002") throw e;
+            console.log("[ROLLOVER] lost a race with a concurrent call — re-checking what's still missing");
+        }
+    }
 }
 
 /**
@@ -79,60 +138,25 @@ export async function ensureCurrentCycleAssignments(workerId: string): Promise<v
     const todayUTCMidnight = new Date(dateStr + "T00:00:00.000Z");
     const rangeStart = todayUTCMidnight > currentCycle.start ? todayUTCMidnight : currentCycle.start;
     console.log(`[ROLLOVER] rangeStart resolved to: ${rangeStart.toISOString()}`);
-    
-    for (const { jobId, weekday } of patterns.values()) {
-        const dates = getDatesForWeekdays([weekday], rangeStart, currentCycle.end);
-        console.log(`[ROLLOVER] weekday ${weekday} has dates:`, dates.map(d => d.toISOString()));
-        for (const d of dates) {
-            const dayStart = new Date(d); dayStart.setUTCHours(0, 0, 0, 0);
-            const dayEnd = new Date(d); dayEnd.setUTCHours(23, 59, 59, 999);
-            console.log(`[ROLLOVER] checking existing for date ${d.toISOString()} (job: ${jobId})...`);
-            const existing = await prisma.jobAssignment.findFirst({
-                where: { workerId, jobId, date: { gte: dayStart, lte: dayEnd } }
-            });
-            console.log(`[ROLLOVER] existing date ${d.toISOString()}: ${existing ? "FOUND" : "NOT FOUND"}`);
-            if (!existing) {
-                console.log(`[ROLLOVER] creating assignment for date ${d.toISOString()}...`);
-                try {
-                    await prisma.jobAssignment.create({
-                        data: { workerId, jobId, date: d, isRecurring: true }
-                    });
-                    console.log(`[ROLLOVER] created assignment for date ${d.toISOString()}`);
-                } catch (e) {
-                    // A concurrent rollover call for the same worker can win the race between
-                    // this "not found" check and the create — the @@unique constraint on
-                    // (workerId, jobId, date) turns what would silently become a duplicate
-                    // shift into a P2002 here instead, which just means the other call already
-                    // created it. Nothing more to do.
-                    if ((e as any).code !== "P2002") throw e;
-                    console.log(`[ROLLOVER] assignment for date ${d.toISOString()} already created by a concurrent call — skipping`);
-                }
-            }
-        }
-    }
+
+    await createMissingRecurringAssignments(workerId, Array.from(patterns.values()), rangeStart, currentCycle.end);
     console.log("[ROLLOVER] ensureCurrentCycleAssignments completed.");
 }
 
 /**
  * Called at the start of each GET request for a worker's assignments.
- * Once we're within NEXT_CYCLE_PREVIEW_DAYS of the next cycle's start, materialize
- * that cycle's recurring shifts early (using the current cycle's patterns as the
- * template) so workers can see/plan them ahead of the cycle actually rolling over.
+ * Materializes the next cycle's recurring shifts ahead of time (using the current
+ * cycle's patterns as the template) so workers always see two pay cycles of shifts
+ * and can plan ahead of the cycle actually rolling over.
  */
 export async function ensureNextCyclePreview(workerId: string): Promise<void> {
     console.log(`[ROLLOVER] ensureNextCyclePreview started for workerId: ${workerId}`);
     const currentCycle = getCurrentCycleDates();
     const nextCycle = getNextCycleDates();
 
-    const previewStart = new Date(nextCycle.start);
-    previewStart.setDate(previewStart.getDate() - NEXT_CYCLE_PREVIEW_DAYS);
-    console.log(`[ROLLOVER] previewStart: ${previewStart.toISOString()}`);
-    if (new Date() < previewStart) {
-        console.log("[ROLLOVER] Not within preview range. Skipping next cycle preview.");
-        return;
-    }
-
-    // Fast path: next cycle already has recurring assignments — nothing to do
+    // Fast path: next cycle already has recurring assignments — nothing to do.
+    // Deliberately not reconciled per-date after that: doing so would bring back a
+    // next-cycle shift an admin deleted on every single load.
     console.log("[ROLLOVER] querying nextCount...");
     const nextCount = await prisma.jobAssignment.count({
         where: {
@@ -171,32 +195,6 @@ export async function ensureNextCyclePreview(workerId: string): Promise<void> {
     }
     console.log(`[ROLLOVER] unique patterns for next cycle preview: ${patterns.size}`);
 
-    for (const { jobId, weekday } of patterns.values()) {
-        const dates = getDatesForWeekdays([weekday], nextCycle.start, nextCycle.end);
-        for (const d of dates) {
-            const dayStart = new Date(d); dayStart.setUTCHours(0, 0, 0, 0);
-            const dayEnd = new Date(d); dayEnd.setUTCHours(23, 59, 59, 999);
-            console.log(`[ROLLOVER] checking existing next-cycle for date ${d.toISOString()} (job: ${jobId})...`);
-            const existing = await prisma.jobAssignment.findFirst({
-                where: { workerId, jobId, date: { gte: dayStart, lte: dayEnd } }
-            });
-            console.log(`[ROLLOVER] existing next-cycle date ${d.toISOString()}: ${existing ? "FOUND" : "NOT FOUND"}`);
-            if (!existing) {
-                console.log(`[ROLLOVER] creating next-cycle preview assignment for date ${d.toISOString()}...`);
-                try {
-                    await prisma.jobAssignment.create({
-                        data: { workerId, jobId, date: d, isRecurring: true }
-                    });
-                    console.log(`[ROLLOVER] created next-cycle preview assignment for date ${d.toISOString()}`);
-                } catch (e) {
-                    // See matching comment in ensureCurrentCycleAssignments — a concurrent call
-                    // for the same worker can win this exact race; the unique constraint just
-                    // turns it into a no-op here instead of a duplicate shift.
-                    if ((e as any).code !== "P2002") throw e;
-                    console.log(`[ROLLOVER] next-cycle assignment for date ${d.toISOString()} already created by a concurrent call — skipping`);
-                }
-            }
-        }
-    }
+    await createMissingRecurringAssignments(workerId, Array.from(patterns.values()), nextCycle.start, nextCycle.end);
     console.log("[ROLLOVER] ensureNextCyclePreview completed.");
 }

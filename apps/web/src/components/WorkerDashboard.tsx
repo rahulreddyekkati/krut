@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Fragment, useState, useEffect } from "react";
 import { toZonedTime, fromZonedTime } from "date-fns-tz";
 import styles from "./WorkerDashboard.module.css";
 
@@ -20,6 +20,9 @@ interface WorkerDashboardProps {
         currentCycle: any[];
         cycleStart?: string;
         cycleEnd?: string;
+        nextCycleStart?: string;
+        nextCycleEnd?: string;
+        nextCycleLabel?: string;
         pendingReleases?: string[]
     };
     openShifts: any[];
@@ -541,7 +544,22 @@ export default function WorkerDashboard({
             ? `${new Date(myShifts.cycleStart).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' })} - ${new Date(myShifts.cycleEnd).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' })}`
             : "Current Cycle";
 
-        const cycleShifts = [...(myShifts.currentCycle || [])].sort((a, b) => {
+        // Shifts dated after the current cycle (the next cycle's recurring shifts, plus any
+        // one-offs further out) are listed below it under their own headers.
+        const cycleEndTime = myShifts.cycleEnd ? new Date(myShifts.cycleEnd).getTime() : null;
+        const afterCycle = (myShifts.upcoming || []).filter(
+            (a) => a.date && cycleEndTime !== null && new Date(a.date).getTime() > cycleEndTime
+        );
+        const nextStart = myShifts.nextCycleStart ? new Date(myShifts.nextCycleStart).getTime() : null;
+        const nextEnd = myShifts.nextCycleEnd ? new Date(myShifts.nextCycleEnd).getTime() : null;
+        const sectionOf = (a: any): "next" | "later" | null => {
+            if (!a?.date || nextStart === null || nextEnd === null) return null;
+            const t = new Date(a.date).getTime();
+            if (t > nextEnd) return "later";
+            return t >= nextStart ? "next" : null;
+        };
+
+        const cycleShifts = [...(myShifts.currentCycle || []), ...afterCycle].sort((a, b) => {
             const dateA = a.date ? new Date(a.date).getTime() : getNextOccurrenceDate(a.dayOfWeek).getTime();
             const dateB = b.date ? new Date(b.date).getTime() : getNextOccurrenceDate(b.dayOfWeek).getTime();
             return dateA - dateB;
@@ -554,8 +572,14 @@ export default function WorkerDashboard({
                 </div>
                 <div className={styles.list}>
                     {cycleShifts.length > 0 ? (
-                        cycleShifts.map((a) => (
-                            <div key={a.id} className={styles.listItem}>
+                        cycleShifts.map((a, i) => (
+                            <Fragment key={a.id}>
+                            {sectionOf(a) && (i === 0 || sectionOf(cycleShifts[i - 1]) !== sectionOf(a)) && (
+                                <div className={styles.sectionHeader}>
+                                    <h3>{sectionOf(a) === "next" ? (myShifts.nextCycleLabel || "Next Cycle") : "Later"}</h3>
+                                </div>
+                            )}
+                            <div className={styles.listItem}>
                                 <div className={styles.listInfo}>
                                     <div className={styles.listTitle}>
                                         {a.date
@@ -619,6 +643,7 @@ export default function WorkerDashboard({
                                     );
                                 })()}
                             </div>
+                            </Fragment>
                         ))
                     ) : (
                         <p className={styles.emptyMsg}>No shifts in this cycle.</p>

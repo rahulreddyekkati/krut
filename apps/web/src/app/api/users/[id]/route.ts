@@ -203,6 +203,16 @@ export async function PATCH(
                     // Ignore if model does not exist or named differently
                 }
 
+                // Drop their upcoming unworked shifts — recurring shifts are generated up to
+                // two pay cycles ahead, and left in place they'd keep showing as scheduled on
+                // the admin dashboard / By Date tab and trip late-clock-in alerts. Today's
+                // not-yet-clocked-in shift is included; anything with clock-in data is kept.
+                const deactivateTz = resolveTimezone(request);
+                const deactivateToday = new Date(`${toLocalDateStr(new Date(), deactivateTz)}T00:00:00.000Z`);
+                await tx.jobAssignment.deleteMany({
+                    where: { workerId: id, status: 'ASSIGNED', clockIn: null, date: { gte: deactivateToday } }
+                });
+
                 const activeAssignment = await tx.jobAssignment.findFirst({
                     where: { workerId: id, clockIn: { not: null }, clockOut: null }
                 });

@@ -16,6 +16,9 @@ export default function DashboardPage() {
         currentCycle: any[], 
         cycleStart?: string, 
         cycleEnd?: string,
+        nextCycleStart?: string,
+        nextCycleEnd?: string,
+        nextCycleLabel?: string,
         pendingReleases?: string[] 
     }>({ 
         upcoming: [], 

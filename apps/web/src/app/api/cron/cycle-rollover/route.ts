@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { ensureCurrentCycleAssignments } from "@/lib/recurringShifts";
+import { ensureCurrentCycleAssignments, ensureNextCyclePreview } from "@/lib/recurringShifts";
 
 export async function GET(request: NextRequest) {
     const authHeader = request.headers.get("authorization");
@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
     for (const worker of workers) {
         try {
             await ensureCurrentCycleAssignments(worker.id);
+            await ensureNextCyclePreview(worker.id);
             rolled++;
         } catch (e) {
             console.error(`cycle-rollover failed for worker ${worker.id} (${worker.name}):`, e);

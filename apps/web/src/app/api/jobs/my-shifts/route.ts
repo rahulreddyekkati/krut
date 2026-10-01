@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { getCurrentCycleDates, getPreviousCycleDates, getCycleDisplayName } from "@/lib/cycles";
+import { getCurrentCycleDates, getPreviousCycleDates, getNextCycleDates, getCycleDisplayName } from "@/lib/cycles";
 import { resolveTimezone, getLocalDayBoundsUTC } from "@/lib/timezone";
 import { ensureCurrentCycleAssignments, ensureNextCyclePreview } from "@/lib/recurringShifts";
 
@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
         const { start: dbTodayStart } = getLocalDayBoundsUTC(tz);
         const cycle = getCurrentCycleDates();
         const prevCycle = getPreviousCycleDates();
+        const nextCycle = getNextCycleDates();
 
         // Assignments in the current cycle (not AVAILABLE — those are released shifts)
         // Also exclude payroll-correction entries: these are bonus-only bookkeeping rows
@@ -112,6 +113,9 @@ export async function GET(request: NextRequest) {
             cycleStart: cycle.start.toISOString(),
             cycleEnd: cycle.end.toISOString(),
             cycleLabel: getCycleDisplayName(cycle),
+            nextCycleStart: nextCycle.start.toISOString(),
+            nextCycleEnd: nextCycle.end.toISOString(),
+            nextCycleLabel: getCycleDisplayName(nextCycle),
             pendingReleaseAssignmentIds
         });
     } catch (error) {

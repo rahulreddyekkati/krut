@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { getCurrentCycleDates, getPreviousCycleDates, getDatesForWeekdays } from "@/lib/cycles";
-import { ensureCurrentCycleAssignments } from "@/lib/recurringShifts";
+import { getCurrentCycleDates, getPreviousCycleDates, getNextCycleDates, getDatesForWeekdays } from "@/lib/cycles";
+import { ensureCurrentCycleAssignments, ensureNextCyclePreview } from "@/lib/recurringShifts";
 import { sendPushToUser } from "@/lib/notifications";
 import { sendShiftAssignedEmail, sendShiftTimeChangedEmail } from "@/lib/mailer";
 import { resolveTimezone, toLocalDateStr } from "@/lib/timezone";
@@ -28,6 +28,11 @@ export async function GET(
 
         // Auto-rollover: create current cycle assignments from previous cycle patterns if needed
         await ensureCurrentCycleAssignments(id);
+        // Next cycle too, so the admin sees the same two cycles the worker does. Non-blocking,
+        // same as in jobs/my-shifts — a preview failure shouldn't break this listing.
+        try { await ensureNextCyclePreview(id); } catch (e) {
+            console.error("ensureNextCyclePreview error:", e);
+        }
 
         const assignments = await prisma.jobAssignment.findMany({
             where: { workerId: id },
@@ -79,30 +84,60 @@ export async function POST(
         const skipped: { date: string; reason: string }[] = [];
 
         if (weekdays && Array.isArray(weekdays) && weekdays.length > 0) {
-            // Cycle-based: create one dated assignment per matching weekday in current cycle,
-            // but never for a date that's already passed — otherwise assigning a recurring
-            // pattern mid-cycle backfills already-past days as bogus unclocked "Missed" shifts.
+            // Cycle-based: create one dated assignment per matching weekday in the current AND
+            // next cycle, but never for a date that's already passed — otherwise assigning a
+            // recurring pattern mid-cycle backfills already-past days as bogus unclocked
+            // "Missed" shifts.
+            //
+            // Roll the worker's existing patterns into both cycles first. The rollover
+            // functions treat "this cycle already has a recurring row" as "fully generated",
+            // so if this new pattern's rows landed in a cycle before the existing patterns
+            // did, they'd mask them and those patterns would silently never be generated.
+            await ensureCurrentCycleAssignments(id);
+            await ensureNextCyclePreview(id);
+
             const cycle = getCurrentCycleDates();
+            const nextCycle = getNextCycleDates();
             const tz = resolveTimezone(request);
             const todayStr = toLocalDateStr(new Date(), tz);
             const todayUTCMidnight = new Date(todayStr + "T00:00:00.000Z");
             const rangeStart = todayUTCMidnight > cycle.start ? todayUTCMidnight : cycle.start;
-            const dates = getDatesForWeekdays(weekdays, rangeStart, cycle.end);
+            const dates = getDatesForWeekdays(weekdays, rangeStart, nextCycle.end);
+            const dayKey = (d: Date) => d.toISOString().split('T')[0];
 
-            for (const d of dates) {
-                const dayStart = new Date(d); dayStart.setUTCHours(0, 0, 0, 0);
-                const dayEnd = new Date(d); dayEnd.setUTCHours(23, 59, 59, 999);
-                const existing = await prisma.jobAssignment.findFirst({
-                    where: { workerId: id, jobId, date: { gte: dayStart, lte: dayEnd } }
+            // All-or-nothing, so a failure partway can't leave the pattern half-created.
+            // Two attempts: if a concurrent request for the same pattern wins the race, the
+            // @@unique constraint on (workerId, jobId, date) rolls this batch back with a
+            // P2002 — re-read what exists and report those dates as already assigned.
+            for (let attempt = 0; attempt < 2; attempt++) {
+                const existing = dates.length === 0 ? [] : await prisma.jobAssignment.findMany({
+                    where: { workerId: id, jobId, date: { gte: rangeStart, lte: nextCycle.end } },
+                    select: { date: true }
                 });
-                if (existing) {
-                    skipped.push({ date: d.toISOString().split('T')[0], reason: "Already assigned" });
-                    continue;
+                const existingDays = new Set(existing.filter(a => a.date).map(a => dayKey(new Date(a.date!))));
+                const missing = dates.filter(d => !existingDays.has(dayKey(d)));
+
+                skipped.length = 0;
+                for (const d of dates) {
+                    if (existingDays.has(dayKey(d))) skipped.push({ date: dayKey(d), reason: "Already assigned" });
                 }
-                const assignment = await prisma.jobAssignment.create({
-                    data: { workerId: id, jobId, date: d, isRecurring: true, dayOfWeek: d.getUTCDay(), bonus: bonusValue, brandAllocation: brandAllocationValue }
-                });
-                created.push(assignment);
+                if (missing.length === 0) break;
+
+                try {
+                    const rows = await prisma.$transaction(async (tx) => {
+                        const out: any[] = [];
+                        for (const d of missing) {
+                            out.push(await tx.jobAssignment.create({
+                                data: { workerId: id, jobId, date: d, isRecurring: true, dayOfWeek: d.getUTCDay(), bonus: bonusValue, brandAllocation: brandAllocationValue }
+                            }));
+                        }
+                        return out;
+                    });
+                    created.push(...rows);
+                    break;
+                } catch (e: any) {
+                    if (e.code !== "P2002" || attempt === 1) throw e;
+                }
             }
 
             if (created.length > 0) {

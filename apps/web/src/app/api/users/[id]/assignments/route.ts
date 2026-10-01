@@ -329,11 +329,16 @@ export async function DELETE(
 
             // Find all matching assignments that are still in ASSIGNED status (meaning they are either
             // in the future or are past unworked shifts). Deleting these is safe and removes the pattern.
+            // A shift with clock-in data or a sample request is worked history even if its status
+            // says ASSIGNED -- it is detached below instead of deleted (SampleRequest is
+            // onDelete: Restrict, so one such row would otherwise fail the whole deleteMany).
             const candidates = await prisma.jobAssignment.findMany({
                 where: {
                     workerId: id,
                     jobId,
-                    status: "ASSIGNED"
+                    status: "ASSIGNED",
+                    clockIn: null,
+                    sampleRequests: { none: {} }
                 },
                 select: { id: true, date: true }
             });
@@ -390,9 +395,9 @@ export async function DELETE(
         // payroll data loss for multiple workers.
         const existing = await prisma.jobAssignment.findUnique({
             where: { id: assignmentId },
-            select: { clockIn: true }
+            select: { clockIn: true, _count: { select: { sampleRequests: true } } }
         });
-        if (existing?.clockIn) {
+        if (existing?.clockIn || existing?._count.sampleRequests) {
             return NextResponse.json(
                 { error: "This shift has already been worked (has clock-in data) and can't be deleted." },
                 { status: 409 }

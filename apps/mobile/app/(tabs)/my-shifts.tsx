@@ -12,6 +12,7 @@ export default function MyShiftsTab() {
   const [currentCycle, setCurrentCycle] = useState<any[]>([]);
   const [upcomingShifts, setUpcomingShifts] = useState<any[]>([]);
   const [cycleLabel, setCycleLabel] = useState<string | null>(null);
+  const [nextCycle, setNextCycle] = useState<{ start: number; end: number; label: string } | null>(null);
   const [pendingReleaseIds, setPendingReleaseIds] = useState<string[]>([]);
   const [fetching, setFetching] = useState(true);
 
@@ -36,12 +37,17 @@ export default function MyShiftsTab() {
         setPreviousCompleted(data.previousCompleted || []);
         setCurrentCycle(data.currentCycle || []);
         setCycleLabel(data.cycleLabel || null);
+        setNextCycle(
+          data.nextCycleStart && data.nextCycleEnd && data.nextCycleLabel
+            ? { start: new Date(data.nextCycleStart).getTime(), end: new Date(data.nextCycleEnd).getTime(), label: data.nextCycleLabel }
+            : null
+        );
         setPendingReleaseIds(data.pendingReleaseAssignmentIds || []);
         const cycleEndDate = data.cycleEnd ? new Date(data.cycleEnd) : null;
-        const nextCycle = (data.upcoming || []).filter(
+        const afterCycle = (data.upcoming || []).filter(
           (a: any) => a.date && cycleEndDate && new Date(a.date) > cycleEndDate
         );
-        setUpcomingShifts(nextCycle);
+        setUpcomingShifts(afterCycle);
       }
     } catch (e) {
       console.log("Failed fetching shifts", e);
@@ -82,6 +88,22 @@ export default function MyShiftsTab() {
     }
   };
 
+  const shifts = [...previousCompleted, ...currentCycle, ...upcomingShifts].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  // Section headers are placed by date range, not by which list a shift came from — a
+  // one-off shift dated beyond the next cycle belongs under "Later", not the next cycle.
+  const sectionOf = (item: any): 'next' | 'later' | null => {
+    if (!nextCycle || !item?.date) return null;
+    const t = new Date(item.date).getTime();
+    if (t > nextCycle.end) return 'later';
+    return t >= nextCycle.start ? 'next' : null;
+  };
+  const sectionHeaderFor = (item: any, index: number): string | null => {
+    const section = sectionOf(item);
+    if (!section || (index > 0 && sectionOf(shifts[index - 1]) === section)) return null;
+    return section === 'next' ? nextCycle!.label.toUpperCase() : 'LATER';
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.navbar}>
@@ -106,7 +128,7 @@ export default function MyShiftsTab() {
         <ActivityIndicator style={{ marginTop: 40 }} size="large" color="#6366F1" />
       ) : (
         <FlatList
-          data={[...previousCompleted, ...currentCycle, ...upcomingShifts].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())}
+          data={shifts}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           refreshControl={<RefreshControl refreshing={fetching} onRefresh={loadShifts} />}
@@ -120,15 +142,21 @@ export default function MyShiftsTab() {
               <Text style={styles.emptyText}>No shifts assigned for this pay cycle yet.</Text>
             </View>
           }
-          renderItem={({ item }) => (
-            <ShiftCard
-              shift={item}
-              releaseStatus={pendingReleaseIds.includes(item.id) ? 'pending' : 'none'}
-              onRelease={handleRelease}
-              onClockIn={handleClockIn}
-              onPress={() => router.push({ pathname: "/shift/[id]", params: { id: item.jobId, assignmentId: item.id } })}
-            />
-          )}
+          renderItem={({ item, index }) => {
+            const sectionHeader = sectionHeaderFor(item, index);
+            return (
+              <>
+                {sectionHeader ? <Text style={[styles.cycleHeader, styles.sectionHeader]}>{sectionHeader}</Text> : null}
+                <ShiftCard
+                  shift={item}
+                  releaseStatus={pendingReleaseIds.includes(item.id) ? 'pending' : 'none'}
+                  onRelease={handleRelease}
+                  onClockIn={handleClockIn}
+                  onPress={() => router.push({ pathname: "/shift/[id]", params: { id: item.jobId, assignmentId: item.id } })}
+                />
+              </>
+            );
+          }}
         />
       )}
     </View>
@@ -153,6 +181,7 @@ const styles = StyleSheet.create({
   logoutIcon: { fontSize: 18, color: '#EF4444', fontWeight: '700' },
   listContent: { padding: 16 },
   cycleHeader: { fontSize: 13, fontWeight: '700', color: '#6366F1', letterSpacing: 1, marginBottom: 16 },
+  sectionHeader: { marginTop: 12 },
   emptyState: { padding: 40, alignItems: 'center', marginTop: 40 },
   emptyEmoji: { fontSize: 48, marginBottom: 12 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: '#374151', marginBottom: 4 },

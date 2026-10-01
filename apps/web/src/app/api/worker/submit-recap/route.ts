@@ -22,6 +22,8 @@ export async function POST(request: NextRequest) {
             customerFeedback,
             receiptUrl,
             inventoryData,
+            storeManagerName,
+            managerSignature,
         } = validate(recapSchema, body);
 
         // Find the specific assignment
@@ -117,6 +119,8 @@ export async function POST(request: NextRequest) {
                 customerFeedback: customerFeedback ?? null,
                 receiptUrl: receiptUrl ?? null,
                 comments: customerFeedback ?? null,
+                storeManagerName: storeManagerName || null,
+                managerSignature: managerSignature || null,
                 status: "PENDING",
                 // Stamped on every submission, including a resubmission after rejection below
                 // (spread into both the create and update branches) — unlike createdAt (set

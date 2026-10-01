@@ -207,6 +207,10 @@ export const recapSchema = z.object({
             { message: "One or more receipt photos are too large" }
         ),
     inventoryData: z.record(z.string(), z.any()).optional(),
+    // Store manager sign-off captured on the mobile recap form. Both are null/empty when the
+    // worker ticks "manager unavailable". The signature is a base64 data-URI of the drawing.
+    storeManagerName: z.string().trim().max(200).nullish(),
+    managerSignature: z.string().max(1024 * 1024, "Signature image is too large").nullish(),
 });
 
 // Admin manually entering a recap on a worker's behalf (e.g. transcribing a paper

@@ -91,7 +91,28 @@ export default function AdminReportsPage() {
                 "Amount Paid": member.payment ? member.payment.amountPaid : "",
             }));
 
+        // Totals row at the bottom; non-numeric cells ("N/A", blank) are skipped
+        const sum = (key: keyof typeof rows[number]) =>
+            Math.round(rows.reduce((acc, row) => {
+                const v = row[key];
+                return typeof v === "number" ? acc + v : acc;
+            }, 0) * 100) / 100;
+
         const ws = XLSX.utils.json_to_sheet(rows);
+        XLSX.utils.sheet_add_json(ws, [{
+            "Name": "TOTAL",
+            "Role": "",
+            "Location/Scope": "",
+            "Pay/Hr": "",
+            "Worked (hrs)": sum("Worked (hrs)"),
+            "Assigned (hrs)": sum("Assigned (hrs)"),
+            "Reimbursement": sum("Reimbursement"),
+            "Bottles Sold": sum("Bottles Sold"),
+            "Pay For Cycle": sum("Pay For Cycle"),
+            "Taxable Pay": sum("Taxable Pay"),
+            "Paid At": "",
+            "Amount Paid": sum("Amount Paid"),
+        }], { skipHeader: true, origin: -1 });
         ws['!cols'] = [
             { wch: 22 }, { wch: 16 }, { wch: 20 }, { wch: 10 },
             { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 13 }, { wch: 14 }, { wch: 14 },

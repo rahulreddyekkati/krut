@@ -5,9 +5,9 @@ import { to12hr } from "@/lib/timeFormat";
 import { ensureCurrentCycleAssignments } from "@/lib/recurringShifts";
 import { sendLateClockInAlertEmail } from "@/lib/mailer";
 
-const LATE_THRESHOLD_MIN = 30;
-// Scheduled every 15 min (see vercel.json) — a straggler is only ever caught in the first
-// run where they land in [30, 45) minutes late, so each late shift generates exactly one
+const LATE_THRESHOLD_MIN = 35;
+// Scheduled every 15 min (see .github/workflows/cron-late-clockin-alert.yml) — a straggler is only ever caught in the first
+// run where they land in [35, 50) minutes late, so each late shift generates exactly one
 // alert instead of resending on every subsequent run for the rest of the day. Mirrors the
 // same windowing trick auto-clockout/route.ts uses for its 1-hour-left warning.
 const WINDOW_MIN = 15;

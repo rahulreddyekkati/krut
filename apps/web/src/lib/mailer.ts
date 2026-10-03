@@ -519,7 +519,7 @@ export async function sendLateClockInAlertEmail(
     if (recipientEmails.length === 0 || workers.length === 0) return false;
     try {
         const subject = `Late Clock-In Alert: ${workers.length} worker${workers.length === 1 ? "" : "s"} not clocked in`;
-        const textBody = `The following worker(s) have not clocked in more than 30 minutes after their shift start time:\n\n${workers
+        const textBody = `The following worker(s) have not clocked in more than 35 minutes after their shift start time:\n\n${workers
             .map((w) => `- ${w.name} — ${w.storeName}, scheduled ${w.startTime} (${w.minutesLate} min late)`)
             .join("\n")}\n\nThe Kruto Tastes System`;
         const htmlBody = `
@@ -529,7 +529,7 @@ export async function sendLateClockInAlertEmail(
                 </div>
                 <p style="color: #0f172a; font-size: 18px; font-weight: 600; margin-top: 0; margin-bottom: 16px;">Late Clock-In Alert</p>
                 <p style="color: #334155; font-size: 15px; line-height: 24px; margin-top: 0; margin-bottom: 16px;">
-                    The following worker${workers.length === 1 ? " has" : "s have"} not clocked in more than 30 minutes after their shift start time:
+                    The following worker${workers.length === 1 ? " has" : "s have"} not clocked in more than 35 minutes after their shift start time:
                 </p>
                 <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 14px 16px; border-radius: 4px; margin-bottom: 24px;">
                     <ul style="color: #991b1b; font-size: 15px; margin: 0; padding-left: 18px;">

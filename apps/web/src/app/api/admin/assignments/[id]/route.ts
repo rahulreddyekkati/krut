@@ -14,7 +14,13 @@ export async function PATCH(
     try {
         const user = await requireAuth(request, ["ADMIN", "MARKET_MANAGER"]);
         const { id: assignmentId } = await context.params;
-        const { newWorkerId, storeId, startTimeStr, endTimeStr } = await request.json();
+        const { newWorkerId, storeId, startTimeStr, endTimeStr, brandAllocation } = await request.json();
+
+        // brandAllocation: optional "KRUTO" | "MULUK" | "BOTH"; null or "" clears it. Omitted = unchanged.
+        const ALLOWED_BRAND_ALLOCATIONS = ["KRUTO", "MULUK", "BOTH"];
+        if (brandAllocation !== undefined && brandAllocation !== null && brandAllocation !== "" && !ALLOWED_BRAND_ALLOCATIONS.includes(brandAllocation)) {
+            return NextResponse.json({ error: "Invalid brandAllocation" }, { status: 400 });
+        }
 
         const assignment = await prisma.jobAssignment.findUnique({
             where: { id: assignmentId },
@@ -108,6 +114,11 @@ export async function PATCH(
             updateData.workerId = newWorkerId;
             updateData.status = "ASSIGNED";
             updateData.releasedByWorkerId = null;
+        }
+
+        // Brand is internal cost allocation — changing it alone doesn't notify the worker
+        if (brandAllocation !== undefined) {
+            updateData.brandAllocation = brandAllocation || null;
         }
 
         await prisma.jobAssignment.update({ where: { id: assignmentId }, data: updateData });

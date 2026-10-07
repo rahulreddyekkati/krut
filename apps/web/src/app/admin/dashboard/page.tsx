@@ -6,6 +6,13 @@ import { to12hr } from "@/lib/timeFormat";
 
 type DetailType = "jobs" | "active" | "recaps" | null;
 
+// JobAssignment.brandAllocation → label. Unallocated (null) shifts show "—".
+const BRAND_LABELS: Record<string, string> = {
+    KRUTO: "Kruto",
+    MULUK: "Muluk",
+    BOTH: "Both",
+};
+
 export default function AdminDashboardPage() {
     const [stats, setStats] = useState({ totalJobs: 0, activeWorkers: 0, pendingRecaps: 0 });
     const [loading, setLoading] = useState(true);
@@ -29,6 +36,8 @@ export default function AdminDashboardPage() {
     const [modalStores, setModalStores] = useState<any[]>([]);
     const [selectedWorkerId, setSelectedWorkerId] = useState("");
     const [selectedStoreId, setSelectedStoreId] = useState("");
+    const [editingBrandId, setEditingBrandId] = useState<string | null>(null);
+    const [brandSaving, setBrandSaving] = useState(false);
     const [clockingInRow, setClockingInRow] = useState<any>(null);
     const [clockInMode, setClockInMode] = useState<"new" | "edit">("new");
     const [clockInTime, setClockInTime] = useState("");
@@ -151,6 +160,28 @@ export default function AdminDashboardPage() {
             setEditError("An unexpected error occurred");
         } finally {
             setEditSaving(false);
+        }
+    };
+
+    const handleSaveBrand = async (assignmentId: string, brand: string) => {
+        setBrandSaving(true);
+        try {
+            const res = await fetch(`/api/admin/assignments/${assignmentId}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ brandAllocation: brand || null }),
+            });
+            if (res.ok) {
+                setDetailData(prev => prev.map((r: any) => r.assignmentId === assignmentId ? { ...r, brandAllocation: brand || null } : r));
+                setEditingBrandId(null);
+            } else {
+                const d = await res.json().catch(() => ({}));
+                alert(d.error || "Failed to save brand");
+            }
+        } catch {
+            alert("Failed to save brand");
+        } finally {
+            setBrandSaving(false);
         }
     };
 
@@ -407,6 +438,7 @@ export default function AdminDashboardPage() {
                                             <th style={thStyle}>End Time</th>
                                             <th style={thStyle}>Market</th>
                                             <th style={thStyle}>Assigned To</th>
+                                            <th style={thStyle}>Brand</th>
                                             <th style={thStyle}>Break Time</th>
                                             <th style={thStyle}>Actions</th>
                                         </tr>
@@ -436,6 +468,35 @@ export default function AdminDashboardPage() {
                                             </td>
                                             <td style={tdStyle}>{row.marketName}</td>
                                             <td style={tdStyle}>{row.assignedWorker}</td>
+                                            <td style={tdStyle}>
+                                                {!row.assignmentId ? (
+                                                    "—"
+                                                ) : editingBrandId === row.assignmentId ? (
+                                                    <select
+                                                        autoFocus
+                                                        disabled={brandSaving}
+                                                        value={row.brandAllocation || ""}
+                                                        onChange={(e) => handleSaveBrand(row.assignmentId, e.target.value)}
+                                                        onBlur={() => setEditingBrandId(null)}
+                                                        style={{ padding: "0.25rem 0.4rem", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "0.85rem" }}
+                                                    >
+                                                        <option value="">None</option>
+                                                        <option value="KRUTO">Kruto</option>
+                                                        <option value="MULUK">Muluk</option>
+                                                        <option value="BOTH">Both</option>
+                                                    </select>
+                                                ) : (
+                                                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                                                        <span>{BRAND_LABELS[row.brandAllocation] || "—"}</span>
+                                                        <button
+                                                            onClick={() => setEditingBrandId(row.assignmentId)}
+                                                            style={{ background: "transparent", color: "#6366f1", border: "1px solid #c7d2fe", borderRadius: "6px", padding: "0.15rem 0.5rem", fontSize: "0.75rem", cursor: "pointer", fontWeight: 600 }}
+                                                        >
+                                                            Edit
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </td>
                                             <td style={tdStyle}>{row.breakTimeMinutes > 0 ? `${row.breakTimeMinutes}m` : "—"}</td>
                                             <td style={tdStyle}>
                                                 {row.assignmentId ? (

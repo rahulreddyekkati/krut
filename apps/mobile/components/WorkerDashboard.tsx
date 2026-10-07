@@ -16,6 +16,13 @@ import {
 } from '../tasks/locationTask';
 
 const CIRCLE_SIZE = Dimensions.get('window').width * 0.44;
+
+// JobAssignment.brandAllocation → label. Unallocated (null) shifts show no badge.
+const BRAND_LABELS: Record<string, string> = {
+  KRUTO: 'Kruto',
+  MULUK: 'Muluk',
+  BOTH: 'Kruto & Muluk',
+};
 const GEOFENCE_BREAK_THRESHOLD_SECS = 15 * 60; // 15 minutes cumulative outside
 const GEOFENCE_POLL_MS = 30_000; // poll every 30 seconds
 
@@ -499,6 +506,11 @@ export default function HomeTab() {
           <Text style={styles.shiftCardTitle}>Today's Shift</Text>
           {activeAssignment ? (
             <View>
+              {BRAND_LABELS[activeAssignment.brandAllocation] && (
+                <View style={styles.brandBadge}>
+                  <Text style={styles.brandBadgeText}>{BRAND_LABELS[activeAssignment.brandAllocation]}</Text>
+                </View>
+              )}
               <Text style={styles.shiftTimeRange}>
                 {formatTimeStr(activeAssignment.job?.startTimeStr)} - {formatTimeStr(activeAssignment.job?.endTimeStr)}
               </Text>
@@ -686,6 +698,11 @@ const styles = StyleSheet.create({
     padding: 20, borderRadius: 14, borderWidth: 1, borderColor: '#E5E7EB',
   },
   shiftCardTitle: { fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 8 },
+  brandBadge: {
+    alignSelf: 'flex-start', backgroundColor: '#EEF2FF', borderRadius: 999,
+    paddingHorizontal: 10, paddingVertical: 3, marginBottom: 8,
+  },
+  brandBadgeText: { fontSize: 12, fontWeight: '700', color: '#4F46E5' },
   shiftTimeRange: { fontSize: 18, fontWeight: '600', color: '#6366F1', marginBottom: 4 },
   shiftDate: { fontSize: 14, color: '#6B7280', marginBottom: 2 },
   shiftLocation: { fontSize: 13, color: '#9CA3AF' },

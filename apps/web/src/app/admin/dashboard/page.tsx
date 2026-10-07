@@ -36,8 +36,7 @@ export default function AdminDashboardPage() {
     const [modalStores, setModalStores] = useState<any[]>([]);
     const [selectedWorkerId, setSelectedWorkerId] = useState("");
     const [selectedStoreId, setSelectedStoreId] = useState("");
-    const [editingBrandId, setEditingBrandId] = useState<string | null>(null);
-    const [brandSaving, setBrandSaving] = useState(false);
+    const [editBrand, setEditBrand] = useState("");
     const [clockingInRow, setClockingInRow] = useState<any>(null);
     const [clockInMode, setClockInMode] = useState<"new" | "edit">("new");
     const [clockInTime, setClockInTime] = useState("");
@@ -100,6 +99,7 @@ export default function AdminDashboardPage() {
         setEditTimes({ startTime: row.startTime === "--" ? "" : row.startTime, endTime: row.endTime === "--" ? "" : row.endTime });
         setSelectedWorkerId(row.workerId || "");
         setSelectedStoreId(row.storeId || "");
+        setEditBrand(row.brandAllocation || "");
         setEditError("");
 
         // Fetch workers and stores for this market
@@ -124,6 +124,30 @@ export default function AdminDashboardPage() {
             const workerChanged = selectedWorkerId && selectedWorkerId !== editingShift.workerId;
             const storeChanged  = selectedStoreId  && selectedStoreId  !== editingShift.storeId;
             const timeChanged   = editTimes.startTime || editTimes.endTime;
+            const brandChanged  = editBrand !== (editingShift.brandAllocation || "");
+            const timesEdited   =
+                editTimes.startTime !== (editingShift.startTime === "--" ? "" : editingShift.startTime) ||
+                editTimes.endTime   !== (editingShift.endTime   === "--" ? "" : editingShift.endTime);
+
+            // Brand is saved on its own so a brand-only edit doesn't rewrite the shift
+            // times or notify the worker.
+            if (brandChanged) {
+                const brandRes = await fetch(`/api/admin/assignments/${editingShift.assignmentId}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ brandAllocation: editBrand || null }),
+                });
+                if (!brandRes.ok) {
+                    const d = await brandRes.json().catch(() => ({}));
+                    setEditError(d.error || "Failed to save brand");
+                    return;
+                }
+                if (!workerChanged && !storeChanged && !timesEdited) {
+                    setEditingShift(null);
+                    fetchDetailData("jobs");
+                    return;
+                }
+            }
 
             // Use the new full-reassignment endpoint if worker or store changed
             const useReassignEndpoint = workerChanged || storeChanged;
@@ -160,28 +184,6 @@ export default function AdminDashboardPage() {
             setEditError("An unexpected error occurred");
         } finally {
             setEditSaving(false);
-        }
-    };
-
-    const handleSaveBrand = async (assignmentId: string, brand: string) => {
-        setBrandSaving(true);
-        try {
-            const res = await fetch(`/api/admin/assignments/${assignmentId}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ brandAllocation: brand || null }),
-            });
-            if (res.ok) {
-                setDetailData(prev => prev.map((r: any) => r.assignmentId === assignmentId ? { ...r, brandAllocation: brand || null } : r));
-                setEditingBrandId(null);
-            } else {
-                const d = await res.json().catch(() => ({}));
-                alert(d.error || "Failed to save brand");
-            }
-        } catch {
-            alert("Failed to save brand");
-        } finally {
-            setBrandSaving(false);
         }
     };
 
@@ -468,35 +470,7 @@ export default function AdminDashboardPage() {
                                             </td>
                                             <td style={tdStyle}>{row.marketName}</td>
                                             <td style={tdStyle}>{row.assignedWorker}</td>
-                                            <td style={tdStyle}>
-                                                {!row.assignmentId ? (
-                                                    "—"
-                                                ) : editingBrandId === row.assignmentId ? (
-                                                    <select
-                                                        autoFocus
-                                                        disabled={brandSaving}
-                                                        value={row.brandAllocation || ""}
-                                                        onChange={(e) => handleSaveBrand(row.assignmentId, e.target.value)}
-                                                        onBlur={() => setEditingBrandId(null)}
-                                                        style={{ padding: "0.25rem 0.4rem", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "0.85rem" }}
-                                                    >
-                                                        <option value="">None</option>
-                                                        <option value="KRUTO">Kruto</option>
-                                                        <option value="MULUK">Muluk</option>
-                                                        <option value="BOTH">Both</option>
-                                                    </select>
-                                                ) : (
-                                                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                                                        <span>{BRAND_LABELS[row.brandAllocation] || "—"}</span>
-                                                        <button
-                                                            onClick={() => setEditingBrandId(row.assignmentId)}
-                                                            style={{ background: "transparent", color: "#6366f1", border: "1px solid #c7d2fe", borderRadius: "6px", padding: "0.15rem 0.5rem", fontSize: "0.75rem", cursor: "pointer", fontWeight: 600 }}
-                                                        >
-                                                            Edit
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </td>
+                                            <td style={tdStyle}>{BRAND_LABELS[row.brandAllocation] || "—"}</td>
                                             <td style={tdStyle}>{row.breakTimeMinutes > 0 ? `${row.breakTimeMinutes}m` : "—"}</td>
                                             <td style={tdStyle}>
                                                 {row.assignmentId ? (
@@ -599,6 +573,21 @@ export default function AdminDashboardPage() {
                             {modalStores.map((s: any) => (
                                 <option key={s.id} value={s.id}>{s.name}</option>
                             ))}
+                        </select>
+                    </div>
+
+                    {/* Brand */}
+                    <div style={{ marginBottom: "1rem" }}>
+                        <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, marginBottom: "0.375rem" }}>Brand</label>
+                        <select
+                            className="input"
+                            value={editBrand}
+                            onChange={e => setEditBrand(e.target.value)}
+                        >
+                            <option value="">— None —</option>
+                            <option value="KRUTO">Kruto</option>
+                            <option value="MULUK">Muluk</option>
+                            <option value="BOTH">Both</option>
                         </select>
                     </div>
 

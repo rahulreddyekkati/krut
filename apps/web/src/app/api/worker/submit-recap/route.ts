@@ -3,7 +3,7 @@ import prisma from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { handleApiError, AppError } from "@/lib/apiError";
 import { validate, recapSchema } from "@/lib/validate";
-import { resolveTimezone, getLocalDayBoundsUTC } from "@/lib/timezone";
+import { resolveTimezone, toLocalDateStr } from "@/lib/timezone";
 
 export async function POST(request: NextRequest) {
     try {
@@ -51,19 +51,28 @@ export async function POST(request: NextRequest) {
             });
         }
         if (!assignment && !assignmentId) {
-            const tz = resolveTimezone(request);
-            const { start: startOfToday, end: endOfToday } = getLocalDayBoundsUTC(tz);
+            // Last resort: today's shift for this job (e.g. resubmitting after a rejection).
+            // Shift dates are UTC-midnight markers of the store-local calendar day, so
+            // match today's marker — not real local-midnight bounds, which miss today's
+            // marker and catch tomorrow's. Only a shift that was actually worked counts;
+            // an undated or future recurring row must never receive the recap.
+            const jobStore = await prisma.job.findUnique({
+                where: { id: jobId },
+                select: { store: { select: { timezone: true } } }
+            });
+            const tz = jobStore?.store?.timezone || resolveTimezone(request);
+            const todayMarker = new Date(toLocalDateStr(new Date(), tz) + "T00:00:00.000Z");
+            const tomorrowMarker = new Date(todayMarker.getTime() + 24 * 60 * 60 * 1000);
             assignment = await prisma.jobAssignment.findFirst({
                 where: {
                     jobId,
                     workerId: user.id,
-                    OR: [
-                        { date: { gte: startOfToday, lte: endOfToday } },
-                        { isRecurring: true }
-                    ]
+                    date: { gte: todayMarker, lt: tomorrowMarker },
+                    clockIn: { not: null },
+                    clockOut: { not: null }
                 },
                 include: { job: true },
-                orderBy: { date: "desc" }
+                orderBy: { clockOut: "desc" }
             });
         }
 

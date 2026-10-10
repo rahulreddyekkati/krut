@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { handleApiError, AppError } from "@/lib/apiError";
-import { resolveTimezone, getLocalDayBoundsUTC, localTimeToUTC, toLocalDateStr } from "@/lib/timezone";
+import { resolveTimezone, localTimeToUTC, toLocalDateStr } from "@/lib/timezone";
 import { isWithinRadius } from "@/lib/geo";
 
 const CLOCK_IN_EARLY_WINDOW_MS = 15 * 60 * 1000; // 15 minutes before shift start
@@ -26,7 +26,14 @@ export async function POST(
 
         // Resolve timezone up front — needed both for the early-clockin check below
         // and for finding *today's* assignment row (not just any row for this job).
-        const tz = resolveTimezone(request);
+        // Shift dates and times are wall-clock values at the store, so use the store's
+        // own timezone; the request's (the phone's zone, or Central when the header is
+        // missing) is only a fallback.
+        const jobStore = await prisma.job.findUnique({
+            where: { id: jobId },
+            select: { store: { select: { timezone: true } } }
+        });
+        const tz = jobStore?.store?.timezone || resolveTimezone(request);
 
         // Dates are stored as UTC midnight of the local calendar-date string (matching
         // the convention used by /api/timeclock — NOT the true UTC-offset midnight that
@@ -84,12 +91,11 @@ export async function POST(
         }
 
         // ── CRIT-04: Early clock-in prevention ───────────────────────────────
-        const { start: startOfToday } = getLocalDayBoundsUTC(tz);
         const now = new Date();
+        const startTimeStr = assignment.customStartTimeStr ?? assignment.job.startTimeStr;
 
-        if (assignment.job.startTimeStr) {
-            const todayStr = startOfToday.toISOString().split("T")[0];
-            const shiftStart = localTimeToUTC(todayStr, assignment.job.startTimeStr, tz);
+        if (startTimeStr) {
+            const shiftStart = localTimeToUTC(todayLocalStr, startTimeStr, tz);
             const msUntilStart = shiftStart.getTime() - now.getTime();
 
             if (msUntilStart > CLOCK_IN_EARLY_WINDOW_MS) {

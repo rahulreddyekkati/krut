@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { getCurrentCycleDates, getPreviousCycleDates, getNextCycleDates, getCycleDisplayName } from "@/lib/cycles";
-import { resolveTimezone, getLocalDayBoundsUTC } from "@/lib/timezone";
+import { resolveStoreTimezone, storeToday, toUTCLocalDateStr } from "@/lib/timezone";
 import { ensureCurrentCycleAssignments, ensureNextCyclePreview } from "@/lib/recurringShifts";
 
 export async function GET(request: NextRequest) {
@@ -18,8 +18,7 @@ export async function GET(request: NextRequest) {
             console.error("ensureNextCyclePreview error:", e);
         }
 
-        const tz = resolveTimezone(request);
-        const { start: dbTodayStart } = getLocalDayBoundsUTC(tz);
+        const now = new Date();
         const cycle = getCurrentCycleDates();
         const prevCycle = getPreviousCycleDates();
         const nextCycle = getNextCycleDates();
@@ -38,7 +37,7 @@ export async function GET(request: NextRequest) {
             include: {
                 job: {
                     include: {
-                        store: { select: { name: true, address: true, latitude: true, longitude: true, radius: true } },
+                        store: { select: { name: true, address: true, latitude: true, longitude: true, radius: true, timezone: true } },
                         market: { select: { name: true } }
                     }
                 }
@@ -46,24 +45,28 @@ export async function GET(request: NextRequest) {
             orderBy: { date: "asc" }
         });
 
-        // All upcoming assignments (today onwards) — for broader view
-        const upcoming = await prisma.jobAssignment.findMany({
+        // All upcoming assignments (today onwards) — for broader view. "Today" is the
+        // calendar day at each shift's own store, so fetch from one day before the UTC
+        // date and keep the rows whose marker is today or later at their store. (This
+        // used to compare the marker against real local midnight, which dropped today.)
+        const utcYesterday = new Date(new Date(toUTCLocalDateStr(now) + "T00:00:00.000Z").getTime() - 24 * 60 * 60 * 1000);
+        const upcoming = (await prisma.jobAssignment.findMany({
             where: {
                 workerId: session.user.id,
-                date: { gte: dbTodayStart },
+                date: { gte: utcYesterday },
                 status: { not: "AVAILABLE" },
                 job: { title: { not: { startsWith: "Payroll Correction —" } } }
             },
             include: {
                 job: {
                     include: {
-                        store: { select: { name: true, address: true, latitude: true, longitude: true, radius: true } },
+                        store: { select: { name: true, address: true, latitude: true, longitude: true, radius: true, timezone: true } },
                         market: { select: { name: true } }
                     }
                 }
             },
             orderBy: { date: "asc" }
-        });
+        })).filter((a: any) => new Date(a.date).getTime() >= storeToday(resolveStoreTimezone(a.job.store), now).getTime());
 
         // Completed/recap-pending shifts from the previous cycle — kept visible for one extra cycle
         const previousCompleted = await prisma.jobAssignment.findMany({
@@ -76,7 +79,7 @@ export async function GET(request: NextRequest) {
             include: {
                 job: {
                     include: {
-                        store: { select: { name: true, address: true, latitude: true, longitude: true, radius: true } },
+                        store: { select: { name: true, address: true, latitude: true, longitude: true, radius: true, timezone: true } },
                         market: { select: { name: true } }
                     }
                 }

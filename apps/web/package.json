@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "../../node_modules/.bin/prisma generate --schema=../../prisma/schema.prisma && ./node_modules/.bin/next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "./node_modules/.bin/vitest run",
+    "test:tz": "TZ=UTC ./node_modules/.bin/vitest run && TZ=America/Chicago ./node_modules/.bin/vitest run && TZ=America/New_York ./node_modules/.bin/vitest run"
   },
   "dependencies": {
     "@libsql/client": "0.8.0",
@@ -38,7 +40,8 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "prisma": "6.4.1",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.7"
   },
   "prisma": {
     "schema": "../../prisma/schema.prisma",

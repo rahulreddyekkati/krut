@@ -5,7 +5,7 @@ import { getCurrentCycleDates, getPreviousCycleDates, getNextCycleDates, getDate
 import { ensureCurrentCycleAssignments, ensureNextCyclePreview } from "@/lib/recurringShifts";
 import { sendPushToUser } from "@/lib/notifications";
 import { sendShiftAssignedEmail, sendShiftTimeChangedEmail } from "@/lib/mailer";
-import { resolveTimezone, toLocalDateStr } from "@/lib/timezone";
+import { resolveTimezone, toLocalDateStr, parseDateMarker } from "@/lib/timezone";
 
 // GET /api/users/[id]/assignments - Fetch shifts for a worker
 export async function GET(
@@ -167,7 +167,7 @@ export async function POST(
 
         if (date) {
             // Single date one-off
-            const dateObj = new Date(date);
+            const dateObj = parseDateMarker(date);
             const dayStart = new Date(dateObj); dayStart.setUTCHours(0, 0, 0, 0);
             const dayEnd = new Date(dateObj); dayEnd.setUTCHours(23, 59, 59, 999);
             const existing = await prisma.jobAssignment.findFirst({

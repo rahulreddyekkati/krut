@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { handleApiError } from "@/lib/apiError";
-import { getMarketTimezone, localTimeToUTC } from "@/lib/timezone";
+import { resolveStoreTimezone, localTimeToUTC } from "@/lib/timezone";
 import {
     buildDateMarkerRange,
     buildCycleAssignmentWhere,
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
                 // is only used for the pre-existing timezone-boundary check and is left as-is
                 // to avoid changing already-verified totals.
                 job: { select: { bonus: true, market: { select: { name: true } }, store: { select: { chain: true } } } },
-                worker: { select: { hourlyWage: true, market: { select: { name: true } } } },
+                worker: { select: { hourlyWage: true, market: { select: { name: true, timezone: true } } } },
                 recap: { select: { status: true, reimbursement: true } }
             } as any
         });
@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
         };
 
         for (const assignment of assignments as any[]) {
-            const marketTz = assignment.worker?.market?.name ? getMarketTimezone(assignment.worker.market.name) : DEFAULT_TZ;
+            const marketTz = resolveStoreTimezone(null, assignment.worker?.market);
             const preciseStart = localTimeToUTC(startDate, "00:00", marketTz);
             const preciseEnd = localTimeToUTC(endDate, "23:59", marketTz);
             if (!assignmentBelongsToCyclePreciseCheck(assignment, preciseStart, preciseEnd)) continue;

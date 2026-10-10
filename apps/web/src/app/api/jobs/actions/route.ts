@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { handleApiError, AppError } from "@/lib/apiError";
-import { resolveTimezone, localTimeToUTC, toLocalDateStr, toUTCLocalDateStr } from "@/lib/timezone";
+import { resolveTimezone, resolveStoreTimezone, localTimeToUTC, toLocalDateStr, toUTCLocalDateStr } from "@/lib/timezone";
 import { getAdminAndMarketManagerEmails } from "@/lib/notifications";
 import { sendShiftReleaseRequestedEmail, sendShiftRequestedEmail } from "@/lib/mailer";
 
@@ -170,10 +170,12 @@ export async function POST(request: NextRequest) {
             const assignment = targetAssignment;
 
             // 2-hour minimum window check
-            if (assignment.date && assignment.job.startTimeStr) {
-                const tz = resolveTimezone(request);
+            const releaseStartStr = assignment.customStartTimeStr ?? assignment.job.startTimeStr;
+            if (assignment.date && releaseStartStr) {
+                // The shift starts at this wall-clock time at the store, not on the phone.
+                const tz = resolveStoreTimezone(assignment.job.store);
                 const dateStr = toUTCLocalDateStr(new Date(assignment.date));
-                const shiftStart = localTimeToUTC(dateStr, assignment.job.startTimeStr, tz);
+                const shiftStart = localTimeToUTC(dateStr, releaseStartStr, tz);
                 const diffMs = shiftStart.getTime() - Date.now();
                 if (diffMs < 2 * 60 * 60 * 1000) {
                     throw new AppError("Cannot release a shift less than 2 hours before it starts", 400);

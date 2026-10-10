@@ -49,7 +49,7 @@ function RecapsPageInner() {
             if (res.ok) {
                 const data = await res.json();
                 // order oldest first
-                const sorted = (data.recaps || []).sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+                const sorted = (data.recaps || []).sort((a: any, b: any) => new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime());
                 setPendingRecaps(sorted);
             }
         } catch (e) {

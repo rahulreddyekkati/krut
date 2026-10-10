@@ -28,7 +28,8 @@ export async function GET(request: NextRequest) {
                         store: { 
                             select: { 
                                 name: true,
-                                market: { select: { name: true } }
+                                timezone: true,
+                                market: { select: { name: true, timezone: true } }
                             } 
                         }
                     }
@@ -51,6 +52,7 @@ export async function GET(request: NextRequest) {
                 workerName: a.worker?.name || "Unknown",
                 storeName: a.job?.store?.name || "Unknown Store",
                 market: a.job?.market?.name || a.job?.store?.market?.name || "—",
+                storeTimezone: a.job?.store?.timezone || a.job?.store?.market?.timezone || "America/Chicago",
                 clockIn: a.clockIn,
                 clockOut: a.clockOut,
                 shiftDate: a.date,

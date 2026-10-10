@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { formatStoreTime, toStoreDatetimeLocal, fromStoreDatetimeLocal } from "@/lib/storeTime";
 
 export default function RecapDetailPage() {
     const params = useParams();
@@ -35,8 +36,8 @@ export default function RecapDetailPage() {
                     setReceiptTotal(data.receiptTotal || 0);
                     setReimbursement(data.reimbursement || 0);
                     setRushLevel(data.rushLevel || "");
-                    setClockInEdit(toDatetimeLocal(data.clockIn));
-                    setClockOutEdit(toDatetimeLocal(data.clockOut));
+                    setClockInEdit(toStoreDatetimeLocal(data.clockIn, data.storeTimezone));
+                    setClockOutEdit(toStoreDatetimeLocal(data.clockOut, data.storeTimezone));
                 }
             } catch (e) {
                 console.error("Failed to fetch recap", e);
@@ -65,8 +66,8 @@ export default function RecapDetailPage() {
                         rushLevel,
                         receiptTotal,
                         reimbursement,
-                        clockIn: clockInEdit ? new Date(clockInEdit).toISOString() : undefined,
-                        clockOut: clockOutEdit ? new Date(clockOutEdit).toISOString() : undefined,
+                        clockIn: clockInEdit ? fromStoreDatetimeLocal(clockInEdit, recap?.storeTimezone) : undefined,
+                        clockOut: clockOutEdit ? fromStoreDatetimeLocal(clockOutEdit, recap?.storeTimezone) : undefined,
                     } : {})
                 })
             });
@@ -90,17 +91,9 @@ export default function RecapDetailPage() {
         setSubmitting(false);
     };
 
-    const formatTime = (date: string | null) => {
-        if (!date) return "--";
-        return new Date(date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    };
-
-    const toDatetimeLocal = (isoStr: string | null) => {
-        if (!isoStr) return "";
-        const d = new Date(isoStr);
-        const pad = (n: number) => String(n).padStart(2, "0");
-        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    };
+    // Clock times are shown and edited as wall-clock time at the store, not in the
+    // admin's own browser zone.
+    const formatTime = (date: string | null) => formatStoreTime(date, recap?.storeTimezone);
 
     const sectionStyle: React.CSSProperties = {
         marginBottom: "1.5rem",

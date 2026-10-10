@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { parseDateMarker } from "@/lib/timezone";
 import { getSession } from "@/lib/auth";
 import { sendPushToUser } from "@/lib/notifications";
 import { to12hr } from "@/lib/timeFormat";
@@ -90,7 +91,7 @@ export async function POST(request: NextRequest) {
                 continue;
             }
 
-            const targetDate = new Date(date);
+            const targetDate = parseDateMarker(date);
             let outcome: "updated" | "created" | null = null;
 
             if (assignmentId) {

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { handleApiError, AppError } from "@/lib/apiError";
-import { resolveTimezone, localTimeToUTC, getMarketTimezone } from "@/lib/timezone";
+import { resolveTimezone, localTimeToUTC } from "@/lib/timezone";
 import {
     buildDateMarkerRange,
     buildCycleAssignmentWhere,
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
         const users = await prisma.user.findMany({
             where,
             include: {
-                market: { select: { name: true } },
+                market: { select: { name: true, timezone: true } },
                 jobs: {
                     where: buildCycleAssignmentWhere(dateMarkerRange, paddedRealStart, paddedRealEnd),
                     include: {
@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
         const payrollData = users.map((user: any) => {
             // Precise per-market real-time boundary for this user's own market, used only to
             // re-check the rare date-less assignment that matched via the padded window above.
-            const marketTz = user.market?.name ? getMarketTimezone(user.market.name) : tz;
+            const marketTz = user.market?.timezone || tz;
             const preciseStart = localTimeToUTC(startDateStr, "00:00", marketTz);
             const preciseEnd = localTimeToUTC(endDateStr, "23:59", marketTz);
 

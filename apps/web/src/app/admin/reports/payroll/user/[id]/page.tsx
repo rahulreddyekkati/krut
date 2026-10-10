@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import PrintButton from "./PrintButton";
 import { computeAssignedHours, computeWorkedHours, computeBonus, hasWithheldHours, buildDateMarkerRange, buildCycleAssignmentWhere, assignmentBelongsToCyclePreciseCheck } from "@/lib/payroll";
-import { getMarketTimezone, localTimeToUTC } from "@/lib/timezone";
+import { resolveStoreTimezone, localTimeToUTC } from "@/lib/timezone";
 import { buildRateResolver, getWorkerRate } from "@/lib/payRate";
 
 export default async function UserPayrollDetailsPage(props: {
@@ -64,7 +64,7 @@ export default async function UserPayrollDetailsPage(props: {
     let totalBonus = 0;
     let totalWage = 0;
 
-    const marketTz = user.market?.name ? getMarketTimezone(user.market.name) : DEFAULT_TZ;
+    const marketTz = resolveStoreTimezone(null, user.market);
     const preciseStart = localTimeToUTC(startDate, "00:00", marketTz);
     const preciseEnd = localTimeToUTC(endDate, "23:59", marketTz);
     const relevantAssignments = (user.jobs as any[]).filter((a) =>
@@ -76,9 +76,10 @@ export default async function UserPayrollDetailsPage(props: {
 
     // This runs server-side, where the JS runtime's default timezone (UTC on Vercel) is
     // not the store's actual local time — must pass timeZone explicitly, same as every
-    // other timestamp display in this app.
-    const formatClockTime = (dt: any) =>
-        dt ? new Date(dt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", timeZone: "America/Chicago" }) : "--";
+    // other timestamp display in this app. Each shift is shown in its own store's zone:
+    // a single fixed zone shows Eastern/Mountain stores an hour off their schedule.
+    const formatClockTime = (dt: any, timeZone?: string) =>
+        dt ? new Date(dt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", timeZone: timeZone || DEFAULT_TZ }) : "--";
 
     const formatBreak = (mins: number) =>
         mins > 0 ? `${Math.round(mins)} min` : "--";
@@ -117,8 +118,8 @@ export default async function UserPayrollDetailsPage(props: {
             hours: workedH.toFixed(2),
             hoursPending,
             assignedHours: assignedH.toFixed(2),
-            clockIn: formatClockTime(assignment.clockIn),
-            clockOut: formatClockTime(assignment.clockOut),
+            clockIn: formatClockTime(assignment.clockIn, assignment.job.store.timezone),
+            clockOut: formatClockTime(assignment.clockOut, assignment.job.store.timezone),
             breakTime: formatBreak(assignment.breakTimeMinutes || 0),
             rate: rate.toFixed(2),
             reimb: reimb.toFixed(2),
@@ -135,16 +136,31 @@ export default async function UserPayrollDetailsPage(props: {
     const totalTaxablePay = totalCyclePay - totalReimb;
 
     return (
-        <div style={{ backgroundColor: "white", minHeight: "100vh", padding: "2rem" }}>
+        <div className="report-page" style={{ backgroundColor: "white", minHeight: "100vh", padding: "2rem" }}>
             <style dangerouslySetInnerHTML={{ __html: `
                 @media print {
                     .no-print { display: none !important; }
                     body { padding: 0 !important; }
                     div { box-shadow: none !important; }
+                    /* The shift breakdown has 12 columns — at screen sizing it runs off the
+                       right edge of the paper and the saved PDF loses Bonus/Shift Pay/Total/
+                       Taxable. Print landscape and tighten the table so every column fits. */
+                    @page { size: landscape; margin: 0.4in; }
+                    .report-page { padding: 0 !important; min-height: 0 !important; }
+                    .report-body { max-width: none !important; }
+                    .shift-breakdown { table-layout: auto; font-size: 10px !important; }
+                    .shift-breakdown th, .shift-breakdown td {
+                        padding: 4px 5px !important;
+                        font-size: 10px !important;
+                    }
+                    .shift-breakdown td:not(:nth-child(2)), .shift-breakdown th { white-space: nowrap; }
+                    .shift-breakdown td div { font-size: 10px !important; }
+                    .shift-breakdown thead { display: table-header-group; }
+                    .shift-breakdown tr { break-inside: avoid; page-break-inside: avoid; }
                 }
             `}} />
 
-            <div style={{ maxWidth: "1000px", margin: "0 auto" }}>
+            <div className="report-body" style={{ maxWidth: "1000px", margin: "0 auto" }}>
                 
                 {/* Report Header */}
                 <div style={{ marginBottom: "2.5rem" }}>
@@ -254,7 +270,7 @@ export default async function UserPayrollDetailsPage(props: {
                             No worked shifts found for this pay cycle.
                         </div>
                     ) : (
-                        <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+                        <table className="shift-breakdown" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
                             <thead style={{ background: "#f9fafb", borderBottom: "2px solid #e5e7eb" }}>
                                 <tr>
                                     <th style={{ padding: "1rem", fontSize: "0.875rem", fontWeight: 600 }}>Date</th>

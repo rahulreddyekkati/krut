@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { resolveStoreTimezone, toLocalDateStr } from "@/lib/timezone";
 
 export async function GET() {
     try {
@@ -24,7 +25,7 @@ export async function GET() {
                     include: {
                         store: {
                             include: {
-                                market: { select: { name: true } }
+                                market: { select: { name: true, timezone: true } }
                             }
                         }
                     }
@@ -41,7 +42,12 @@ export async function GET() {
             marketName: a.job.store.market?.name || "—",
             clockIn: a.clockIn,
             clockOut: a.clockOut,
-            shiftDate: a.date || a.clockIn || a.createdAt,
+            // Clients read shiftDate as a UTC-midnight calendar marker. A shift with no
+            // marker falls back to the store-local day of its clock-in, converted to the
+            // same marker form — returning the raw instant showed evening shifts a day late.
+            shiftDate: a.date || new Date(
+                toLocalDateStr(new Date(a.clockIn || a.createdAt), resolveStoreTimezone(a.job.store, a.job.store.market)) + "T00:00:00.000Z"
+            ),
             startTime: a.job.startTimeStr,
             endTime: a.job.endTimeStr
         }));

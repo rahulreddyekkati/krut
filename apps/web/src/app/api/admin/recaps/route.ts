@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { handleApiError, AppError } from "@/lib/apiError";
+import { buildDateMarkerRange } from "@/lib/payroll";
 
 export async function GET(request: NextRequest) {
     try {
@@ -12,13 +13,14 @@ export async function GET(request: NextRequest) {
 
         let dateFilter: any = {};
         if (dateParam) {
-            const [y, m, d] = dateParam.split('-').map(Number);
-            const start = new Date(y, m - 1, d, 0, 0, 0, 0);
-            const end = new Date(y, m - 1, d, 23, 59, 59, 999);
-            // Filter by assignment date instead of recap creation date
-            dateFilter = { 
+            // Filter by assignment date instead of recap creation date. The date is a
+            // UTC-midnight calendar marker, so match it against the same marker — not
+            // against server-local midnight, which only lines up when the server runs in UTC.
+            const { dateMarkerStart } = buildDateMarkerRange(dateParam, dateParam);
+            const nextDay = new Date(dateMarkerStart.getTime() + 24 * 60 * 60 * 1000);
+            dateFilter = {
                 assignment: {
-                    date: { gte: start, lte: end }
+                    date: { gte: dateMarkerStart, lt: nextDay }
                 }
             };
         }

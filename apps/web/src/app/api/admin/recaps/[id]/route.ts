@@ -23,7 +23,7 @@ export async function GET(
                     include: {
                         store: {
                             include: {
-                                market: { select: { name: true } }
+                                market: { select: { name: true, timezone: true } }
                             }
                         }
                     }
@@ -51,6 +51,7 @@ export async function GET(
             workerId: worker?.id,
             storeName: recap.job.store.name,
             marketName: recap.job.store.market?.name || "—",
+            storeTimezone: recap.job.store.timezone || recap.job.store.market?.timezone || "America/Chicago",
             status: recap.status || "PENDING",
             reimbursement: recap.reimbursement,
             receiptTotal: recap.receiptTotal || 0,

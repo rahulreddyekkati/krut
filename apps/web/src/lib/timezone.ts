@@ -16,45 +16,35 @@ export function validateTimezone(tz: string): boolean {
 }
 
 /**
- * Resolve the timezone from a request.
- * Reads `x-timezone` header first (IANA string), validates it,
- * falls back to computing from `x-timezone-offset`, and ultimately to "UTC".
+ * The business's own timezone. Use it only for things that belong to the company rather
+ * than to a store: pay-cycle boundaries, payroll "today", admin report windows,
+ * "generated on" dates. Anything about a shift uses the store's zone instead — see
+ * resolveStoreTimezone. This is the only place the literal should appear.
  */
-export function resolveTimezone(request: NextRequest): string {
+export const COMPANY_TZ = "America/Chicago";
+
+/**
+ * The timezone of whoever sent the request — the `x-timezone` header (an IANA string),
+ * else `fallbackTz` (pass the caller's market zone when it is known), else COMPANY_TZ.
+ *
+ * This is the *viewer's* zone. Never use it to turn a shift's date or times into real
+ * instants; that is always the store's zone (resolveStoreTimezone).
+ *
+ * The numeric `x-timezone-offset` header is deliberately ignored. Every offset is shared
+ * by two US zones at some point in the year (360 is both Central standard and Mountain
+ * daylight; 300 is both Central daylight and Eastern standard), and guessing from it
+ * clocked Mountain workers out an hour early.
+ */
+export function resolveTimezone(request: NextRequest, fallbackTz?: string | null): string {
     const headerTz = request.headers.get("x-timezone");
 
     if (headerTz && validateTimezone(headerTz)) {
         return headerTz;
     }
 
-    if (headerTz) {
-        console.warn(`⚠️ Invalid x-timezone header: "${headerTz}", falling back`);
-    } else {
-        console.warn("⚠️ Missing x-timezone header, falling back");
-    }
-
-    // Fallback: try to derive from numeric offset (imprecise but better than nothing)
-    const offsetStr = request.headers.get("x-timezone-offset");
-    if (offsetStr) {
-        const offset = parseInt(offsetStr);
-        if (!isNaN(offset)) {
-            // Common US offsets → IANA mapping
-            const offsetMap: Record<number, string> = {
-                300: "America/Chicago",   // CDT/CST
-                360: "America/Chicago",   // CST
-                240: "America/New_York",  // EDT
-                420: "America/Denver",    // MDT
-                480: "America/Los_Angeles", // PDT
-            };
-            if (offsetMap[offset]) {
-                console.warn(`⚠️ Using offset-based fallback: ${offset} → ${offsetMap[offset]}`);
-                return offsetMap[offset];
-            }
-        }
-    }
-
-    console.warn("⚠️ Missing or invalid timezone pulse, defaulting to America/Chicago");
-    return "America/Chicago";
+    const fallback = fallbackTz && validateTimezone(fallbackTz) ? fallbackTz : COMPANY_TZ;
+    console.warn(`⚠️ ${headerTz ? `Invalid x-timezone header "${headerTz}"` : "Missing x-timezone header"}, using ${fallback}`);
+    return fallback;
 }
 
 /**
@@ -181,20 +171,25 @@ export function toUTCLocalDateStr(date: Date): string {
 }
 
 /**
- * Resolve the correct timezone for a given market name and store address.
+ * Resolve the timezone a shift's wall-clock times are in: the store's own timezone,
+ * else its market's, else Central. Always read from the database rows — the previous
+ * helper guessed from the market *name* and had no Eastern branch at all, so every
+ * Florida store was silently treated as Central.
  */
-export function getMarketTimezone(marketName: string, storeAddress?: string): string {
-    const name = marketName.toLowerCase();
-    if (name.includes("california")) {
-        return "America/Los_Angeles";
-    }
-    if (name.includes("colorado")) {
-        return "America/Denver";
-    }
-    if (storeAddress && storeAddress.toLowerCase().includes("el paso")) {
-        return "America/Denver";
-    }
-    return "America/Chicago";
+export function resolveStoreTimezone(
+    store?: { timezone?: string | null } | null,
+    market?: { timezone?: string | null } | null
+): string {
+    return store?.timezone || market?.timezone || COMPANY_TZ;
+}
+
+/**
+ * The UTC-midnight calendar marker for "today" at a store — the form every shift date
+ * (JobAssignment.date, Job.date) is stored in. Compare shift dates against this, never
+ * against real local-midnight bounds (getLocalDayBoundsUTC), which sit hours later.
+ */
+export function storeToday(timezone: string, now: Date = new Date()): Date {
+    return new Date(toLocalDateStr(now, timezone) + "T00:00:00.000Z");
 }
 
 // Timezones actually in use across markets/stores today, for the admin Market/Store
@@ -209,3 +204,18 @@ export const COMMON_US_TIMEZONES: { value: string; label: string }[] = [
     { value: "America/Anchorage", label: "Alaska" },
     { value: "Pacific/Honolulu", label: "Hawaii" },
 ];
+
+/**
+ * Turn a client-supplied calendar day into the stored form: a UTC-midnight marker.
+ * Accepts "YYYY-MM-DD" or any ISO string starting with one (the day part is kept, the
+ * time part dropped). Never use `new Date(str)` for a shift date — anything other than a
+ * bare "YYYY-MM-DD" is parsed in the server's local zone and lands off midnight.
+ */
+export function parseDateMarker(input: string): Date {
+    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(input);
+    const marker = match ? new Date(`${match[1]}-${match[2]}-${match[3]}T00:00:00.000Z`) : null;
+    if (!marker || isNaN(marker.getTime())) {
+        throw new Error(`Invalid date: "${input}" (expected YYYY-MM-DD)`);
+    }
+    return marker;
+}

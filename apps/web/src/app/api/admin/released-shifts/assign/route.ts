@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { parseDateMarker } from "@/lib/timezone";
 import { getSession } from "@/lib/auth";
 import { sendPushToUser } from "@/lib/notifications";
 import { sendShiftAssignedEmail } from "@/lib/mailer";
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
                 data: {
                     jobId: openJobId,
                     workerId,
-                    date: date ? new Date(date) : null
+                    date: date ? parseDateMarker(date) : null
                 }
             });
             // Update job status

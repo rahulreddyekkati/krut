@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { getCurrentCycleDates, getClosedCycles, getCycleDisplayName, type CycleDates } from "@/lib/cycles";
-import { getMarketTimezone, localTimeToUTC, toUTCLocalDateStr } from "@/lib/timezone";
+import { resolveStoreTimezone, localTimeToUTC, toUTCLocalDateStr } from "@/lib/timezone";
 import {
     buildDateMarkerRange,
     buildCycleAssignmentWhere,
@@ -84,7 +84,7 @@ export async function GET() {
             ...getClosedCycles(2).map((c) => ({ start: c.start, end: c.end, isCurrent: false })),
         ];
 
-        const marketTz = user.market?.name ? getMarketTimezone(user.market.name) : DEFAULT_TZ;
+        const marketTz = resolveStoreTimezone(null, user.market);
 
         // Batched once for this report, not per-shift/per-cycle — see payRate.ts.
         const rateHistoryMap = await buildRateResolver([userId]);

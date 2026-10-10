@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { handleApiError, AppError } from "@/lib/apiError";
-import { resolveTimezone, getLocalDayBoundsUTC, localShiftEndToUTC, toLocalDateStr } from "@/lib/timezone";
+import { getLocalDayBoundsUTC, localShiftEndToUTC, toLocalDateStr, toUTCLocalDateStr, resolveStoreTimezone, storeToday } from "@/lib/timezone";
 import { toZonedTime } from "date-fns-tz";
 import { sendPushToUser } from "@/lib/notifications";
 
@@ -10,14 +10,11 @@ export async function GET(request: NextRequest) {
     try {
         const user = await requireAuth(request);
 
-        // Resolve timezone ONCE per request
-        const tz = resolveTimezone(request);
+        // No request timezone here on purpose: everything below is about a shift, and a
+        // shift's day and times are wall-clock values at its store. The phone's zone (or
+        // the Central fallback when the header was missing) used to decide "today" and
+        // the auto clock-out time, which stamped Mountain stores an hour early.
         const now = new Date();
-        const { start: startOfTodayUTC, end: endOfTodayUTC } = getLocalDayBoundsUTC(tz);
-
-        // Get "local now" for hour/minute comparisons
-        const zonedNow = toZonedTime(now, tz);
-        const nowTimeMins = zonedNow.getHours() * 60 + zonedNow.getMinutes();
 
         // 1. Find the currently active shift (Clocked In but not Out)
         // This takes priority over "today's template" because a worker might have a stale shift from yesterday.
@@ -30,46 +27,50 @@ export async function GET(request: NextRequest) {
             include: {
                 job: {
                     include: {
-                        store: { select: { name: true, address: true, latitude: true, longitude: true, radius: true, chain: true } }
+                        store: { select: { name: true, address: true, latitude: true, longitude: true, radius: true, chain: true, timezone: true } }
                     }
                 }
             },
             orderBy: { clockIn: "desc" }
         }) as any;
 
-        // 2. If no shift is currently "Clocked In", look for today's assignment (scheduled)
-        // Dates are stored as UTC midnight (new Date("YYYY-MM-DD")), so match against UTC midnight
-        // bounds derived from today's local date string — not local timezone midnight bounds.
-        const todayLocalStr = toLocalDateStr(now, tz);
-        const todayUTCMidnight = new Date(todayLocalStr + "T00:00:00.000Z");
-        const tomorrowUTCMidnight = new Date(todayLocalStr + "T00:00:00.000Z");
-        tomorrowUTCMidnight.setUTCDate(tomorrowUTCMidnight.getUTCDate() + 1);
-
+        // 2. If no shift is currently "Clocked In", look for today's assignment (scheduled).
+        // "Today" is the calendar day at each shift's own store. Dates are stored as
+        // UTC-midnight markers, and a marker one day either side of the UTC date can be
+        // "today" somewhere in the US, so fetch that window and keep the row whose marker
+        // is today at its store.
         if (!activeAssignment) {
-            activeAssignment = await prisma.jobAssignment.findFirst({
+            const DAY_MS = 24 * 60 * 60 * 1000;
+            const utcToday = new Date(toUTCLocalDateStr(now) + "T00:00:00.000Z");
+            const candidates = await prisma.jobAssignment.findMany({
                 where: {
                     workerId: user.id,
                     OR: [
-                        { date: { gte: todayUTCMidnight, lt: tomorrowUTCMidnight } },
-                        {
-                            isRecurring: true,
-                            date: null,
-                            dayOfWeek: zonedNow.getDay()
-                        }
+                        { date: { gte: new Date(utcToday.getTime() - DAY_MS), lte: new Date(utcToday.getTime() + DAY_MS) } },
+                        { isRecurring: true, date: null }
                     ]
                 },
                 include: {
                     job: {
                         include: {
-                            store: { select: { name: true, address: true, latitude: true, longitude: true, radius: true, chain: true } }
+                            store: { select: { name: true, address: true, latitude: true, longitude: true, radius: true, chain: true, timezone: true } }
                         }
                     }
                 },
                 orderBy: { createdAt: "desc" }
-            }) as any;
+            }) as any[];
+
+            activeAssignment = candidates.find((a) => {
+                const storeTz = resolveStoreTimezone(a.job.store);
+                return a.date
+                    ? toUTCLocalDateStr(new Date(a.date)) === toLocalDateStr(now, storeTz)
+                    : a.dayOfWeek === toZonedTime(now, storeTz).getDay();
+            }) ?? null;
 
             // 3. If it's a recurring template, check if a materialized instance for today already exists
             if (activeAssignment?.isRecurring) {
+                const todayUTCMidnight = storeToday(resolveStoreTimezone(activeAssignment.job.store), now);
+                const tomorrowUTCMidnight = new Date(todayUTCMidnight.getTime() + DAY_MS);
                 const instance = await prisma.jobAssignment.findFirst({
                     where: {
                         workerId: user.id,
@@ -80,7 +81,7 @@ export async function GET(request: NextRequest) {
                     include: {
                         job: {
                             include: {
-                                store: { select: { name: true, address: true, latitude: true, longitude: true, radius: true, chain: true } }
+                                store: { select: { name: true, address: true, latitude: true, longitude: true, radius: true, chain: true, timezone: true } }
                             }
                         }
                     }
@@ -98,8 +99,16 @@ export async function GET(request: NextRequest) {
             const [endH, endM] = endTimeStr.split(':').map(Number);
             const endTimeMins = endH * 60 + endM;
 
+            // Shift times are wall-clock times at the store, so everything that turns them
+            // into a real instant must use the store's timezone — never the request's (a
+            // device reporting another zone, or no zone at all, falls back to Central and
+            // stamps Eastern stores an hour late and Mountain stores an hour early). Same
+            // rule as cron/auto-clockout.
+            const storeTz = resolveStoreTimezone(activeAssignment.job.store);
+
             // 1. Reset stale timestamps for recurring shifts (TEMPLATE ONLY)
             if (activeAssignment.isRecurring) {
+                const { start: startOfTodayUTC, end: endOfTodayUTC } = getLocalDayBoundsUTC(storeTz);
                 const clockInDate = activeAssignment.clockIn ? new Date(activeAssignment.clockIn) : null;
                 if (clockInDate && (clockInDate < startOfTodayUTC || clockInDate > endOfTodayUTC)) {
                     activeAssignment.clockIn = null;
@@ -107,10 +116,13 @@ export async function GET(request: NextRequest) {
                 }
             }
 
-            const todayStr = toLocalDateStr(now, tz);
-            const shiftDateStr = activeAssignment.date 
+            const storeNow = toZonedTime(now, storeTz);
+            const storeNowMins = storeNow.getHours() * 60 + storeNow.getMinutes();
+
+            const todayStr = toLocalDateStr(now, storeTz);
+            const shiftDateStr = activeAssignment.date
                 ? new Date(activeAssignment.date).toISOString().split('T')[0]
-                : toLocalDateStr(new Date(activeAssignment.clockIn), tz);
+                : toLocalDateStr(new Date(activeAssignment.clockIn), storeTz);
             const isPastDay = shiftDateStr < todayStr;
 
             // 2. Auto clock-out if past end time OR if it's a shift from a previous day
@@ -119,11 +131,8 @@ export async function GET(request: NextRequest) {
             const [effEndH, effEndM] = effectiveEndTimeStr.split(':').map(Number);
             const effEndTimeMins = effEndH * 60 + effEndM;
 
-            if (activeAssignment.clockIn && !activeAssignment.clockOut && (isPastDay || nowTimeMins > effEndTimeMins + 10)) {
-                const autoClockOutDateStr = activeAssignment.date
-                    ? new Date(activeAssignment.date).toISOString().split('T')[0]
-                    : toLocalDateStr(new Date(activeAssignment.clockIn), tz);
-                const autoClockOut = localShiftEndToUTC(autoClockOutDateStr, startTimeStr, effectiveEndTimeStr, tz);
+            if (activeAssignment.clockIn && !activeAssignment.clockOut && (isPastDay || storeNowMins > effEndTimeMins + 10)) {
+                const autoClockOut = localShiftEndToUTC(shiftDateStr, startTimeStr, effectiveEndTimeStr, storeTz);
 
                 let finalClockOut = autoClockOut;
                 if (autoClockOut.getTime() <= activeAssignment.clockIn.getTime()) {
@@ -157,7 +166,7 @@ export async function GET(request: NextRequest) {
                     where: { id: activeAssignment.id },
                     data: { clockOut: finalClockOut, workedHours, status: "RECAP_PENDING" } as any,
                     include: {
-                        job: { include: { store: { select: { name: true, address: true, latitude: true, longitude: true, radius: true, chain: true } } } }
+                        job: { include: { store: { select: { name: true, address: true, latitude: true, longitude: true, radius: true, chain: true, timezone: true } } } }
                     }
                 }) as any;
 
@@ -189,8 +198,6 @@ export async function POST(request: NextRequest) {
     try {
         const user = await requireAuth(request);
 
-        // Resolve timezone ONCE
-        const tz = resolveTimezone(request);
         const body = await request.json();
         const { action, assignmentId } = body;
 
@@ -200,7 +207,7 @@ export async function POST(request: NextRequest) {
 
         const assignment = await prisma.jobAssignment.findUnique({
             where: { id: assignmentId },
-            include: { job: { include: { store: { select: { name: true, address: true, latitude: true, longitude: true, radius: true, chain: true } } } } }
+            include: { job: { include: { store: { select: { name: true, address: true, latitude: true, longitude: true, radius: true, chain: true, timezone: true } } } } }
         });
 
         if (!assignment || assignment.workerId !== user.id) {
@@ -247,7 +254,8 @@ export async function POST(request: NextRequest) {
 
             // Reject clock-in if outside shift window
             const { toZonedTime } = await import("date-fns-tz");
-            const zonedNow = toZonedTime(now, tz);
+            // Store's timezone, not the request's — see the note in GET above.
+            const zonedNow = toZonedTime(now, resolveStoreTimezone(assignment.job.store));
             const nowMins = zonedNow.getHours() * 60 + zonedNow.getMinutes();
             const startTimeStr = (assignment as any).customStartTimeStr ?? assignment.job.startTimeStr;
             const endTimeStr = (assignment as any).customEndTimeStr ?? assignment.job.endTimeStr;
@@ -297,7 +305,8 @@ export async function POST(request: NextRequest) {
             // Only materialize if this is a true recurring template (isRecurring=true AND no date).
             // Dated recurring instances (isRecurring=true WITH a date) are clocked in directly.
             if (assignment.isRecurring && !assignment.date) {
-                const todayLocalStr = toLocalDateStr(new Date(), tz);
+                // The shift date is the calendar day at the store, not on the worker's phone.
+                const todayLocalStr = toLocalDateStr(new Date(), resolveStoreTimezone(assignment.job.store));
                 const todayUTCMidnight = new Date(todayLocalStr + "T00:00:00.000Z");
                 const tomorrowUTCMidnight = new Date(todayLocalStr + "T00:00:00.000Z");
                 tomorrowUTCMidnight.setUTCDate(tomorrowUTCMidnight.getUTCDate() + 1);
@@ -356,10 +365,12 @@ export async function POST(request: NextRequest) {
             // Cap clockOut at scheduled end time to prevent extra hours from late clock-outs (e.g. from home)
             const startTimeStr = (assignment as any).customStartTimeStr ?? assignment.job.startTimeStr;
             const effectiveEndTimeStr = (assignment as any).customEndTimeStr ?? assignment.job.endTimeStr;
+            // Store's timezone, not the request's — see the note in GET above.
+            const storeTz = resolveStoreTimezone(assignment.job.store);
             const shiftDateStr = assignment.date
                 ? new Date(assignment.date).toISOString().split('T')[0]
-                : toLocalDateStr(new Date(assignment.clockIn), tz);
-            const scheduledEnd = localShiftEndToUTC(shiftDateStr, startTimeStr, effectiveEndTimeStr, tz);
+                : toLocalDateStr(new Date(assignment.clockIn), storeTz);
+            const scheduledEnd = localShiftEndToUTC(shiftDateStr, startTimeStr, effectiveEndTimeStr, storeTz);
 
             if (clockOutTime.getTime() > scheduledEnd.getTime()) {
                 clockOutTime = scheduledEnd;

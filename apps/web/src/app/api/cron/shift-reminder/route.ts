@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { sendPushToUser } from "@/lib/notifications";
-import { localTimeToUTC, toUTCLocalDateStr, getMarketTimezone } from "@/lib/timezone";
+import { localTimeToUTC, toUTCLocalDateStr, resolveStoreTimezone } from "@/lib/timezone";
 import { to12hr } from "@/lib/timeFormat";
 
 export async function GET(request: NextRequest) {
@@ -39,9 +39,7 @@ export async function GET(request: NextRequest) {
             try {
                 if (!assignment.date) continue;
                 const dateStr = toUTCLocalDateStr(new Date(assignment.date));
-                const marketName = assignment.job.market?.name || "";
-                const storeAddress = assignment.job.store?.address || "";
-                const tz = getMarketTimezone(marketName, storeAddress);
+                const tz = resolveStoreTimezone(assignment.job.store, assignment.job.market);
                 const shiftStart = localTimeToUTC(dateStr, assignment.customStartTimeStr ?? assignment.job.startTimeStr, tz);
                 
                 const diffMs = shiftStart.getTime() - now.getTime();

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { toStoreDatetimeLocal, fromStoreDatetimeLocal } from "@/lib/storeTime";
 
 type SkuRow = {
     itemId: string;
@@ -29,15 +30,10 @@ export default function ManualRecapModal({
     onClose: () => void;
     onSaved: () => void;
 }) {
-    const toDatetimeLocal = (dateStr: string | null) => {
-        if (!dateStr) return "";
-        const d = new Date(dateStr);
-        const pad = (n: number) => String(n).padStart(2, "0");
-        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    };
-
-    const [clockIn, setClockIn] = useState(toDatetimeLocal(row.clockIn));
-    const [clockOut, setClockOut] = useState(toDatetimeLocal(row.clockOut));
+    // Clock times are shown and edited as wall-clock time at the store, not in the
+    // admin's own browser zone.
+    const [clockIn, setClockIn] = useState(toStoreDatetimeLocal(row.clockIn, row.storeTimezone));
+    const [clockOut, setClockOut] = useState(toStoreDatetimeLocal(row.clockOut, row.storeTimezone));
     const [breakTimeMinutes, setBreakTimeMinutes] = useState("0");
     const [rushLevel, setRushLevel] = useState("");
     const [customersSampled, setCustomersSampled] = useState("0");
@@ -91,8 +87,8 @@ export default function ManualRecapModal({
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    clockIn: clockIn ? new Date(clockIn).toISOString() : undefined,
-                    clockOut: clockOut ? new Date(clockOut).toISOString() : undefined,
+                    clockIn: clockIn ? fromStoreDatetimeLocal(clockIn, row.storeTimezone) : undefined,
+                    clockOut: clockOut ? fromStoreDatetimeLocal(clockOut, row.storeTimezone) : undefined,
                     breakTimeMinutes,
                     rushLevel: rushLevel || undefined,
                     customersSampled,

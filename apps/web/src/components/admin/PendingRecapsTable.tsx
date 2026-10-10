@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import ManualRecapModal from "./ManualRecapModal";
+import { formatStoreTime } from "@/lib/storeTime";
 
 export default function PendingRecapsTable({ recaps, onEntered }: { recaps: any[]; onEntered?: () => void }) {
     const [sentReminders, setSentReminders] = useState<Record<string, boolean>>({});
@@ -39,12 +40,6 @@ export default function PendingRecapsTable({ recaps, onEntered }: { recaps: any[
             alert("Network error sending notification");
         }
         setSendingReminder(null);
-    };
-
-    const formatTime = (dateStr: string | null) => {
-        if (!dateStr) return "--";
-        // format consistently with dashboard
-        return new Date(dateStr).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     };
 
     if (!recaps || recaps.length === 0) {
@@ -115,8 +110,8 @@ export default function PendingRecapsTable({ recaps, onEntered }: { recaps: any[
                                 <td style={tdStyle}>{row.storeName}</td>
                                 <td style={tdStyle}>{row.marketName || row.market}</td>
                                 <td style={tdStyle}>{shiftDateStr}</td>
-                                <td style={tdStyle}>{formatTime(row.clockIn)}</td>
-                                <td style={tdStyle}>{formatTime(row.clockOut)}</td>
+                                <td style={tdStyle}>{formatStoreTime(row.clockIn, row.storeTimezone)}</td>
+                                <td style={tdStyle}>{formatStoreTime(row.clockOut, row.storeTimezone)}</td>
                                 {hasHoursOverdue && (
                                     <td style={{ ...tdStyle, color: overdueColor, fontWeight: (overdueColor !== '#6b7280') ? 700 : 400 }}>
                                         {row.hoursOverdue}h overdue

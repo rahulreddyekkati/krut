@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { getMarketTimezone, localTimeToUTC } from "@/lib/timezone";
+import { resolveStoreTimezone, localTimeToUTC } from "@/lib/timezone";
 import {
     buildDateMarkerRange,
     buildCycleAssignmentWhere,
@@ -57,7 +57,7 @@ export async function GET(
 
         if (!user) return new NextResponse("User not found", { status: 404 });
 
-        const marketTz = user.market?.name ? getMarketTimezone(user.market.name) : DEFAULT_TZ;
+        const marketTz = resolveStoreTimezone(null, user.market);
         const preciseStart = localTimeToUTC(startDate, "00:00", marketTz);
         const preciseEnd = localTimeToUTC(endDate, "23:59", marketTz);
         const relevantAssignments = (user.jobs as any[]).filter((a) =>
@@ -75,9 +75,10 @@ export async function GET(
         csvContent += `Date,Store,Clock In,Clock Out,Break (min),Assigned Hours,Hours Worked,Rate/hr,Reimbursement,Bonus,Shift Pay,Total Shift Pay,Taxable Pay,Hours Status\n`;
 
         // Runs server-side — must pass timeZone explicitly or this defaults to the server's
-        // system timezone (UTC on Vercel), not the store's actual local time.
-        const formatClockTime = (dt: any) =>
-            dt ? new Date(dt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", timeZone: "America/Chicago" }) : "--";
+        // system timezone (UTC on Vercel), not the store's actual local time. Each shift is
+        // shown in its own store's zone, not one fixed zone.
+        const formatClockTime = (dt: any, timeZone?: string) =>
+            dt ? new Date(dt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", timeZone: timeZone || DEFAULT_TZ }) : "--";
 
         let sumAssigned = 0;
         let sumWorked = 0;
@@ -113,7 +114,7 @@ export async function GET(
             // Trailing column, appended rather than inserted mid-row, so any downstream
             // positional import of the existing columns isn't broken by this addition.
             const hoursStatus = hasWithheldHours(assignment) ? "Awaiting Recap" : "";
-            csvContent += `${dateLabel},"${storeLabel}",${formatClockTime(assignment.clockIn)},${formatClockTime(assignment.clockOut)},${breakMins},${assignedH.toFixed(2)},${worked.toFixed(2)},${rate.toFixed(2)},${reimb.toFixed(2)},${bonus.toFixed(2)},${shiftPay.toFixed(2)},${totalPay.toFixed(2)},${taxablePay.toFixed(2)},${hoursStatus}\n`;
+            csvContent += `${dateLabel},"${storeLabel}",${formatClockTime(assignment.clockIn, assignment.job.store.timezone)},${formatClockTime(assignment.clockOut, assignment.job.store.timezone)},${breakMins},${assignedH.toFixed(2)},${worked.toFixed(2)},${rate.toFixed(2)},${reimb.toFixed(2)},${bonus.toFixed(2)},${shiftPay.toFixed(2)},${totalPay.toFixed(2)},${taxablePay.toFixed(2)},${hoursStatus}\n`;
         }
 
         csvContent += `\nTotal,,,,,${sumAssigned.toFixed(2)},${sumWorked.toFixed(2)},,${sumReimb.toFixed(2)},${sumBonus.toFixed(2)},${sumShiftPay.toFixed(2)},${(sumShiftPay + sumReimb + sumBonus).toFixed(2)},${(sumShiftPay + sumBonus).toFixed(2)},\n`;

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { parseDateMarker } from "@/lib/timezone";
 import { requireAuth } from "@/lib/auth";
 import { handleApiError } from "@/lib/apiError";
 import { jobSchema } from "@/lib/validate";
@@ -81,7 +82,7 @@ export async function POST(request: NextRequest) {
                 bonus: bonus ?? 0,
                 creatorId: user.id,
                 status: "OPEN",
-                date: date ? new Date(date) : null
+                date: date ? parseDateMarker(date) : null
             }
         });
 

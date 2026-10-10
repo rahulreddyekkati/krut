@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import PrintButton from "../user/[id]/PrintButton";
-import { getMarketTimezone, localTimeToUTC } from "@/lib/timezone";
+import { resolveStoreTimezone, localTimeToUTC } from "@/lib/timezone";
 import {
     buildDateMarkerRange,
     buildCycleAssignmentWhere,
@@ -51,7 +51,7 @@ export default async function PrintAllPayrollPage(props: {
     const users: any[] = await prisma.user.findMany({
         where,
         include: {
-            market: { select: { name: true } },
+            market: { select: { name: true, timezone: true } },
             jobs: {
                 where: buildCycleAssignmentWhere(dateMarkerRange, paddedRealStart, paddedRealEnd),
                 include: { job: true, recap: { include: { skus: true } } } as any,
@@ -64,7 +64,7 @@ export default async function PrintAllPayrollPage(props: {
 
     const rows = users
         .map((user) => {
-            const marketTz = user.market?.name ? getMarketTimezone(user.market.name) : DEFAULT_TZ;
+            const marketTz = resolveStoreTimezone(null, user.market);
             const preciseStart = localTimeToUTC(startDateStr, "00:00", marketTz);
             const preciseEnd = localTimeToUTC(endDateStr, "23:59", marketTz);
             const relevantAssignments = (user.jobs as any[]).filter((a) =>

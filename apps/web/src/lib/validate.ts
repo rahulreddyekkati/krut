@@ -87,7 +87,9 @@ export const jobSchema = z.object({
     endTime: z
         .string()
         .regex(/^\d{2}:\d{2}$/, "endTime must be HH:MM format"),
-    date: z.string().nullable().optional(),
+    // A calendar day, stored as a UTC-midnight marker. Any other string shape would be
+    // parsed in the server's local zone and land off midnight.
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}/, "date must be YYYY-MM-DD").nullable().optional(),
     bonus: z.number().min(0).default(0),
 });
 

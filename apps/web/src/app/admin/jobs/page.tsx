@@ -43,6 +43,8 @@ interface ShiftByDate {
     marketId: string | null;
     assignedWorker: string;
     date: string | null;
+    // Assignment sits on a different day than the job's own date (see lib/byDateRows.ts)
+    offDate?: boolean;
 }
 
 interface Worker {
@@ -625,6 +627,11 @@ export default function AdminJobsPage() {
                                                     }}>
                                                         {marker.label}
                                                     </span>
+                                                    {shift.offDate && (
+                                                        <div style={{ marginTop: "0.25rem", fontSize: "0.7rem", color: "#92400e" }}>
+                                                            Different day than the job&apos;s date
+                                                        </div>
+                                                    )}
                                                 </td>
                                                 <td>
                                                     <div style={{ display: "flex", gap: "0.4rem", alignItems: "center", flexWrap: "wrap" }}>

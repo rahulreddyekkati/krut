@@ -50,6 +50,8 @@ export async function PATCH(
         let effectiveStartStr = startTimeStr || assignment.job.startTimeStr;
         let effectiveEndStr   = endTimeStr   || assignment.job.endTimeStr;
 
+        let jobBrand = assignment.job.brandAllocation;
+
         // ── Store change: find or create a specific-date job at the new store ──
         const storeChanged = storeId && storeId !== assignment.job.store.id;
         if (storeChanged) {
@@ -94,6 +96,12 @@ export async function PATCH(
             }
 
             updatedJobId = targetJob.id;
+            jobBrand = targetJob.brandAllocation;
+        }
+
+        // A brand set on the job is fixed for all of its shifts.
+        if (jobBrand && brandAllocation !== undefined && brandAllocation !== jobBrand) {
+            return NextResponse.json({ error: "This shift's brand is set on the job and can't be changed" }, { status: 400 });
         }
 
         // ── Build the assignment update payload ──
@@ -117,7 +125,9 @@ export async function PATCH(
         }
 
         // Brand is internal cost allocation — changing it alone doesn't notify the worker
-        if (brandAllocation !== undefined) {
+        if (jobBrand) {
+            updateData.brandAllocation = jobBrand;
+        } else if (brandAllocation !== undefined) {
             updateData.brandAllocation = brandAllocation || null;
         }
 

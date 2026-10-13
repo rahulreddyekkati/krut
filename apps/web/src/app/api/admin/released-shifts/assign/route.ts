@@ -42,7 +42,8 @@ export async function POST(request: NextRequest) {
                 data: {
                     jobId: openJobId,
                     workerId,
-                    date: date ? new Date(date) : null
+                    date: date ? new Date(date) : null,
+                    brandAllocation: job.brandAllocation
                 }
             });
             // Update job status

@@ -99,7 +99,7 @@ export default function AdminDashboardPage() {
         setEditTimes({ startTime: row.startTime === "--" ? "" : row.startTime, endTime: row.endTime === "--" ? "" : row.endTime });
         setSelectedWorkerId(row.workerId || "");
         setSelectedStoreId(row.storeId || "");
-        setEditBrand(row.brandAllocation || "");
+        setEditBrand(row.jobBrandAllocation || row.brandAllocation || "");
         setEditError("");
 
         // Fetch workers and stores for this market
@@ -583,6 +583,8 @@ export default function AdminDashboardPage() {
                             className="input"
                             value={editBrand}
                             onChange={e => setEditBrand(e.target.value)}
+                            disabled={!!editingShift?.jobBrandAllocation}
+                            title={editingShift?.jobBrandAllocation ? "Brand is set on the job" : undefined}
                         >
                             <option value="">— None —</option>
                             <option value="KRUTO">Kruto</option>

@@ -325,7 +325,8 @@ export async function POST(request: NextRequest) {
                             jobId: assignment.jobId,
                             date: todayUTCMidnight,
                             isRecurring: false,
-                            breakTimeMinutes: assignment.breakTimeMinutes
+                            breakTimeMinutes: assignment.breakTimeMinutes,
+                            brandAllocation: assignment.job.brandAllocation
                         }
                     });
                     targetAssignmentId = newInstance.id;

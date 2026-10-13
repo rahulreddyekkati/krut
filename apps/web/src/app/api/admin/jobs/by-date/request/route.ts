@@ -130,7 +130,8 @@ export async function POST(request: NextRequest) {
                         date: targetDate,
                         status: "AVAILABLE",
                         requestedWorkerId: workerId,
-                        isRecurring: false
+                        isRecurring: false,
+                        brandAllocation: job.brandAllocation
                     }
                 });
                 outcome = "created";

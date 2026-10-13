@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { resolveTimezone, toLocalDateStr } from "@/lib/timezone";
+import { assignmentRow, unassignedRow, upcomingRowsForJob } from "@/lib/byDateRows";
 
 export async function GET(request: NextRequest) {
     try {
@@ -60,10 +61,10 @@ export async function GET(request: NextRequest) {
             // materialize on that date, which must keep working unchanged.
             const upcomingSpecificDatesOnly = request.nextUrl.searchParams.get("scope") === "upcoming";
 
+            const todayStr = toLocalDateStr(new Date(), resolveTimezone(request));
+
             let jobWhere: any = { ...whereJob };
             if (upcomingSpecificDatesOnly) {
-                const tz = resolveTimezone(request);
-                const todayStr = toLocalDateStr(new Date(), tz);
                 const todayUTCMidnight = new Date(`${todayStr}T00:00:00.000Z`);
                 jobWhere.date = { not: null, gte: todayUTCMidnight };
             } else if (dateParam) {
@@ -100,28 +101,10 @@ export async function GET(request: NextRequest) {
             const data = jobs.flatMap((job: any) => {
                 const allAssignments = job.assignments as any[];
 
+                if (upcomingSpecificDatesOnly) return upcomingRowsForJob(job, todayStr);
+
                 // Jobs with no assignments at all are genuinely open — show as Unassigned
-                if (allAssignments.length === 0) {
-                    return [{
-                        id: job.id,
-                        assignmentId: null,
-                        workerId: null,
-                        status: null,
-                        requestedWorkerId: null,
-                        storeName: job.store.name,
-                        startTime: job.startTimeStr || "--",
-                        endTime: job.endTimeStr || "--",
-                        marketName: job.store.market?.name || "—",
-                        assignedWorker: "Unassigned",
-                        hasCustomTimes: false,
-                        brandAllocation: null,
-                        breakTimeMinutes: 0,
-                        marketId: job.store.market?.id || null,
-                        storeId: job.storeId,
-                        jobId: job.id,
-                        date: job.date ? job.date.toISOString() : null,
-                    }];
-                }
+                if (allAssignments.length === 0) return [unassignedRow(job)];
 
                 let assignments = allAssignments;
 
@@ -174,25 +157,7 @@ export async function GET(request: NextRequest) {
                     if (assignments.length === 0) return [];
                 }
 
-                return assignments.map((a: any) => ({
-                    id: job.id,
-                    assignmentId: a.id,
-                    workerId: a.workerId,
-                    status: a.status,
-                    requestedWorkerId: a.requestedWorkerId,
-                    storeName: job.store.name,
-                    startTime: a.customStartTimeStr || job.startTimeStr || "--",
-                    endTime: a.customEndTimeStr || job.endTimeStr || "--",
-                    marketName: job.store.market?.name || "—",
-                    assignedWorker: a.worker?.name || "Unassigned",
-                    hasCustomTimes: !!(a.customStartTimeStr || a.customEndTimeStr),
-                    brandAllocation: a.brandAllocation ?? null,
-                    breakTimeMinutes: a.breakTimeMinutes ?? 0,
-                    marketId: job.store.market?.id || null,
-                    storeId: job.storeId,
-                    jobId: job.id,
-                    date: a.date ? a.date.toISOString() : null,
-                }));
+                return assignments.map((a: any) => assignmentRow(job, a));
             });
 
             return NextResponse.json({ data });

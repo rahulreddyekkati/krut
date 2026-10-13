@@ -76,9 +76,21 @@ export async function POST(
             // requestedWorkerId is cleared here too — an organically re-released shift
             // must go back to being visible to the whole market, not stay invisibly
             // pinned to whoever a prior admin-targeted invite (if any) was aimed at.
+            // assignedById is cleared as well — nobody is assigned to an AVAILABLE shift;
+            // the audit row below keeps who had assigned the worker being released.
             await tx.jobAssignment.update({
                 where: { id: assignment!.id },
-                data: { status: "AVAILABLE", releasedByWorkerId: releaseRequest.workerId, requestedWorkerId: null }
+                data: { status: "AVAILABLE", releasedByWorkerId: releaseRequest.workerId, requestedWorkerId: null, assignedById: null }
+            });
+            await tx.auditLog.create({
+                data: {
+                    actorId: user.id,
+                    action: "SHIFT_RELEASED",
+                    entityType: "JobAssignment",
+                    entityId: assignment!.id,
+                    oldValue: JSON.stringify({ workerId: assignment!.workerId, assignedById: assignment!.assignedById, status: assignment!.status }),
+                    newValue: JSON.stringify({ workerId: assignment!.workerId, assignedById: null, status: "AVAILABLE" }),
+                }
             });
 
             // 3. Notify the releasing worker

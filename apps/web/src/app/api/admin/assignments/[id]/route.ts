@@ -4,6 +4,7 @@ import { requireAuth } from "@/lib/auth";
 import { handleApiError } from "@/lib/apiError";
 import { sendPushToUser } from "@/lib/notifications";
 import { sendShiftAssignedEmail, sendShiftTimeChangedEmail } from "@/lib/mailer";
+import { assignerId } from "@/lib/assignedBy";
 
 // PATCH /api/admin/assignments/[id]
 // Full shift reassignment: change worker, store, and/or times in one call.
@@ -114,6 +115,7 @@ export async function PATCH(
             updateData.workerId = newWorkerId;
             updateData.status = "ASSIGNED";
             updateData.releasedByWorkerId = null;
+            updateData.assignedById = assignerId(user);
         }
 
         // Brand is internal cost allocation — changing it alone doesn't notify the worker
@@ -121,7 +123,24 @@ export async function PATCH(
             updateData.brandAllocation = brandAllocation || null;
         }
 
-        await prisma.jobAssignment.update({ where: { id: assignmentId }, data: updateData });
+        if (workerChanged) {
+            // The worker change and its audit row land together or not at all.
+            await prisma.$transaction([
+                prisma.jobAssignment.update({ where: { id: assignmentId }, data: updateData }),
+                prisma.auditLog.create({
+                    data: {
+                        actorId: user.id,
+                        action: "SHIFT_REASSIGNED",
+                        entityType: "JobAssignment",
+                        entityId: assignmentId,
+                        oldValue: JSON.stringify({ workerId: assignment.workerId, assignedById: assignment.assignedById, status: assignment.status }),
+                        newValue: JSON.stringify({ workerId: newWorkerId, assignedById: updateData.assignedById, status: "ASSIGNED" }),
+                    }
+                })
+            ]);
+        } else {
+            await prisma.jobAssignment.update({ where: { id: assignmentId }, data: updateData });
+        }
 
         // ── Notifications ──
         const oldWorker = assignment.worker;

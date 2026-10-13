@@ -94,6 +94,22 @@ export async function GET(request: NextRequest) {
                 orderBy: { createdAt: "desc" }
             });
 
+            // Who assigned each shift. No status filter, so a deactivated assigner still
+            // resolves; an id with no user row at all (hard-deleted) is reported as such
+            // rather than looking like a shift whose assigner was never recorded.
+            const assignerIds = [...new Set(
+                jobs.flatMap((job: any) => job.assignments.map((a: any) => a.assignedById)).filter(Boolean)
+            )] as string[];
+            const assigners = assignerIds.length === 0 ? [] : await prisma.user.findMany({
+                where: { id: { in: assignerIds } },
+                select: { id: true, name: true }
+            });
+            const assignerNames = new Map(assigners.map(u => [u.id, u.name]));
+            const assignedByName = (a: any): string | null => {
+                if (a.status === "AVAILABLE" || !a.assignedById) return null;
+                return assignerNames.get(a.assignedById)?.trim() || "Deleted user";
+            };
+
             const dayStart = dateParam ? new Date(`${dateParam}T00:00:00Z`) : null;
             const dayEnd   = dateParam ? new Date(`${dateParam}T23:59:59Z`) : null;
 
@@ -113,6 +129,7 @@ export async function GET(request: NextRequest) {
                         endTime: job.endTimeStr || "--",
                         marketName: job.store.market?.name || "—",
                         assignedWorker: "Unassigned",
+                        assignedByName: null,
                         hasCustomTimes: false,
                         brandAllocation: null,
                         breakTimeMinutes: 0,
@@ -185,6 +202,7 @@ export async function GET(request: NextRequest) {
                     endTime: a.customEndTimeStr || job.endTimeStr || "--",
                     marketName: job.store.market?.name || "—",
                     assignedWorker: a.worker?.name || "Unassigned",
+                    assignedByName: assignedByName(a),
                     hasCustomTimes: !!(a.customStartTimeStr || a.customEndTimeStr),
                     brandAllocation: a.brandAllocation ?? null,
                     breakTimeMinutes: a.breakTimeMinutes ?? 0,

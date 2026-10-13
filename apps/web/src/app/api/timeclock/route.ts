@@ -325,7 +325,9 @@ export async function POST(request: NextRequest) {
                             jobId: assignment.jobId,
                             date: todayUTCMidnight,
                             isRecurring: false,
-                            breakTimeMinutes: assignment.breakTimeMinutes
+                            breakTimeMinutes: assignment.breakTimeMinutes,
+                            // Copied from the template, never the session — this runs as the worker.
+                            assignedById: assignment.assignedById
                         }
                     });
                     targetAssignmentId = newInstance.id;

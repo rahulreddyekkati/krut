@@ -45,6 +45,8 @@ interface ShiftByDate {
     assignedWorker: string;
     // Brand fixed on the job; when set, the row's brand can't be picked (see prisma Job.brandAllocation)
     jobBrandAllocation?: string | null;
+    // Brand on the assignment itself (null for Unassigned rows)
+    brandAllocation?: string | null;
     date: string | null;
     // Assignment sits on a different day than the job's own date (see lib/byDateRows.ts)
     offDate?: boolean;
@@ -590,15 +592,16 @@ export default function AdminJobsPage() {
                                     <th>Date</th>
                                     <th>Start Time</th>
                                     <th>End Time</th>
+                                    <th>Brand</th>
                                     <th>Assignment Status</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {loadingByDate ? (
-                                    <tr><td colSpan={8} className="text-center" style={{ padding: "3rem" }}>Loading shifts...</td></tr>
+                                    <tr><td colSpan={9} className="text-center" style={{ padding: "3rem" }}>Loading shifts...</td></tr>
                                 ) : filteredShiftsByDate.length === 0 ? (
-                                    <tr><td colSpan={8} className="text-center" style={{ padding: "3rem" }}>No shifts found.</td></tr>
+                                    <tr><td colSpan={9} className="text-center" style={{ padding: "3rem" }}>No shifts found.</td></tr>
                                 ) : (
                                     filteredShiftsByDate.map(shift => {
                                         const marker = getShiftMarker(shift);
@@ -621,6 +624,7 @@ export default function AdminJobsPage() {
                                                 <td>{shift.date ? new Date(shift.date).toLocaleDateString(undefined, { timeZone: "UTC", month: "short", day: "numeric", year: "numeric" }) : "Recurring"}</td>
                                                 <td>{to12hr(shift.startTime)}</td>
                                                 <td>{to12hr(shift.endTime)}</td>
+                                                <td>{BRAND_LABELS[shift.jobBrandAllocation || shift.brandAllocation || ""] || "—"}</td>
                                                 <td>
                                                     <span style={{
                                                         padding: "0.25rem 0.75rem",

@@ -81,7 +81,8 @@ export async function POST(
                     data: {
                         jobId: shiftRequest.jobId,
                         workerId: shiftRequest.workerId,
-                        date: shiftRequest.date
+                        date: shiftRequest.date,
+                        brandAllocation: shiftRequest.job.brandAllocation
                     }
                 });
                 await tx.job.update({ where: { id: shiftRequest.jobId }, data: { status: "ASSIGNED" } });

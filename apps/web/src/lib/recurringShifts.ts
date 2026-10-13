@@ -60,11 +60,18 @@ async function createMissingRecurringAssignments(
         console.log(`[ROLLOVER] ${missing.length} assignment(s) to create for workerId: ${workerId}`);
         if (missing.length === 0) return;
 
+        // A brand set on the job is fixed for all of its shifts.
+        const jobs = await prisma.job.findMany({
+            where: { id: { in: [...new Set(missing.map(m => m.jobId))] } },
+            select: { id: true, brandAllocation: true }
+        });
+        const jobBrand = new Map(jobs.map(j => [j.id, j.brandAllocation]));
+
         try {
             await prisma.$transaction(async (tx) => {
                 for (const m of missing) {
                     await tx.jobAssignment.create({
-                        data: { workerId, jobId: m.jobId, date: m.date, isRecurring: true }
+                        data: { workerId, jobId: m.jobId, date: m.date, isRecurring: true, brandAllocation: jobBrand.get(m.jobId) ?? null }
                     });
                 }
             });

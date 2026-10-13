@@ -48,6 +48,8 @@ export default function AssignJobPage() {
     const availableStores = [...stores].sort((a: any, b: any) => a.name.localeCompare(b.name));
 
     const filteredJobs = selectedStoreId ? availableJobs.filter(j => j.storeId === selectedStoreId) : availableJobs;
+    // Brand fixed on the selected job, if any — it overrides the picker below
+    const jobBrand: string | null = jobs.find((j: any) => j.id === selectedJobId)?.brandAllocation || null;
 
     const fetchAssignments = () => {
         fetch(`/api/users/${userId}/assignments`)
@@ -587,16 +589,17 @@ export default function AssignJobPage() {
 
                             <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", textAlign: "left" }}>
                                 <label style={{ fontSize: "0.875rem", fontWeight: 600, color: "#374151" }}>
-                                    Brand Allocation <span style={{ fontWeight: 400, color: "#9ca3af" }}>— optional</span>
+                                    Brand Allocation <span style={{ fontWeight: 400, color: "#9ca3af" }}>{jobBrand ? "— set on the job" : "— optional"}</span>
                                 </label>
                                 <div style={{ display: "flex", gap: "0.5rem" }}>
                                     {(["KRUTO", "MULUK", "BOTH"] as const).map((opt) => {
-                                        const isSelected = brandAllocation === opt;
+                                        const isSelected = (jobBrand || brandAllocation) === opt;
                                         const label = opt === "KRUTO" ? "Kruto" : opt === "MULUK" ? "Muluk" : "Both";
                                         return (
                                             <button
                                                 key={opt}
                                                 type="button"
+                                                disabled={!!jobBrand}
                                                 onClick={() => setBrandAllocation(isSelected ? "" : opt)}
                                                 style={{
                                                     flex: 1,
@@ -607,7 +610,8 @@ export default function AssignJobPage() {
                                                     color: isSelected ? "white" : "#374151",
                                                     fontWeight: 600,
                                                     fontSize: "0.875rem",
-                                                    cursor: "pointer",
+                                                    cursor: jobBrand ? "not-allowed" : "pointer",
+                                                    opacity: jobBrand && !isSelected ? 0.5 : 1,
                                                     transition: "all 0.2s",
                                                     boxShadow: isSelected ? "0 4px 6px rgba(99, 102, 241, 0.2)" : "none"
                                                 }}

@@ -74,11 +74,16 @@ export async function POST(
         if (brandAllocation !== undefined && brandAllocation !== null && brandAllocation !== "" && !ALLOWED_BRAND_ALLOCATIONS.includes(brandAllocation)) {
             return NextResponse.json({ error: "Invalid brandAllocation" }, { status: 400 });
         }
-        const brandAllocationValue = brandAllocation || undefined;
-
         if (!jobId) {
             return NextResponse.json({ error: "Missing jobId" }, { status: 400 });
         }
+
+        const job = await prisma.job.findUnique({ where: { id: jobId }, select: { brandAllocation: true } });
+        if (!job) {
+            return NextResponse.json({ error: "Job not found" }, { status: 404 });
+        }
+        // A brand set on the job is fixed for all of its shifts and overrides the request.
+        const brandAllocationValue = job.brandAllocation ?? (brandAllocation || undefined);
 
         const created: any[] = [];
         const skipped: { date: string; reason: string }[] = [];
@@ -227,7 +232,10 @@ export async function PATCH(
                 return NextResponse.json({ error: "Invalid brandAllocation" }, { status: 400 });
             }
 
-            const assignment = await prisma.jobAssignment.findUnique({ where: { id: assignmentId } });
+            const assignment = await prisma.jobAssignment.findUnique({
+                where: { id: assignmentId },
+                include: { job: { select: { brandAllocation: true } } }
+            });
             if (!assignment || assignment.status !== "AVAILABLE") {
                 return NextResponse.json({ error: "Assignment not available for direct assignment" }, { status: 400 });
             }
@@ -238,7 +246,8 @@ export async function PATCH(
                     status: "ASSIGNED",
                     releasedByWorkerId: null,
                     requestedWorkerId: null,
-                    brandAllocation: brandAllocation || undefined
+                    // A brand set on the job is fixed for all of its shifts and overrides the request.
+                    brandAllocation: assignment.job.brandAllocation ?? (brandAllocation || undefined)
                 }
             });
             // Deny any pending ShiftRequests for this assignment

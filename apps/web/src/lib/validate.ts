@@ -89,6 +89,7 @@ export const jobSchema = z.object({
         .regex(/^\d{2}:\d{2}$/, "endTime must be HH:MM format"),
     date: z.string().nullable().optional(),
     bonus: z.number().min(0).default(0),
+    brandAllocation: z.enum(["KRUTO", "MULUK", "BOTH"]).nullable().optional(),
 });
 
 // ─── Clock In ────────────────────────────────────────────────────────────────

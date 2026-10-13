@@ -10,6 +10,7 @@ interface Job {
     endTimeStr: string;   // HH:MM
     date?: string;
     bonus: number;
+    brandAllocation?: string | null;
     status: string;
     store: { name: string; address: string };
     marketId: string;
@@ -42,10 +43,16 @@ interface ShiftByDate {
     marketName: string;
     marketId: string | null;
     assignedWorker: string;
+    // Brand fixed on the job; when set, the row's brand can't be picked (see prisma Job.brandAllocation)
+    jobBrandAllocation?: string | null;
+    // Brand on the assignment itself (null for Unassigned rows)
+    brandAllocation?: string | null;
     date: string | null;
     // Assignment sits on a different day than the job's own date (see lib/byDateRows.ts)
     offDate?: boolean;
 }
+
+const BRAND_LABELS: Record<string, string> = { KRUTO: "Kruto", MULUK: "Muluk", BOTH: "Both" };
 
 interface Worker {
     id: string;
@@ -94,6 +101,7 @@ export default function AdminJobsPage() {
         startTime: "",
         endTime: "",
         bonus: "0",
+        brandAllocation: "",
         isRecurring: true,
         date: "",
     });
@@ -201,6 +209,7 @@ export default function AdminJobsPage() {
                     startTime: formData.startTime, // raw "HH:MM" — no date
                     endTime: formData.endTime,
                     bonus: formData.bonus,
+                    brandAllocation: formData.brandAllocation || null,
                     date: formData.isRecurring ? null : formData.date
                 }),
             });
@@ -208,7 +217,7 @@ export default function AdminJobsPage() {
             if (res.ok) {
                 setSuccess("Job created successfully!");
                 setShowForm(false);
-                setFormData({ title: "", marketId: "", storeId: "", startTime: "", endTime: "", bonus: "0", isRecurring: true, date: "" });
+                setFormData({ title: "", marketId: "", storeId: "", startTime: "", endTime: "", bonus: "0", brandAllocation: "", isRecurring: true, date: "" });
                 fetchData();
             } else {
                 const data = await res.json();
@@ -447,7 +456,7 @@ export default function AdminJobsPage() {
         const key = rowKey(shift);
         const workerId = perRowWorkerId[key];
         if (!workerId) return alert("Select a worker first");
-        const brand = perRowBrand[key];
+        const brand = shift.jobBrandAllocation || perRowBrand[key];
         if (!brand) return alert("Select a brand first");
         setRowBusy(prev => ({ ...prev, [key]: "assign" }));
         try {
@@ -583,15 +592,16 @@ export default function AdminJobsPage() {
                                     <th>Date</th>
                                     <th>Start Time</th>
                                     <th>End Time</th>
+                                    <th>Brand</th>
                                     <th>Assignment Status</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {loadingByDate ? (
-                                    <tr><td colSpan={8} className="text-center" style={{ padding: "3rem" }}>Loading shifts...</td></tr>
+                                    <tr><td colSpan={9} className="text-center" style={{ padding: "3rem" }}>Loading shifts...</td></tr>
                                 ) : filteredShiftsByDate.length === 0 ? (
-                                    <tr><td colSpan={8} className="text-center" style={{ padding: "3rem" }}>No shifts found.</td></tr>
+                                    <tr><td colSpan={9} className="text-center" style={{ padding: "3rem" }}>No shifts found.</td></tr>
                                 ) : (
                                     filteredShiftsByDate.map(shift => {
                                         const marker = getShiftMarker(shift);
@@ -614,6 +624,7 @@ export default function AdminJobsPage() {
                                                 <td>{shift.date ? new Date(shift.date).toLocaleDateString(undefined, { timeZone: "UTC", month: "short", day: "numeric", year: "numeric" }) : "Recurring"}</td>
                                                 <td>{to12hr(shift.startTime)}</td>
                                                 <td>{to12hr(shift.endTime)}</td>
+                                                <td>{BRAND_LABELS[shift.jobBrandAllocation || shift.brandAllocation || ""] || "—"}</td>
                                                 <td>
                                                     <span style={{
                                                         padding: "0.25rem 0.75rem",
@@ -647,10 +658,10 @@ export default function AdminJobsPage() {
                                                             ))}
                                                         </select>
                                                         <select
-                                                            value={perRowBrand[key] || ""}
+                                                            value={shift.jobBrandAllocation || perRowBrand[key] || ""}
                                                             onChange={e => setPerRowBrand(prev => ({ ...prev, [key]: e.target.value }))}
-                                                            disabled={!shift.date}
-                                                            title="Which brand is this shift being assigned for?"
+                                                            disabled={!shift.date || !!shift.jobBrandAllocation}
+                                                            title={shift.jobBrandAllocation ? "Brand is set on the job" : "Which brand is this shift being assigned for?"}
                                                             style={{ padding: "0.4rem", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "0.8rem" }}
                                                         >
                                                             <option value="">Select brand...</option>
@@ -660,12 +671,12 @@ export default function AdminJobsPage() {
                                                         </select>
                                                         <button
                                                             onClick={() => handleRowAssign(shift)}
-                                                            disabled={!shift.date || !perRowWorkerId[key] || !perRowBrand[key] || !!busy}
+                                                            disabled={!shift.date || !perRowWorkerId[key] || !(shift.jobBrandAllocation || perRowBrand[key]) || !!busy}
                                                             style={{
                                                                 padding: "0.4rem 0.75rem", background: "#6366f1", color: "white",
                                                                 border: "none", borderRadius: "8px", fontWeight: 600,
                                                                 cursor: "pointer", fontSize: "0.8rem",
-                                                                opacity: !shift.date || !perRowWorkerId[key] || !perRowBrand[key] || !!busy ? 0.6 : 1
+                                                                opacity: !shift.date || !perRowWorkerId[key] || !(shift.jobBrandAllocation || perRowBrand[key]) || !!busy ? 0.6 : 1
                                                             }}
                                                         >
                                                             {busy === "assign" ? "Assigning..." : "Assign"}
@@ -787,6 +798,20 @@ export default function AdminJobsPage() {
                             />
                         </div>
 
+                        <div className={styles.inputGroup}>
+                            <label>Brand (Optional)</label>
+                            <select
+                                className="input"
+                                value={formData.brandAllocation}
+                                onChange={e => setFormData({ ...formData, brandAllocation: e.target.value })}
+                            >
+                                <option value="">Not set — choose when assigning</option>
+                                <option value="KRUTO">Kruto</option>
+                                <option value="MULUK">Muluk</option>
+                                <option value="BOTH">Both</option>
+                            </select>
+                        </div>
+
                         {/* 7. Shift Type (Recurring vs Specific Date) */}
                         <div className={styles.inputGroup} style={{ gridColumn: "span 2" }}>
                             <label>Shift Type</label>
@@ -850,15 +875,16 @@ export default function AdminJobsPage() {
                             <th>End Time</th>
                             <th>Shift Duration</th>
                             <th>Bonus</th>
+                            <th>Brand</th>
                             <th>Edit</th>
                             <th>Delete</th>
                         </tr>
                     </thead>
                     <tbody>
                         {loading ? (
-                            <tr><td colSpan={10} className="text-center" style={{ padding: "3rem" }}>Loading jobs...</td></tr>
+                            <tr><td colSpan={11} className="text-center" style={{ padding: "3rem" }}>Loading jobs...</td></tr>
                         ) : filteredJobs.length === 0 ? (
-                            <tr><td colSpan={10} className="text-center" style={{ padding: "3rem" }}>No jobs found.</td></tr>
+                            <tr><td colSpan={11} className="text-center" style={{ padding: "3rem" }}>No jobs found.</td></tr>
                         ) : (
                             filteredJobs.map(job => (
                                 <tr key={job.id} className="animate-fade-in">
@@ -872,6 +898,7 @@ export default function AdminJobsPage() {
                                     <td>{to12hr(job.endTimeStr)}</td>
                                     <td>{calcDuration(job.startTimeStr, job.endTimeStr)}</td>
                                     <td>{job.bonus > 0 ? `$${job.bonus.toFixed(2)}` : "–"}</td>
+                                    <td>{(job.brandAllocation && BRAND_LABELS[job.brandAllocation]) || "–"}</td>
                                     <td>
                                         <button
                                             onClick={() => handleOpenEdit(job)}

@@ -184,6 +184,14 @@ model JobAssignment {
   // market (today's default behavior for organically-released shifts).
   requestedWorkerId String?
 
+  // The ADMIN / MARKET_MANAGER who put the current worker on this shift. Null when
+  // status=AVAILABLE (nobody is assigned), and for rows that predate this field.
+  // Never a worker's id: set only via assignerId() in apps/web/src/lib/assignedBy.ts,
+  // and copied (not re-derived) when the system clones an assignment — recurring
+  // rollover and clock-in materialization. Overwritten on reassignment; the previous
+  // value is kept in the SHIFT_REASSIGNED / SHIFT_RELEASED AuditLog row.
+  assignedById String?
+
   // Admin-overridable time bounds for this specific assignment
   // When set, these override job.startTimeStr / job.endTimeStr for this worker only
   customStartTimeStr String?
@@ -460,7 +468,7 @@ model AuditLog {
   id         String   @id @default(cuid())
   actor      User     @relation(fields: [actorId], references: [id])
   actorId    String
-  action     String   // SHIFT_TIME_EDIT, BREAK_MINUTES_OVERRIDE, RECAP_APPROVED, RECAP_REJECTED, RECAP_MANUAL_ENTRY
+  action     String   // SHIFT_TIME_EDIT, BREAK_MINUTES_OVERRIDE, RECAP_APPROVED, RECAP_REJECTED, RECAP_MANUAL_ENTRY, SHIFT_REASSIGNED, SHIFT_RELEASED
   entityType String   // JobAssignment, Recap, Break
   entityId   String
   oldValue   String?  // JSON serialized (SQLite has no Json type)

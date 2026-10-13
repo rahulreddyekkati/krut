@@ -16,7 +16,9 @@ export function getLocalDateStrNative(date: Date, timeZone: string): string {
     return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
 }
 
-type RecurringPattern = { jobId: string; weekday: number };
+// assignedById is carried over from the row the pattern was read from, so a rolled-over
+// shift keeps the admin who set the pattern up (null for patterns older than that field).
+type RecurringPattern = { jobId: string; weekday: number; assignedById: string | null };
 
 /**
  * Creates every dated recurring assignment the given (jobId, weekday) patterns call for
@@ -51,10 +53,10 @@ async function createMissingRecurringAssignments(
         });
         const existingKeys = new Set(existing.filter(a => a.date).map(a => dayKey(a.jobId, new Date(a.date!))));
 
-        const missing: { jobId: string; date: Date }[] = [];
-        for (const { jobId, weekday } of patterns) {
+        const missing: { jobId: string; date: Date; assignedById: string | null }[] = [];
+        for (const { jobId, weekday, assignedById } of patterns) {
             for (const d of getDatesForWeekdays([weekday], rangeStart, rangeEnd)) {
-                if (!existingKeys.has(dayKey(jobId, d))) missing.push({ jobId, date: d });
+                if (!existingKeys.has(dayKey(jobId, d))) missing.push({ jobId, date: d, assignedById });
             }
         }
         console.log(`[ROLLOVER] ${missing.length} assignment(s) to create for workerId: ${workerId}`);
@@ -64,7 +66,7 @@ async function createMissingRecurringAssignments(
             await prisma.$transaction(async (tx) => {
                 for (const m of missing) {
                     await tx.jobAssignment.create({
-                        data: { workerId, jobId: m.jobId, date: m.date, isRecurring: true }
+                        data: { workerId, jobId: m.jobId, date: m.date, isRecurring: true, assignedById: m.assignedById }
                     });
                 }
             });
@@ -114,19 +116,20 @@ export async function ensureCurrentCycleAssignments(workerId: string): Promise<v
             date: { gte: prevCycle.start, lte: prevCycle.end },
             job: { date: null }
         },
-        select: { jobId: true, date: true }
+        select: { jobId: true, date: true, assignedById: true },
+        orderBy: { date: "desc" }
     });
     console.log(`[ROLLOVER] prevAssignments count: ${prevAssignments.length}`);
     if (prevAssignments.length === 0) return;
 
     // Extract unique (jobId, weekday) patterns
-    const patterns = new Map<string, { jobId: string; weekday: number }>();
+    const patterns = new Map<string, RecurringPattern>();
     for (const a of prevAssignments) {
         if (!a.date) continue;
         const weekday = new Date(a.date).getUTCDay();
         const key = `${a.jobId}-${weekday}`;
         if (!patterns.has(key)) {
-            patterns.set(key, { jobId: a.jobId, weekday });
+            patterns.set(key, { jobId: a.jobId, weekday, assignedById: a.assignedById });
         }
     }
     console.log(`[ROLLOVER] unique patterns to roll over: ${patterns.size}`);
@@ -179,18 +182,19 @@ export async function ensureNextCyclePreview(workerId: string): Promise<void> {
             date: { gte: currentCycle.start, lte: currentCycle.end },
             job: { date: null }
         },
-        select: { jobId: true, date: true }
+        select: { jobId: true, date: true, assignedById: true },
+        orderBy: { date: "desc" }
     });
     console.log(`[ROLLOVER] currentAssignments count: ${currentAssignments.length}`);
     if (currentAssignments.length === 0) return;
 
-    const patterns = new Map<string, { jobId: string; weekday: number }>();
+    const patterns = new Map<string, RecurringPattern>();
     for (const a of currentAssignments) {
         if (!a.date) continue;
         const weekday = new Date(a.date).getUTCDay();
         const key = `${a.jobId}-${weekday}`;
         if (!patterns.has(key)) {
-            patterns.set(key, { jobId: a.jobId, weekday });
+            patterns.set(key, { jobId: a.jobId, weekday, assignedById: a.assignedById });
         }
     }
     console.log(`[ROLLOVER] unique patterns for next cycle preview: ${patterns.size}`);

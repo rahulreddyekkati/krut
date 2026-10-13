@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { sendPushToUser } from "@/lib/notifications";
 import { sendShiftAssignedEmail } from "@/lib/mailer";
+import { assignerId } from "@/lib/assignedBy";
 
 export async function POST(request: NextRequest) {
     try {
@@ -42,7 +43,8 @@ export async function POST(request: NextRequest) {
                 data: {
                     jobId: openJobId,
                     workerId,
-                    date: date ? new Date(date) : null
+                    date: date ? new Date(date) : null,
+                    assignedById: assignerId(session.user)
                 }
             });
             // Update job status

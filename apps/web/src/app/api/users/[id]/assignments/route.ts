@@ -6,6 +6,7 @@ import { ensureCurrentCycleAssignments, ensureNextCyclePreview } from "@/lib/rec
 import { sendPushToUser } from "@/lib/notifications";
 import { sendShiftAssignedEmail, sendShiftTimeChangedEmail } from "@/lib/mailer";
 import { resolveTimezone, toLocalDateStr } from "@/lib/timezone";
+import { assignerId } from "@/lib/assignedBy";
 
 // GET /api/users/[id]/assignments - Fetch shifts for a worker
 export async function GET(
@@ -75,6 +76,7 @@ export async function POST(
             return NextResponse.json({ error: "Invalid brandAllocation" }, { status: 400 });
         }
         const brandAllocationValue = brandAllocation || undefined;
+        const assignedById = assignerId(session.user);
 
         if (!jobId) {
             return NextResponse.json({ error: "Missing jobId" }, { status: 400 });
@@ -128,7 +130,7 @@ export async function POST(
                         const out: any[] = [];
                         for (const d of missing) {
                             out.push(await tx.jobAssignment.create({
-                                data: { workerId: id, jobId, date: d, isRecurring: true, dayOfWeek: d.getUTCDay(), bonus: bonusValue, brandAllocation: brandAllocationValue }
+                                data: { workerId: id, jobId, date: d, isRecurring: true, dayOfWeek: d.getUTCDay(), bonus: bonusValue, brandAllocation: brandAllocationValue, assignedById }
                             }));
                         }
                         return out;
@@ -177,7 +179,7 @@ export async function POST(
                 return NextResponse.json({ error: "Worker is already assigned to this job on that date" }, { status: 409 });
             }
             const assignment = await prisma.jobAssignment.create({
-                data: { workerId: id, jobId, date: dateObj, isRecurring: false, bonus: bonusValue, brandAllocation: brandAllocationValue }
+                data: { workerId: id, jobId, date: dateObj, isRecurring: false, bonus: bonusValue, brandAllocation: brandAllocationValue, assignedById }
             });
             const [worker, job] = await Promise.all([
                 prisma.user.findUnique({ where: { id }, select: { email: true } }),
@@ -227,33 +229,52 @@ export async function PATCH(
                 return NextResponse.json({ error: "Invalid brandAllocation" }, { status: 400 });
             }
 
-            const assignment = await prisma.jobAssignment.findUnique({ where: { id: assignmentId } });
-            if (!assignment || assignment.status !== "AVAILABLE") {
+            const assignedById = assignerId(session.user);
+            // One transaction: the worker change, its audit row, and the request cleanup
+            // either all land or none do.
+            const updated = await prisma.$transaction(async (tx) => {
+                const assignment = await tx.jobAssignment.findUnique({ where: { id: assignmentId } });
+                if (!assignment || assignment.status !== "AVAILABLE") return null;
+
+                const row = await tx.jobAssignment.update({
+                    where: { id: assignmentId },
+                    data: {
+                        workerId: newWorkerId,
+                        status: "ASSIGNED",
+                        releasedByWorkerId: null,
+                        requestedWorkerId: null,
+                        brandAllocation: brandAllocation || undefined,
+                        assignedById
+                    }
+                });
+                await tx.auditLog.create({
+                    data: {
+                        actorId: session.user.id,
+                        action: "SHIFT_REASSIGNED",
+                        entityType: "JobAssignment",
+                        entityId: assignmentId,
+                        oldValue: JSON.stringify({ workerId: assignment.workerId, assignedById: assignment.assignedById, status: assignment.status }),
+                        newValue: JSON.stringify({ workerId: newWorkerId, assignedById, status: "ASSIGNED" }),
+                    }
+                });
+                // Deny any pending ShiftRequests for this assignment
+                await tx.shiftRequest.updateMany({
+                    where: { assignmentId, status: "PENDING" },
+                    data: { status: "DENIED" }
+                });
+                // Cancel any pending ReleaseRequest for this assignment too -- it's
+                // being reassigned directly, so a stale release request left PENDING
+                // would otherwise point at an assignment that's moved to a different
+                // worker and permanently fail to approve.
+                await tx.releaseRequest.updateMany({
+                    where: { assignmentId, status: "PENDING" },
+                    data: { status: "CANCELLED" }
+                });
+                return row;
+            });
+            if (!updated) {
                 return NextResponse.json({ error: "Assignment not available for direct assignment" }, { status: 400 });
             }
-            const updated = await prisma.jobAssignment.update({
-                where: { id: assignmentId },
-                data: {
-                    workerId: newWorkerId,
-                    status: "ASSIGNED",
-                    releasedByWorkerId: null,
-                    requestedWorkerId: null,
-                    brandAllocation: brandAllocation || undefined
-                }
-            });
-            // Deny any pending ShiftRequests for this assignment
-            await prisma.shiftRequest.updateMany({
-                where: { assignmentId, status: "PENDING" },
-                data: { status: "DENIED" }
-            });
-            // Cancel any pending ReleaseRequest for this assignment too -- it's
-            // being reassigned directly, so a stale release request left PENDING
-            // would otherwise point at an assignment that's moved to a different
-            // worker and permanently fail to approve.
-            await prisma.releaseRequest.updateMany({
-                where: { assignmentId, status: "PENDING" },
-                data: { status: "CANCELLED" }
-            });
             return NextResponse.json({ success: true, assignment: updated });
         }
 

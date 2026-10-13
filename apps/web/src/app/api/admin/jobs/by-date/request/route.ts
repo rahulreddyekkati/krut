@@ -123,6 +123,8 @@ export async function POST(request: NextRequest) {
                     results.push({ jobId, date, success: false, reason: "Worker already has an assignment for this job/date" });
                     continue;
                 }
+                // assignedById is deliberately left null: an invite isn't an assignment.
+                // Approving the worker's request for it is what stamps the assigner.
                 await prisma.jobAssignment.create({
                     data: {
                         jobId,

@@ -440,6 +440,7 @@ export default function AdminDashboardPage() {
                                             <th style={thStyle}>End Time</th>
                                             <th style={thStyle}>Market</th>
                                             <th style={thStyle}>Assigned To</th>
+                                            <th style={thStyle}>Assigned By</th>
                                             <th style={thStyle}>Brand</th>
                                             <th style={thStyle}>Break Time</th>
                                             <th style={thStyle}>Actions</th>
@@ -470,6 +471,7 @@ export default function AdminDashboardPage() {
                                             </td>
                                             <td style={tdStyle}>{row.marketName}</td>
                                             <td style={tdStyle}>{row.assignedWorker}</td>
+                                            <td style={tdStyle}>{row.assignedByName || "—"}</td>
                                             <td style={tdStyle}>{BRAND_LABELS[row.brandAllocation] || "—"}</td>
                                             <td style={tdStyle}>{row.breakTimeMinutes > 0 ? `${row.breakTimeMinutes}m` : "—"}</td>
                                             <td style={tdStyle}>

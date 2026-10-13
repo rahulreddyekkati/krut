@@ -4,6 +4,7 @@ import { requireAuth } from "@/lib/auth";
 import { handleApiError } from "@/lib/apiError";
 import { sendPushToUser } from "@/lib/notifications";
 import { sendShiftAssignedEmail } from "@/lib/mailer";
+import { assignerId } from "@/lib/assignedBy";
 
 export async function POST(
     request: NextRequest,
@@ -30,6 +31,7 @@ export async function POST(
             : "Unknown date";
 
         const pushQueue: Array<{ userId: string; title: string; message: string }> = [];
+        const assignedById = assignerId(user);
 
         await prisma.$transaction(async (tx) => {
             if (shiftRequest.assignmentId) {
@@ -49,7 +51,18 @@ export async function POST(
                         workerId: shiftRequest.workerId,
                         status: "ASSIGNED",
                         releasedByWorkerId: null,
-                        requestedWorkerId: null // invite (if any) consumed
+                        requestedWorkerId: null, // invite (if any) consumed
+                        assignedById
+                    }
+                });
+                await tx.auditLog.create({
+                    data: {
+                        actorId: user.id,
+                        action: "SHIFT_REASSIGNED",
+                        entityType: "JobAssignment",
+                        entityId: assignment.id,
+                        oldValue: JSON.stringify({ workerId: assignment.workerId, assignedById: assignment.assignedById, status: assignment.status }),
+                        newValue: JSON.stringify({ workerId: shiftRequest.workerId, assignedById, status: "ASSIGNED" }),
                     }
                 });
 
@@ -81,7 +94,8 @@ export async function POST(
                     data: {
                         jobId: shiftRequest.jobId,
                         workerId: shiftRequest.workerId,
-                        date: shiftRequest.date
+                        date: shiftRequest.date,
+                        assignedById
                     }
                 });
                 await tx.job.update({ where: { id: shiftRequest.jobId }, data: { status: "ASSIGNED" } });

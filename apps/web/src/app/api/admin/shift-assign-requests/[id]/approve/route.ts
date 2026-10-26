@@ -4,6 +4,7 @@ import { requireAuth } from "@/lib/auth";
 import { handleApiError } from "@/lib/apiError";
 import { sendPushToUser } from "@/lib/notifications";
 import { sendShiftAssignedEmail } from "@/lib/mailer";
+import { jobBrandDefault } from "@/lib/brand";
 
 export async function POST(
     request: NextRequest,
@@ -81,7 +82,8 @@ export async function POST(
                     data: {
                         jobId: shiftRequest.jobId,
                         workerId: shiftRequest.workerId,
-                        date: shiftRequest.date
+                        date: shiftRequest.date,
+                        brandAllocation: await jobBrandDefault(tx, shiftRequest.jobId)
                     }
                 });
                 await tx.job.update({ where: { id: shiftRequest.jobId }, data: { status: "ASSIGNED" } });

@@ -52,8 +52,9 @@ export async function POST(request: NextRequest) {
         const user = await requireAuth(request, ["ADMIN", "MARKET_MANAGER"]);
 
         const body = await request.json();
-        const { title, storeId, startTime, endTime, bonus, date } = jobSchema.parse({
+        const { title, storeId, startTime, endTime, bonus, date, brand } = jobSchema.parse({
             ...body,
+            brand: body.brand || null,
             bonus: body.bonus !== undefined ? Number(body.bonus) : 0,
         });
 
@@ -80,6 +81,7 @@ export async function POST(request: NextRequest) {
                 startTimeStr: startTime,
                 endTimeStr: endTime,
                 bonus: bonus ?? 0,
+                brand: brand ?? null,
                 creatorId: user.id,
                 status: "OPEN",
                 date: date ? parseDateMarker(date) : null

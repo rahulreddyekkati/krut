@@ -17,7 +17,13 @@ export const registerSchema = z.object({
         .min(8, "Password must be at least 8 characters")
         .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
         .regex(/[0-9]/, "Password must contain at least one number"),
-    name: z.string().min(1, "Name is required").max(100),
+    name: z.string().trim().min(1, "Name is required").max(100),
+    // Any common format ("(214) 555-0123", "+1 214 555 0123"); only the digit count is checked.
+    phone: z
+        .string()
+        .trim()
+        .max(30)
+        .refine(v => { const n = v.replace(/\D/g, "").length; return n >= 10 && n <= 15; }, "Enter a valid phone number"),
 });
 
 export const forgotPasswordSchema = z.object({
@@ -91,6 +97,8 @@ export const jobSchema = z.object({
     // parsed in the server's local zone and land off midnight.
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}/, "date must be YYYY-MM-DD").nullable().optional(),
     bonus: z.number().min(0).default(0),
+    // Which brand the job is for; omitted or null = no brand.
+    brand: z.enum(["KRUTO", "MULUK", "BOTH"]).nullable().optional(),
 });
 
 // ─── Clock In ────────────────────────────────────────────────────────────────

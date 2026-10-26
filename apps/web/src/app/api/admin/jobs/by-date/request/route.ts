@@ -4,6 +4,7 @@ import { parseDateMarker } from "@/lib/timezone";
 import { getSession } from "@/lib/auth";
 import { sendPushToUser } from "@/lib/notifications";
 import { to12hr } from "@/lib/timeFormat";
+import { jobBrandDefault } from "@/lib/brand";
 
 // Skip re-notifying the same worker about the same shift within this window
 // (guards against accidental double-clicks / rapid re-request; not a strict/atomic lock).
@@ -131,7 +132,8 @@ export async function POST(request: NextRequest) {
                         date: targetDate,
                         status: "AVAILABLE",
                         requestedWorkerId: workerId,
-                        isRecurring: false
+                        isRecurring: false,
+                        brandAllocation: await jobBrandDefault(prisma, jobId)
                     }
                 });
                 outcome = "created";

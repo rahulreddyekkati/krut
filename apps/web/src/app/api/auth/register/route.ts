@@ -7,7 +7,7 @@ import { validate, registerSchema } from "@/lib/validate";
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const { token, password, name, email: rawEmail } = validate(registerSchema, body);
+        const { token, password, name, phone, email: rawEmail } = validate(registerSchema, body);
         const email = rawEmail.trim().toLowerCase();
 
         const invite = await prisma.invite.findUnique({
@@ -31,6 +31,7 @@ export async function POST(request: NextRequest) {
                     email: invite.email,
                     password: hashedPassword,
                     name: name,
+                    phone,
                     role: invite.role,
                     status: "ACTIVE",
                     // Assignments from invite

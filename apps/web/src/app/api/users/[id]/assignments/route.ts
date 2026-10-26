@@ -6,6 +6,7 @@ import { ensureCurrentCycleAssignments, ensureNextCyclePreview } from "@/lib/rec
 import { sendPushToUser } from "@/lib/notifications";
 import { sendShiftAssignedEmail, sendShiftTimeChangedEmail } from "@/lib/mailer";
 import { resolveTimezone, toLocalDateStr, parseDateMarker } from "@/lib/timezone";
+import { jobBrandDefault } from "@/lib/brand";
 
 // GET /api/users/[id]/assignments - Fetch shifts for a worker
 export async function GET(
@@ -74,11 +75,12 @@ export async function POST(
         if (brandAllocation !== undefined && brandAllocation !== null && brandAllocation !== "" && !ALLOWED_BRAND_ALLOCATIONS.includes(brandAllocation)) {
             return NextResponse.json({ error: "Invalid brandAllocation" }, { status: 400 });
         }
-        const brandAllocationValue = brandAllocation || undefined;
 
         if (!jobId) {
             return NextResponse.json({ error: "Missing jobId" }, { status: 400 });
         }
+        // No brand picked → the shift is for whatever brand its job is for.
+        const brandAllocationValue = brandAllocation || (await jobBrandDefault(prisma, jobId)) || undefined;
 
         const created: any[] = [];
         const skipped: { date: string; reason: string }[] = [];

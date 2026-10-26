@@ -5,6 +5,7 @@ import { handleApiError, AppError } from "@/lib/apiError";
 import { getLocalDayBoundsUTC, localShiftEndToUTC, toLocalDateStr, toUTCLocalDateStr, resolveStoreTimezone, storeToday } from "@/lib/timezone";
 import { toZonedTime } from "date-fns-tz";
 import { sendPushToUser } from "@/lib/notifications";
+import { jobBrandDefault } from "@/lib/brand";
 
 export async function GET(request: NextRequest) {
     try {
@@ -334,7 +335,8 @@ export async function POST(request: NextRequest) {
                             jobId: assignment.jobId,
                             date: todayUTCMidnight,
                             isRecurring: false,
-                            breakTimeMinutes: assignment.breakTimeMinutes
+                            breakTimeMinutes: assignment.breakTimeMinutes,
+                            brandAllocation: assignment.brandAllocation ?? await jobBrandDefault(prisma, assignment.jobId)
                         }
                     });
                     targetAssignmentId = newInstance.id;

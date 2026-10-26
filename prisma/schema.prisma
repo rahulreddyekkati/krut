@@ -13,6 +13,8 @@ model User {
   email         String    @unique
   password      String
   name          String
+  // Entered at sign-up. Null for users who registered before this field existed.
+  phone         String?
   role          String    // ADMIN, MARKET_MANAGER, WORKER
   status        String    @default("INVITED") // INVITED, ACTIVE, SUSPENDED, DEACTIVATED
   hourlyWage    Float?
@@ -128,6 +130,12 @@ model Job {
   endTimeStr   String   // HH:MM — e.g. "17:00"
   date         DateTime?
   bonus        Float    @default(0)
+
+  // Which brand this job is for, picked when the job is created: "KRUTO" | "MULUK" | "BOTH",
+  // or null for jobs that predate this field. New shifts on the job default their
+  // JobAssignment.brandAllocation to it unless the admin picks a different brand — see
+  // apps/web/src/lib/brand.ts.
+  brand        String?
   status       String   @default("OPEN") // OPEN, ASSIGNED, ACCEPTED, IN_PROGRESS, RECAP_PENDING, COMPLETED, NO_SHOW
 
   // Links a released-shift open job back to its source ReleaseRequest

@@ -16,7 +16,9 @@ export function getLocalDateStrNative(date: Date, timeZone: string): string {
     return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
 }
 
-type RecurringPattern = { jobId: string; weekday: number };
+// brandAllocation is carried over from the row the pattern was read from, so a rolled-over
+// shift keeps its brand (falling back to the job's brand when that row had none).
+type RecurringPattern = { jobId: string; weekday: number; brandAllocation: string | null };
 
 /**
  * Creates every dated recurring assignment the given (jobId, weekday) patterns call for
@@ -35,6 +37,10 @@ async function createMissingRecurringAssignments(
     const rangeStart = new Date(start); rangeStart.setUTCHours(0, 0, 0, 0);
     const rangeEnd = new Date(end); rangeEnd.setUTCHours(23, 59, 59, 999);
     const dayKey = (jobId: string, d: Date) => `${jobId}|${d.toISOString().slice(0, 10)}`;
+    const jobBrands = new Map(
+        (await prisma.job.findMany({ where: { id: { in: patterns.map(p => p.jobId) } }, select: { id: true, brand: true } }))
+            .map(j => [j.id, j.brand])
+    );
 
     // Two attempts: a concurrent call for the same worker can win the race between the
     // "what's missing" read and the insert. The @@unique constraint on (workerId, jobId,
@@ -51,10 +57,10 @@ async function createMissingRecurringAssignments(
         });
         const existingKeys = new Set(existing.filter(a => a.date).map(a => dayKey(a.jobId, new Date(a.date!))));
 
-        const missing: { jobId: string; date: Date }[] = [];
-        for (const { jobId, weekday } of patterns) {
+        const missing: { jobId: string; date: Date; brandAllocation: string | null }[] = [];
+        for (const { jobId, weekday, brandAllocation } of patterns) {
             for (const d of getDatesForWeekdays([weekday], rangeStart, rangeEnd)) {
-                if (!existingKeys.has(dayKey(jobId, d))) missing.push({ jobId, date: d });
+                if (!existingKeys.has(dayKey(jobId, d))) missing.push({ jobId, date: d, brandAllocation: brandAllocation ?? jobBrands.get(jobId) ?? null });
             }
         }
         console.log(`[ROLLOVER] ${missing.length} assignment(s) to create for workerId: ${workerId}`);
@@ -64,7 +70,7 @@ async function createMissingRecurringAssignments(
             await prisma.$transaction(async (tx) => {
                 for (const m of missing) {
                     await tx.jobAssignment.create({
-                        data: { workerId, jobId: m.jobId, date: m.date, isRecurring: true }
+                        data: { workerId, jobId: m.jobId, date: m.date, isRecurring: true, brandAllocation: m.brandAllocation }
                     });
                 }
             });
@@ -114,19 +120,21 @@ export async function ensureCurrentCycleAssignments(workerId: string): Promise<v
             date: { gte: prevCycle.start, lte: prevCycle.end },
             job: { date: null }
         },
-        select: { jobId: true, date: true }
+        // Newest first, so each pattern takes its brand from its latest week.
+        select: { jobId: true, date: true, brandAllocation: true },
+        orderBy: { date: "desc" }
     });
     console.log(`[ROLLOVER] prevAssignments count: ${prevAssignments.length}`);
     if (prevAssignments.length === 0) return;
 
     // Extract unique (jobId, weekday) patterns
-    const patterns = new Map<string, { jobId: string; weekday: number }>();
+    const patterns = new Map<string, RecurringPattern>();
     for (const a of prevAssignments) {
         if (!a.date) continue;
         const weekday = new Date(a.date).getUTCDay();
         const key = `${a.jobId}-${weekday}`;
         if (!patterns.has(key)) {
-            patterns.set(key, { jobId: a.jobId, weekday });
+            patterns.set(key, { jobId: a.jobId, weekday, brandAllocation: a.brandAllocation });
         }
     }
     console.log(`[ROLLOVER] unique patterns to roll over: ${patterns.size}`);
@@ -179,18 +187,20 @@ export async function ensureNextCyclePreview(workerId: string): Promise<void> {
             date: { gte: currentCycle.start, lte: currentCycle.end },
             job: { date: null }
         },
-        select: { jobId: true, date: true }
+        // Newest first, so each pattern takes its brand from its latest week.
+        select: { jobId: true, date: true, brandAllocation: true },
+        orderBy: { date: "desc" }
     });
     console.log(`[ROLLOVER] currentAssignments count: ${currentAssignments.length}`);
     if (currentAssignments.length === 0) return;
 
-    const patterns = new Map<string, { jobId: string; weekday: number }>();
+    const patterns = new Map<string, RecurringPattern>();
     for (const a of currentAssignments) {
         if (!a.date) continue;
         const weekday = new Date(a.date).getUTCDay();
         const key = `${a.jobId}-${weekday}`;
         if (!patterns.has(key)) {
-            patterns.set(key, { jobId: a.jobId, weekday });
+            patterns.set(key, { jobId: a.jobId, weekday, brandAllocation: a.brandAllocation });
         }
     }
     console.log(`[ROLLOVER] unique patterns for next cycle preview: ${patterns.size}`);

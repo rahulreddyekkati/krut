@@ -4,6 +4,7 @@ import { requireAuth } from "@/lib/auth";
 import { handleApiError, AppError } from "@/lib/apiError";
 import { resolveTimezone, localTimeToUTC, toLocalDateStr } from "@/lib/timezone";
 import { isWithinRadius } from "@/lib/geo";
+import { jobBrandDefault } from "@/lib/brand";
 
 const CLOCK_IN_EARLY_WINDOW_MS = 15 * 60 * 1000; // 15 minutes before shift start
 
@@ -134,7 +135,8 @@ export async function POST(
                         jobId: assignment.jobId,
                         date: todayUTCMidnight,
                         isRecurring: false,
-                        breakTimeMinutes: assignment.breakTimeMinutes
+                        breakTimeMinutes: assignment.breakTimeMinutes,
+                        brandAllocation: assignment.brandAllocation ?? await jobBrandDefault(prisma, assignment.jobId)
                     }
                 });
                 targetAssignmentId = newInstance.id;

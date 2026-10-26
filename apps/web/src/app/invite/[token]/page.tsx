@@ -11,6 +11,7 @@ export default function InvitePage() {
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const [name, setName] = useState("");
+    const [phone, setPhone] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(true);
     const router = useRouter();
@@ -50,6 +51,7 @@ export default function InvitePage() {
                     token,
                     password,
                     name,
+                    phone,
                     email: inviteData.email
                 }),
             });
@@ -87,13 +89,30 @@ export default function InvitePage() {
                     </div>
 
                     <div className={styles.inputGroup}>
-                        <label htmlFor="name">Full Name</label>
+                        <label htmlFor="name">Full Legal Name</label>
+                        <p style={{ fontSize: "0.875rem", fontWeight: 700, color: "#111827", margin: 0 }}>
+                            Enter your FULL LEGAL NAME exactly as it appears on your government-issued ID: first and last name, no nicknames or abbreviations.
+                        </p>
                         <input
                             type="text"
                             id="name"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            placeholder="John Doe"
+                            placeholder="John Michael Doe"
+                            autoComplete="name"
+                            required
+                        />
+                    </div>
+
+                    <div className={styles.inputGroup}>
+                        <label htmlFor="phone">Phone Number</label>
+                        <input
+                            type="tel"
+                            id="phone"
+                            value={phone}
+                            onChange={(e) => setPhone(e.target.value)}
+                            placeholder="(214) 555-0123"
+                            autoComplete="tel"
                             required
                         />
                     </div>

@@ -4,6 +4,7 @@ import { parseDateMarker } from "@/lib/timezone";
 import { getSession } from "@/lib/auth";
 import { sendPushToUser } from "@/lib/notifications";
 import { sendShiftAssignedEmail } from "@/lib/mailer";
+import { jobBrandDefault } from "@/lib/brand";
 
 export async function POST(request: NextRequest) {
     try {
@@ -43,7 +44,8 @@ export async function POST(request: NextRequest) {
                 data: {
                     jobId: openJobId,
                     workerId,
-                    date: date ? parseDateMarker(date) : null
+                    date: date ? parseDateMarker(date) : null,
+                    brandAllocation: await jobBrandDefault(tx, openJobId)
                 }
             });
             // Update job status

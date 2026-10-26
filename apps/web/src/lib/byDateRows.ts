@@ -22,7 +22,9 @@ export function unassignedRow(job: any) {
         assignedWorker: "Unassigned",
         assignedByName: null,
         hasCustomTimes: false,
-        brandAllocation: null,
+        // No shift yet — the job's own brand is what an assignment would default to.
+        brandAllocation: job.brand ?? null,
+        jobBrand: job.brand ?? null,
         breakTimeMinutes: 0,
         marketId: job.store.market?.id || null,
         storeId: job.storeId,
@@ -46,6 +48,7 @@ export function assignmentRow(job: any, a: any, assignedByName?: AssignedByName)
         assignedByName: assignedByName ? assignedByName(a) : null,
         hasCustomTimes: !!(a.customStartTimeStr || a.customEndTimeStr),
         brandAllocation: a.brandAllocation ?? null,
+        jobBrand: job.brand ?? null,
         breakTimeMinutes: a.breakTimeMinutes ?? 0,
         marketId: job.store.market?.id || null,
         storeId: job.storeId,

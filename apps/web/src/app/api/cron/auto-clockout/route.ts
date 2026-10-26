@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { localShiftEndToUTC, toLocalDateStr } from "@/lib/timezone";
 import { sendPushToUser } from "@/lib/notifications";
+import { scheduledShiftEnd, closeOutAssignment } from "@/lib/shiftClose";
 
 // Fallback only — every store should carry its own timezone (Store.timezone).
 // Used to exist as a single hardcoded constant here, which silently auto-clocked
@@ -64,67 +65,14 @@ export async function GET(request: NextRequest) {
 
     for (const assignment of stuck) {
         try {
-            const tz = assignment.job.store?.timezone || FALLBACK_TZ;
-            const startTimeStr = (assignment as any).customStartTimeStr ?? assignment.job.startTimeStr;
-            const endTimeStr = (assignment as any).customEndTimeStr ?? assignment.job.endTimeStr;
-
-            const shiftDateStr = assignment.date
-                ? new Date(assignment.date).toISOString().split('T')[0]
-                : toLocalDateStr(new Date(assignment.clockIn!), tz);
-
-            // Compute when the shift should have ended in UTC
-            const scheduledClockOut = localShiftEndToUTC(shiftDateStr, startTimeStr, endTimeStr, tz);
+            // Compute when the shift should have ended in UTC (store timezone)
+            const finalClockOut = scheduledShiftEnd(assignment as any);
 
             // Only auto-clock-out if that time has already passed
-            if (scheduledClockOut.getTime() > now.getTime()) continue;
-
-            // If scheduled end is before clock-in (data error), use clockIn + shift duration
-            let finalClockOut = scheduledClockOut;
-            if (scheduledClockOut.getTime() <= assignment.clockIn!.getTime()) {
-                const [sH, sM] = startTimeStr.split(":").map(Number);
-                const [eH, eM] = endTimeStr.split(":").map(Number);
-                const durationMins = ((eH * 60 + eM) - (sH * 60 + sM) + 1440) % 1440;
-                finalClockOut = new Date(assignment.clockIn!.getTime() + durationMins * 60 * 1000);
-            }
+            if (finalClockOut.getTime() > now.getTime()) continue;
 
             await prisma.$transaction(async (tx: any) => {
-                // Close any open break first
-                let extraBreakMins = 0;
-                for (const br of assignment.breaks) {
-                    const mins = (finalClockOut.getTime() - new Date(br.startTime).getTime()) / 60000;
-                    await tx.break.update({
-                        where: { id: br.id },
-                        data: { endTime: finalClockOut, durationMins: Math.max(0, mins) }
-                    });
-                    extraBreakMins += Math.max(0, mins);
-                }
-
-                if (extraBreakMins > 0) {
-                    await tx.jobAssignment.update({
-                        where: { id: assignment.id },
-                        data: { breakTimeMinutes: { increment: extraBreakMins } }
-                    });
-                }
-
-                // Re-read breakTimeMinutes after the increment
-                const fresh = await tx.jobAssignment.findUnique({
-                    where: { id: assignment.id },
-                    select: { breakTimeMinutes: true }
-                });
-
-                const grossMins = (finalClockOut.getTime() - assignment.clockIn!.getTime()) / 60000;
-                const breakMins = (fresh?.breakTimeMinutes ?? 0);
-                const workedHours = parseFloat(Math.max(0, (grossMins - breakMins) / 60).toFixed(2));
-
-                await tx.jobAssignment.update({
-                    where: { id: assignment.id },
-                    data: { clockOut: finalClockOut, workedHours, status: "RECAP_PENDING" }
-                });
-
-                await tx.job.update({
-                    where: { id: assignment.jobId },
-                    data: { status: "RECAP_PENDING" }
-                });
+                await closeOutAssignment(tx, assignment as any, finalClockOut);
 
                 await tx.notification.create({
                     data: {

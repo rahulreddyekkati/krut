@@ -6,7 +6,12 @@ export async function GET() {
     const session = await getSession();
 
     if (!session) {
-        return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+        // Clear a stale cookie (e.g. the account was deactivated). Otherwise middleware,
+        // which only checks that the cookie exists, bounces /login back to /dashboard and
+        // the client loops between them.
+        const res = NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+        res.cookies.set("session", "", { expires: new Date(0) });
+        return res;
     }
 
     const user = await prisma.user.findUnique({

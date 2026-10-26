@@ -56,7 +56,13 @@ export async function POST(request: NextRequest) {
                 });
 
                 if (existingUser) {
-                    results.push({ email, success: false, error: "User already exists with this email" });
+                    results.push({
+                        email,
+                        success: false,
+                        error: existingUser.status === "DEACTIVATED"
+                            ? "Deactivated user — reactivate them from the Users tab"
+                            : "User already exists with this email",
+                    });
                     continue;
                 }
 

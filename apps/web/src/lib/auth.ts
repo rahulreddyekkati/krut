@@ -30,11 +30,26 @@ export async function getSession() {
     }
 
     if (!session) return null;
+    let payload: any;
     try {
-        return await decrypt(session);
+        payload = await decrypt(session);
     } catch {
         return null;
     }
+
+    // The JWT alone can't tell us the account was deactivated after it was issued (mobile
+    // tokens live 180 days), so every caller gets a live status check. Returning null makes
+    // each route answer 401, which the mobile app treats as "log out".
+    const userId: string | undefined = payload?.user?.id;
+    if (!userId) return null;
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { status: true } });
+    if (!user || isInactiveStatus(user.status)) return null;
+
+    return payload;
+}
+
+export function isInactiveStatus(status: string): boolean {
+    return status === "SUSPENDED" || status === "DEACTIVATED";
 }
 
 export async function updateSession(request: NextRequest) {
@@ -71,7 +86,7 @@ export type AuthorizedUser = {
  *
  * 1. Verifies JWT signature using process.env.JWT_SECRET
  * 2. Re-fetches user from DB on EVERY request (closes CRIT-02 gap)
- * 3. Blocks SUSPENDED and DEACTIVATED users immediately
+ * 3. Blocks SUSPENDED and DEACTIVATED users immediately (401, so mobile logs out)
  * 4. If allowedRoles provided, returns 403 if user's DB role doesn't match
  *
  * Throws AppError on any failure — handleApiError() converts to the right HTTP response.
@@ -127,8 +142,10 @@ export async function requireAuth(
     }
 
     // 4. Block inactive users
-    if (user.status === "SUSPENDED" || user.status === "DEACTIVATED") {
-        throw new AppError("Account is inactive", 403);
+    // 401, not 403: the mobile app only logs out on 401, so a 403 would leave a
+    // deactivated worker stuck on error screens instead of the login page.
+    if (isInactiveStatus(user.status)) {
+        throw new AppError("Account is inactive", 401);
     }
 
     // 5. Role check

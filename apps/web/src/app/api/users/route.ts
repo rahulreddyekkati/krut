@@ -6,7 +6,7 @@ import { buildRateResolver, getWorkerRate } from "@/lib/payRate";
 import { resolveReleasesStillOwned, sumReleaseHoursToSubtract } from "@/lib/payroll";
 
 // GET /api/users - List all users with counts
-export async function GET() {
+export async function GET(request: NextRequest) {
     try {
         const session = await getSession();
         if (!session) {
@@ -21,7 +21,10 @@ export async function GET() {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const where: any = {};
+        // Deactivated accounts are hidden unless asked for — their history stays reachable
+        // through Reports, and the Users tab can list them to reactivate.
+        const includeDeactivated = request.nextUrl.searchParams.get("includeDeactivated") === "1";
+        const where: any = includeDeactivated ? {} : { status: { not: "DEACTIVATED" } };
         if (requester.role === "MARKET_MANAGER") {
             where.marketId = requester.managedMarketId;
             where.role = { not: "ADMIN" };

@@ -20,7 +20,8 @@ export async function GET(request: NextRequest) {
         const assignments = await prisma.jobAssignment.findMany({
             where: {
                 status: "ASSIGNED",
-                date: { not: null }
+                date: { not: null },
+                worker: { status: { notIn: ["DEACTIVATED", "SUSPENDED"] } }
             },
             include: {
                 worker: true,

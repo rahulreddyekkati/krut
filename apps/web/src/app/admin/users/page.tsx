@@ -30,6 +30,8 @@ interface User {
 export default function AdminUsersPage() {
     const [users, setUsers] = useState<User[]>([]);
     const [selectedMarket, setSelectedMarket] = useState("all");
+    const [showDeactivated, setShowDeactivated] = useState(false);
+    const [statusChangingId, setStatusChangingId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
@@ -103,10 +105,13 @@ export default function AdminUsersPage() {
 
     useEffect(() => {
         fetchCurrentUser();
-        fetchUsers();
         fetchStores();
         fetchMarkets();
     }, []);
+
+    useEffect(() => {
+        fetchUsers();
+    }, [showDeactivated]);
 
     const fetchCurrentUser = async () => {
         const res = await fetch("/api/auth/me");
@@ -125,7 +130,7 @@ export default function AdminUsersPage() {
     const fetchUsers = async () => {
         setLoading(true);
         try {
-            const res = await fetch("/api/users");
+            const res = await fetch(showDeactivated ? "/api/users?includeDeactivated=1" : "/api/users");
             const data = await res.json();
             if (res.ok) {
                 setUsers(data);
@@ -407,22 +412,6 @@ export default function AdminUsersPage() {
         }
     };
 
-    const updateUserStatus = async (id: string, status: string) => {
-        try {
-            const res = await fetch(`/api/users/${id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ status }),
-            });
-            if (res.ok) {
-                setSuccess("User status updated");
-                fetchUsers();
-            }
-        } catch (err) {
-            setError("Failed to update status");
-        }
-    };
-
     const startEditing = (user: User) => {
         setEditingUserId(user.id);
         setEditForm({
@@ -497,26 +486,53 @@ export default function AdminUsersPage() {
         }
     };
 
-    const handleDeleteUser = async (userId: string, name: string) => {
-        if (!window.confirm(`Are you sure you want to delete user "${name}"? This action cannot be undone.`)) {
+    // "Delete" deactivates: the account is blocked and hidden, but its shifts, recaps and
+    // payroll stay in Reports. See lib/userDeactivation.ts.
+    const handleDeactivateUser = async (userId: string, name: string) => {
+        if (!window.confirm(`Deactivate ${name}? They will be logged out and removed from their upcoming shifts. Their history stays in Reports.`)) {
             return;
         }
 
+        setStatusChangingId(userId);
         try {
             const res = await fetch(`/api/users/${userId}`, {
                 method: "DELETE",
             });
+            const data = await res.json().catch(() => ({}));
 
             if (res.ok) {
-                setSuccess(`User "${name}" deleted`);
+                const notes = [`${name} deactivated.`];
+                if (data.removedShifts > 0) notes.push(`Removed from ${data.removedShifts} upcoming shift${data.removedShifts === 1 ? "" : "s"}.`);
+                if (data.clockedOut) notes.push("They were clocked out; their recap is still missing, so those hours are withheld until you handle it in Recaps.");
+                if (data.flaggedForReview > 0) notes.push("Clock-out was capped at the scheduled shift end.");
+                setSuccess(notes.join(" "));
                 setEditingUserId(null);
                 fetchUsers();
             } else {
-                const data = await res.json();
-                setError(data.error || "Failed to delete user");
+                setError(data.error || "Failed to deactivate user");
             }
         } catch (err) {
-            setError("An error occurred while deleting");
+            setError("An error occurred while deactivating");
+        } finally {
+            setStatusChangingId(null);
+        }
+    };
+
+    const handleReactivateUser = async (userId: string, name: string) => {
+        setStatusChangingId(userId);
+        try {
+            const res = await fetch(`/api/users/${userId}/reactivate`, { method: "POST" });
+            const data = await res.json().catch(() => ({}));
+            if (res.ok) {
+                setSuccess(`${name} reactivated. Assign new shifts from Add Job.`);
+                fetchUsers();
+            } else {
+                setError(data.error || "Failed to reactivate user");
+            }
+        } catch (err) {
+            setError("An error occurred while reactivating");
+        } finally {
+            setStatusChangingId(null);
         }
     };
 
@@ -541,6 +557,14 @@ export default function AdminUsersPage() {
                             </option>
                         ))}
                     </select>
+                    <label style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.875rem", whiteSpace: "nowrap" }}>
+                        <input
+                            type="checkbox"
+                            checked={showDeactivated}
+                            onChange={(e) => setShowDeactivated(e.target.checked)}
+                        />
+                        Show deactivated
+                    </label>
                 </div>
             </header>
 
@@ -819,9 +843,10 @@ export default function AdminUsersPage() {
                                 <tr><td colSpan={9} className="text-center" style={{ padding: "3rem" }}>No team members found.</td></tr>
                             ) : filteredUsers.map(user => {
                                 const isEditing = editingUserId === user.id;
+                                const isDeactivated = user.status === "DEACTIVATED";
 
                                 return (
-                                    <tr key={user.id} className="animate-fade-in">
+                                    <tr key={user.id} className={`animate-fade-in${isDeactivated ? ` ${styles.deactivatedRow}` : ""}`}>
                                         <td>
                                             <div className={styles.userInfo} style={{ position: "relative" }}>
                                                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
@@ -836,7 +861,8 @@ export default function AdminUsersPage() {
                                                     ) : (
                                                         <>
                                                             <strong>{user.name}</strong>
-                                                            <button
+                                                            {isDeactivated && <span className="badge">Deactivated</span>}
+                                                            {!isDeactivated && <button
                                                                 type="button"
                                                                 onClick={() => startEditing(user)}
                                                                 className="btn btn-ghost btn-sm"
@@ -844,7 +870,7 @@ export default function AdminUsersPage() {
                                                                 title="Edit User"
                                                             >
                                                                 ✎
-                                                            </button>
+                                                            </button>}
                                                         </>
                                                     )}
                                                 </div>
@@ -970,10 +996,11 @@ export default function AdminUsersPage() {
                                                         </button>
                                                         <button
                                                             type="button"
-                                                            onClick={() => handleDeleteUser(user.id, user.name)}
+                                                            onClick={() => handleDeactivateUser(user.id, user.name)}
                                                             className="btn btn-danger btn-sm"
+                                                            disabled={statusChangingId === user.id}
                                                         >
-                                                            Delete
+                                                            {statusChangingId === user.id ? "Deactivating…" : "Deactivate"}
                                                         </button>
                                                         <button
                                                             type="button"
@@ -982,6 +1009,26 @@ export default function AdminUsersPage() {
                                                         >
                                                             Cancel
                                                         </button>
+                                                    </>
+                                                ) : isDeactivated ? (
+                                                    <>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleReactivateUser(user.id, user.name)}
+                                                            className="btn btn-primary btn-sm"
+                                                            disabled={statusChangingId === user.id}
+                                                        >
+                                                            {statusChangingId === user.id ? "Reactivating…" : "Reactivate"}
+                                                        </button>
+                                                        {user.role === "WORKER" && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => generateUserReportPDF(user)}
+                                                                className="btn btn-secondary btn-sm"
+                                                            >
+                                                                Report
+                                                            </button>
+                                                        )}
                                                     </>
                                                 ) : (
                                                     user.role === "WORKER" && (

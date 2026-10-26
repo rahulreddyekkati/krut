@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getSession } from "@/lib/auth";
+import { getSession, requireAuth } from "@/lib/auth";
+import { AppError, handleApiError } from "@/lib/apiError";
+import { deactivateUser } from "@/lib/userDeactivation";
 import { resolveTimezone, toLocalDateStr, toUTCLocalDateStr } from "@/lib/timezone";
 import { resolveRateForDate } from "@/lib/payRate";
 
@@ -55,9 +57,13 @@ export async function PATCH(
         const { role, status, hourlyWage, wageEffectiveFrom, name, email: rawEmail, marketId, managedMarketId, manualWorkedHours } = body;
         const email = typeof rawEmail === "string" ? rawEmail.trim().toLowerCase() : rawEmail;
 
+        // Deactivation has its own transaction (clock-out, shift cleanup, audit) — see
+        // lib/userDeactivation.ts. It runs after the field updates below.
+        const deactivating = status === "DEACTIVATED";
+
         const updateData: Record<string, any> = {
             role,
-            status,
+            status: deactivating ? undefined : status,
             name,
             email,
             manualWorkedHours: manualWorkedHours !== undefined ? parseFloat(manualWorkedHours) : undefined,
@@ -188,82 +194,34 @@ export async function PATCH(
                 data: updateData
             });
 
-            if (status === 'DEACTIVATED') {
-                await tx.releaseRequest.updateMany({
-                    where: { workerId: id, status: 'PENDING' },
-                    data: { status: 'CANCELLED' }
-                });
-
-                try {
-                    await tx.shiftRequest.updateMany({
-                        where: { workerId: id, status: 'PENDING' },
-                        data: { status: 'CANCELLED' }
-                    });
-                } catch (e) {
-                    // Ignore if model does not exist or named differently
-                }
-
-                // Drop their upcoming unworked shifts — recurring shifts are generated up to
-                // two pay cycles ahead, and left in place they'd keep showing as scheduled on
-                // the admin dashboard / By Date tab and trip late-clock-in alerts. Today's
-                // not-yet-clocked-in shift is included; anything with clock-in data is kept.
-                const deactivateTz = resolveTimezone(request);
-                const deactivateToday = new Date(`${toLocalDateStr(new Date(), deactivateTz)}T00:00:00.000Z`);
-                await tx.jobAssignment.deleteMany({
-                    where: { workerId: id, status: 'ASSIGNED', clockIn: null, date: { gte: deactivateToday } }
-                });
-
-                const activeAssignment = await tx.jobAssignment.findFirst({
-                    where: { workerId: id, clockIn: { not: null }, clockOut: null }
-                });
-
-                if (activeAssignment) {
-                    const now = new Date();
-                    await tx.jobAssignment.update({
-                        where: { id: activeAssignment.id },
-                        data: {
-                            clockOut: now,
-                            status: 'RECAP_PENDING',
-                            workedHours: parseFloat(Math.max(0, (now.getTime() - activeAssignment.clockIn.getTime()) / (1000 * 60 * 60)).toFixed(2))
-                        }
-                    });
-
-                    await tx.job.update({
-                        where: { id: activeAssignment.jobId },
-                        data: { status: 'RECAP_PENDING' }
-                    });
-                }
-            }
-
             return updatedUser;
         });
 
+        if (deactivating) {
+            const result = await deactivateUser(id, session.user.id);
+            return NextResponse.json({ ...user, status: "DEACTIVATED", deactivation: result });
+        }
+
         return NextResponse.json(user);
     } catch (error: any) {
+        if (error instanceof AppError) return handleApiError(error);
         console.error("Update user error:", error);
         return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
     }
 }
 
-// DELETE /api/users/[id] - Delete user
+// DELETE /api/users/[id] - Deactivate user. Never hard-deletes: worked shifts, recaps and
+// payroll reference the user (FK Restrict), and history must stay visible in Reports.
 export async function DELETE(
     request: NextRequest,
     context: { params: Promise<{ id: string }> }
 ) {
     try {
-        const session = await getSession();
-        if (!session || session.user.role !== "ADMIN") {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
-
+        const admin = await requireAuth(request, ["ADMIN"]);
         const { id } = await context.params;
-
-        await prisma.user.delete({
-            where: { id }
-        });
-
-        return NextResponse.json({ success: true });
+        const result = await deactivateUser(id, admin.id);
+        return NextResponse.json({ success: true, ...result });
     } catch (error) {
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+        return handleApiError(error);
     }
 }

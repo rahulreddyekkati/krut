@@ -33,7 +33,10 @@ export async function POST(request: NextRequest) {
         });
 
         if (existingUser) {
-            return NextResponse.json({ error: "User already exists" }, { status: 400 });
+            const error = existingUser.status === "DEACTIVATED"
+                ? "User already exists — reactivate them from the Users tab (Show deactivated)."
+                : "User already exists";
+            return NextResponse.json({ error }, { status: 400 });
         }
 
         const token = crypto.randomBytes(32).toString("hex");

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { unassignableWorkerError } from "@/lib/userDeactivation";
 import { parseDateMarker } from "@/lib/timezone";
 import { getSession } from "@/lib/auth";
 import { sendPushToUser } from "@/lib/notifications";
@@ -49,6 +50,8 @@ export async function POST(request: NextRequest) {
         if (!worker || worker.role !== "WORKER") {
             return NextResponse.json({ error: "Invalid worker selected" }, { status: 400 });
         }
+        const workerError = await unassignableWorkerError(workerId);
+        if (workerError) return NextResponse.json({ error: workerError }, { status: 400 });
 
         let managedMarketId: string | null = null;
         if (session.user.role === "MARKET_MANAGER") {

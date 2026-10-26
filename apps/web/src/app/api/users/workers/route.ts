@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
-// GET /api/users/workers - List all users with role WORKER
+// GET /api/users/workers - List active WORKERs (feeds the shift-assignment pickers)
 export async function GET() {
     try {
         const session = await getSession();
@@ -11,7 +11,7 @@ export async function GET() {
         }
 
         const workers = await prisma.user.findMany({
-            where: { role: "WORKER" },
+            where: { role: "WORKER", status: { notIn: ["DEACTIVATED", "SUSPENDED"] } },
             select: { id: true, name: true, email: true, marketId: true },
             orderBy: { name: "asc" }
         });

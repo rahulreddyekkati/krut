@@ -139,3 +139,8 @@
     flex-direction: column;
     gap: 1.5rem;
 }
+/* Greys the cells, not the <tr>: the row's fade-in animation (fill-mode: forwards) pins
+   the row's own opacity at 1. The actions cell stays full strength for Reactivate. */
+.deactivatedRow > td:not(:last-child) {
+    opacity: 0.5;
+}

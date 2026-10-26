@@ -20,6 +20,13 @@ export function getLocalDateStrNative(date: Date, timeZone: string): string {
 // shift keeps its brand (falling back to the job's brand when that row had none).
 type RecurringPattern = { jobId: string; weekday: number; brandAllocation: string | null };
 
+// Deactivated (or suspended) workers must not get shifts re-generated just because an
+// admin opened their assignments page.
+async function canRollOver(workerId: string): Promise<boolean> {
+    const user = await prisma.user.findUnique({ where: { id: workerId }, select: { status: true } });
+    return !!user && user.status !== "DEACTIVATED" && user.status !== "SUSPENDED";
+}
+
 /**
  * Creates every dated recurring assignment the given (jobId, weekday) patterns call for
  * in [start, end] that doesn't exist yet — all in one transaction, so a crash or timeout
@@ -89,6 +96,7 @@ async function createMissingRecurringAssignments(
  * This is the auto-rollover mechanism — no external cron needed.
  */
 export async function ensureCurrentCycleAssignments(workerId: string): Promise<void> {
+    if (!(await canRollOver(workerId))) return;
     console.log(`[ROLLOVER] ensureCurrentCycleAssignments started for workerId: ${workerId}`);
     const currentCycle = getCurrentCycleDates();
     const prevCycle = getPreviousCycleDates();
@@ -158,6 +166,7 @@ export async function ensureCurrentCycleAssignments(workerId: string): Promise<v
  * and can plan ahead of the cycle actually rolling over.
  */
 export async function ensureNextCyclePreview(workerId: string): Promise<void> {
+    if (!(await canRollOver(workerId))) return;
     console.log(`[ROLLOVER] ensureNextCyclePreview started for workerId: ${workerId}`);
     const currentCycle = getCurrentCycleDates();
     const nextCycle = getNextCycleDates();

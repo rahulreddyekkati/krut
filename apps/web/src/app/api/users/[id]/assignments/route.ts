@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { unassignableWorkerError } from "@/lib/userDeactivation";
 import { getSession } from "@/lib/auth";
 import { getCurrentCycleDates, getPreviousCycleDates, getNextCycleDates, getDatesForWeekdays } from "@/lib/cycles";
 import { ensureCurrentCycleAssignments, ensureNextCyclePreview } from "@/lib/recurringShifts";
@@ -79,6 +80,8 @@ export async function POST(
         if (!jobId) {
             return NextResponse.json({ error: "Missing jobId" }, { status: 400 });
         }
+        const workerError = await unassignableWorkerError(id);
+        if (workerError) return NextResponse.json({ error: workerError }, { status: 400 });
         // No brand picked → the shift is for whatever brand its job is for.
         const brandAllocationValue = brandAllocation || (await jobBrandDefault(prisma, jobId)) || undefined;
 
@@ -224,6 +227,8 @@ export async function PATCH(
 
         // Admin direct-assign: transfer AVAILABLE assignment to a different worker
         if (directAssign && newWorkerId) {
+            const workerError = await unassignableWorkerError(newWorkerId);
+            if (workerError) return NextResponse.json({ error: workerError }, { status: 400 });
             const ALLOWED_BRAND_ALLOCATIONS = ["KRUTO", "MULUK", "BOTH"];
             if (brandAllocation !== undefined && brandAllocation !== null && brandAllocation !== "" && !ALLOWED_BRAND_ALLOCATIONS.includes(brandAllocation)) {
                 return NextResponse.json({ error: "Invalid brandAllocation" }, { status: 400 });

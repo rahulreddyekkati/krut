@@ -70,6 +70,11 @@ export default function AdminLayout({
     useEffect(() => {
         const fetchUserAndBadges = async () => {
             const res = await fetch("/api/auth/me");
+            if (res.status === 401) {
+                // Session revoked (e.g. account deactivated); /api/auth/me already cleared the cookie
+                window.location.href = "/login";
+                return;
+            }
             if (res.ok) {
                 const data = await res.json();
                 setStats({ role: data.user.role });

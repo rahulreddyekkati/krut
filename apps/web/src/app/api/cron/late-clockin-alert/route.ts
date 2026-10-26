@@ -50,7 +50,8 @@ export async function GET(request: NextRequest) {
             where: {
                 status: "ASSIGNED",
                 date: { not: null },
-                clockIn: null
+                clockIn: null,
+                worker: { status: { notIn: ["DEACTIVATED", "SUSPENDED"] } }
             },
             include: {
                 worker: { select: { name: true } },

@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { handleApiError } from "@/lib/apiError";
 import { validate, forgotPasswordSchema } from "@/lib/validate";
 import { sendPasswordResetOTPEmail } from "@/lib/mailer";
+import { isInactiveStatus } from "@/lib/auth";
 
 const GENERIC_MESSAGE = "If an account exists with this email, a code has been sent.";
 const RESEND_COOLDOWN_MS = 60 * 1000;
@@ -17,7 +18,8 @@ export async function POST(request: NextRequest) {
         const user = await prisma.user.findUnique({ where: { email } });
 
         // Always return the same generic response — never reveal whether the email exists
-        if (!user) {
+        // (or that it was deactivated; a reset code would be useless since login is blocked)
+        if (!user || isInactiveStatus(user.status)) {
             return NextResponse.json({ message: GENERIC_MESSAGE });
         }
 

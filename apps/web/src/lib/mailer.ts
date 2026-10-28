@@ -549,3 +549,60 @@ export async function sendLateClockInAlertEmail(
     }
 }
 
+
+// Name and phone are typed by the new user at sign-up, so escape them before
+// putting them in the HTML body.
+function escapeHtml(s: string): string {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+export async function sendNewSignupAlertEmail(
+    recipientEmails: string[],
+    data: { name: string; email: string; phone?: string | null; role: string; marketName?: string | null }
+): Promise<boolean> {
+    const transporter = createTransporter();
+    const from = process.env.SMTP_FROM || '"Kruto Tastes" <noreply@krutotastes.com>';
+    if (!transporter) {
+        console.warn("⚠️ SMTP not configured. Skipping new sign-up alert email.");
+        return false;
+    }
+    if (recipientEmails.length === 0) return false;
+    try {
+        const roleLabel = data.role === "MARKET_MANAGER" ? "Market Manager" : data.role === "ADMIN" ? "Admin" : "Worker";
+        const details: [string, string][] = [
+            ["Name", data.name],
+            ["Email", data.email],
+            ...(data.phone ? [["Phone", data.phone] as [string, string]] : []),
+            ["Role", roleLabel],
+            ...(data.marketName ? [["Market", data.marketName] as [string, string]] : []),
+        ];
+        const subject = `New Sign-Up: ${data.name}`;
+        const textBody = `${data.name} accepted their invite and created an account.\n\n${details
+            .map(([k, v]) => `${k}: ${v}`)
+            .join("\n")}\n\nThe Kruto Tastes System`;
+        const htmlBody = `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 32px 24px; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px;">
+                <div style="text-align: center; margin-bottom: 28px;">
+                    <span style="font-size: 28px; font-weight: 800; letter-spacing: -0.025em; color: #0f172a; text-transform: uppercase;">Kruto Tastes</span>
+                </div>
+                <p style="color: #0f172a; font-size: 18px; font-weight: 600; margin-top: 0; margin-bottom: 16px;">New Sign-Up</p>
+                <p style="color: #334155; font-size: 15px; line-height: 24px; margin-top: 0; margin-bottom: 16px;">
+                    <strong style="color: #0f172a;">${escapeHtml(data.name)}</strong> accepted their invite and created an account.
+                </p>
+                <div style="background-color: #f0fdf4; border-left: 4px solid #22c55e; padding: 14px 16px; border-radius: 4px; margin-bottom: 24px;">
+                    <ul style="color: #166534; font-size: 15px; margin: 0; padding-left: 18px;">
+                        ${details.map(([k, v]) => `<li><strong>${k}:</strong> ${escapeHtml(v)}</li>`).join("")}
+                    </ul>
+                </div>
+                <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; color: #64748b; font-size: 14px;">
+                    <p style="margin: 0; font-weight: 600; color: #475569;">The Kruto Tastes System</p>
+                </div>
+            </div>`;
+
+        await transporter.sendMail({ from, to: recipientEmails.join(", "), subject, text: textBody, html: htmlBody });
+        return true;
+    } catch (error) {
+        console.error(`❌ Failed to send new sign-up alert email:`, error);
+        return false;
+    }
+}

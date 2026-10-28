@@ -3,6 +3,19 @@ import bcrypt from "bcryptjs";
 import prisma from "@/lib/prisma";
 import { handleApiError } from "@/lib/apiError";
 import { validate, registerSchema } from "@/lib/validate";
+import { sendNewSignupAlertEmail } from "@/lib/mailer";
+import { getAdminAndMarketManagerEmails } from "@/lib/notifications";
+
+async function notifyNewSignup(data: { name: string; email: string; phone?: string | null; role: string; marketId: string | null }) {
+    const [recipients, market] = await Promise.all([
+        getAdminAndMarketManagerEmails(data.marketId),
+        data.marketId ? prisma.market.findUnique({ where: { id: data.marketId }, select: { name: true } }) : null,
+    ]);
+    // The new user may themselves be the market's manager — don't email them about their own sign-up.
+    const to = recipients.filter((e) => e !== data.email);
+    if (to.length === 0) return;
+    await sendNewSignupAlertEmail(to, { ...data, marketName: market?.name ?? null });
+}
 
 export async function POST(request: NextRequest) {
     try {
@@ -47,6 +60,12 @@ export async function POST(request: NextRequest) {
                 where: { id: invite.id },
             }),
         ]);
+
+        // Alert all admins, plus the manager of the new user's market. Awaited so the
+        // serverless function isn't torn down mid-send; errors are swallowed so a mail
+        // failure never fails the sign-up (the account already exists at this point).
+        await notifyNewSignup({ name, email: invite.email, phone, role: invite.role, marketId: invite.marketId })
+            .catch((e) => console.error("[register] sign-up alert failed", e));
 
         return NextResponse.json({ success: true });
     } catch (error) {

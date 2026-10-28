@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { handleApiError } from "@/lib/apiError";
+import { resolveReceiptUrls } from "@/lib/receiptStorage";
 
 export async function GET(
     request: NextRequest,
@@ -58,7 +59,7 @@ export async function GET(
             rushLevel: recap.rushLevel,
             consumersSampled: recap.consumersSampled,
             customerFeedback: recap.customerFeedback,
-            receiptUrl: recap.receiptUrl,
+            receiptUrl: await resolveReceiptUrls(recap.receiptUrl),
             managerSignature: recap.managerSignature,
             storeManagerName: recap.storeManagerName,
             managerReview: recap.managerReview,

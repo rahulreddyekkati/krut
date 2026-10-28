@@ -48,7 +48,7 @@ export async function GET(
                     where: buildCycleAssignmentWhere(dateMarkerRange, paddedRealStart, paddedRealEnd),
                     include: {
                         job: { include: { store: true } },
-                        recap: true as any
+                        recap: { omit: { receiptUrl: true } } as any
                     },
                     orderBy: { date: "asc" }
                 }

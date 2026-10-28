@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
                     },
                     include: {
                         job: true,
-                        recap: true
+                        recap: { omit: { receiptUrl: true } }
                     } as any
                 }
             },

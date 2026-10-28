@@ -39,6 +39,7 @@ export async function GET(request: Request) {
                 status: "APPROVED",
                 assignment: buildCycleAssignmentWhere(dateMarkerRange, paddedRealStart, paddedRealEnd)
             },
+            omit: { receiptUrl: true },
             include: {
                 assignment: { select: { date: true, clockIn: true } },
                 job: {

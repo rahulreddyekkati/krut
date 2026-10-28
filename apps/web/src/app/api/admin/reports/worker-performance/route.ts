@@ -52,12 +52,24 @@ export async function GET(request: NextRequest) {
                 assignment: buildCycleAssignmentWhere(dateMarkerRange, paddedRealStart, paddedRealEnd),
                 job: marketFilter,
             },
+            // receiptUrl can hold megabytes of legacy inline images; only whether a receipt
+            // exists matters here, so that is fetched separately below.
+            omit: { receiptUrl: true },
             include: {
                 job: { include: { store: { select: { name: true, timezone: true } } } },
                 assignment: { include: { worker: { select: { id: true, name: true, email: true } } } },
                 skus: true,
             },
         }) as any[];
+
+        const withReceipt = await prisma.recap.findMany({
+            where: {
+                id: { in: candidates.map(r => r.id) },
+                receiptUrl: { notIn: ["", "[]", "null"] },
+            },
+            select: { id: true },
+        });
+        const recapIdsWithReceipt = new Set(withReceipt.map(r => r.id));
 
         // Precise per-store re-check of the padded window; drop anything whose shift day falls
         // outside the range so the filter and the per-shift dates always agree.
@@ -128,7 +140,7 @@ export async function GET(request: NextRequest) {
             if (recap.rushLevel) w.rushLevels.push(recap.rushLevel);
 
             // Fraud / quality flags for this shift
-            const hasReceipt = !!(recap.receiptUrl && recap.receiptUrl !== "[]" && recap.receiptUrl !== "null");
+            const hasReceipt = recapIdsWithReceipt.has(recap.id);
             const hasManagerSig = !!(recap.managerSignature);
             const reimb = recap.reimbursement ?? 0;
 

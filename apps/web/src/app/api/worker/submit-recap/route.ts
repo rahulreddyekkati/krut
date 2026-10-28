@@ -4,6 +4,7 @@ import { requireAuth } from "@/lib/auth";
 import { handleApiError, AppError } from "@/lib/apiError";
 import { validate, recapSchema } from "@/lib/validate";
 import { resolveTimezone, toLocalDateStr } from "@/lib/timezone";
+import { offloadReceipts } from "@/lib/receiptStorage";
 
 export async function POST(request: NextRequest) {
     try {
@@ -117,6 +118,9 @@ export async function POST(request: NextRequest) {
             });
         }
 
+        // Move receipt photos to S3 before the transaction, so the network uploads don't hold it open.
+        const storedReceiptUrl = await offloadReceipts(receiptUrl, `receipts/${assignment.id}`);
+
         // MAJ-16: Wrap recap create + assignment update + job update in a single $transaction
         const recap = await prisma.$transaction(async (tx: any) => {
             const recapData = {
@@ -126,7 +130,7 @@ export async function POST(request: NextRequest) {
                 receiptTotal,
                 rushLevel: rushLevel ?? null,
                 customerFeedback: customerFeedback ?? null,
-                receiptUrl: receiptUrl ?? null,
+                receiptUrl: storedReceiptUrl ?? null,
                 comments: customerFeedback ?? null,
                 storeManagerName: storeManagerName || null,
                 managerSignature: managerSignature || null,

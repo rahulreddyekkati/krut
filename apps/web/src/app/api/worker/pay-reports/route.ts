@@ -110,7 +110,7 @@ export async function GET() {
                     },
                     include: {
                         job: { include: { store: { include: { market: true } } } },
-                        recap: true,
+                        recap: { omit: { receiptUrl: true } },
                     },
                     orderBy: { date: "asc" },
                 });

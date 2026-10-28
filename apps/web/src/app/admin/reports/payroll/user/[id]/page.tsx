@@ -46,7 +46,7 @@ export default async function UserPayrollDetailsPage(props: {
                     job: {
                         include: { store: { include: { market: true } } }
                     },
-                    recap: true
+                    recap: { omit: { receiptUrl: true } }
                 },
                 orderBy: { date: "asc" }
             }

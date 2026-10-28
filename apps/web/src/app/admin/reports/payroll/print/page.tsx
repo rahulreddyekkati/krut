@@ -54,7 +54,7 @@ export default async function PrintAllPayrollPage(props: {
             market: { select: { name: true, timezone: true } },
             jobs: {
                 where: buildCycleAssignmentWhere(dateMarkerRange, paddedRealStart, paddedRealEnd),
-                include: { job: true, recap: { include: { skus: true } } } as any,
+                include: { job: true, recap: { omit: { receiptUrl: true }, include: { skus: true } } } as any,
             },
         },
     });

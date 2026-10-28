@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
                     where: buildCycleAssignmentWhere(dateMarkerRange, paddedRealStart, paddedRealEnd),
                     include: {
                         job: true,
-                        recap: { include: { skus: true } }
+                        recap: { omit: { receiptUrl: true }, include: { skus: true } }
                     } as any
                 }
             }

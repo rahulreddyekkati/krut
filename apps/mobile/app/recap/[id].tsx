@@ -248,10 +248,11 @@ export default function SubmitRecap() {
       };
       if (assignmentId) body.assignmentId = assignmentId;
 
+      // Receipt photos are embedded in the body, so allow a slow upload on cell data
       const res = await fetchWithAuth('/worker/submit-recap', {
         method: 'POST',
         body: JSON.stringify(body),
-      });
+      }, 120000);
       const data = await res.json();
       if (res.ok) {
         Alert.alert('Success', 'Your recap has been submitted!', [

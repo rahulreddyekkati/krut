@@ -1,5 +1,6 @@
 import { getToken, deleteToken } from "./tokenManager";
 import { router } from "expo-router";
+import { fetchWithTimeout } from "./fetchWithTimeout";
 
 // Must be the real custom domain, not a raw Vercel project-alias (*.vercel.app) URL —
 // once a custom domain is set as "Production" in Vercel, the auto-generated alias
@@ -7,7 +8,7 @@ import { router } from "expo-router";
 // Authorization header per the Fetch spec, silently breaking every authenticated call.
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? "https://www.krutotastes.com/api";
 
-export async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
+export async function fetchWithAuth(endpoint: string, options: RequestInit = {}, timeoutMs?: number) {
   const token = await getToken();
 
   const headers = new Headers(options.headers || {});
@@ -24,10 +25,10 @@ export async function fetchWithAuth(endpoint: string, options: RequestInit = {})
   }
   headers.set("Content-Type", "application/json");
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+  const response = await fetchWithTimeout(`${API_BASE_URL}${endpoint}`, {
     ...options,
     headers,
-  });
+  }, timeoutMs);
 
   // Intercept 401 responses — JWT expired or revoked → redirect to login
   if (response.status === 401) {

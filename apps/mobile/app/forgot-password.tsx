@@ -4,6 +4,7 @@ import {
   ActivityIndicator, KeyboardAvoidingView, Platform
 } from 'react-native';
 import { router } from 'expo-router';
+import { fetchWithTimeout } from '../utils/fetchWithTimeout';
 
 // Must be the real custom domain — see apiClient.ts for why the old *.vercel.app
 // alias fallback is wrong (it now 308-redirects and strips auth headers).
@@ -26,7 +27,7 @@ export default function ForgotPasswordScreen() {
     if (!email) { setError('Please enter your email.'); return; }
     setLoading(true); setError('');
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+      const res = await fetchWithTimeout(`${API_BASE_URL}/auth/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
@@ -47,7 +48,7 @@ export default function ForgotPasswordScreen() {
     if (otp.length !== 6) { setError('Please enter the 6-digit code.'); return; }
     setLoading(true); setError('');
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/verify-reset-otp`, {
+      const res = await fetchWithTimeout(`${API_BASE_URL}/auth/verify-reset-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, otp }),
@@ -68,7 +69,7 @@ export default function ForgotPasswordScreen() {
     if (newPassword !== confirmPassword) { setError('Passwords do not match.'); return; }
     setLoading(true); setError('');
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+      const res = await fetchWithTimeout(`${API_BASE_URL}/auth/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ resetToken, newPassword }),

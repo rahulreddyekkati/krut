@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { useAuth } from '../providers/AuthProvider';
 import { router } from 'expo-router';
+import { fetchWithTimeout } from '../utils/fetchWithTimeout';
 
 // Must be the real custom domain — see apiClient.ts for why the old *.vercel.app
 // alias fallback is wrong (it now 308-redirects and strips auth headers).
@@ -23,7 +24,7 @@ export default function Login() {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/login`, {
+      const res = await fetchWithTimeout(`${API_BASE_URL}/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

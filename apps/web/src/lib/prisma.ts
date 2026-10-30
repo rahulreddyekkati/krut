@@ -3,13 +3,25 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaLibSQL } from "@prisma/adapter-libsql";
 import { createClient } from "@libsql/client";
 
+// Hard ceiling on any single round trip to Turso. Without it a stalled request waits
+// indefinitely and every request queued behind it hangs too.
+const DB_REQUEST_TIMEOUT_MS = 20000;
+
+const fetchWithTimeout = (request: Request) =>
+    fetch(request, { signal: AbortSignal.timeout(DB_REQUEST_TIMEOUT_MS) });
+
 const prismaClientSingleton = () => {
     const tursoUrl = process.env.TURSO_DATABASE_URL || process.env.ORIGINAL_DATABASE_URL;
 
     if (tursoUrl && (tursoUrl.startsWith("libsql://") || tursoUrl.startsWith("https://"))) {
         const libsql = createClient({
-            url: tursoUrl,
+            // Talk to Turso over plain HTTPS rather than the libsql:// WebSocket. The WebSocket is
+            // one long-lived connection that every query shares; when it stalled, all database
+            // access on the instance hung for minutes (prod outages Oct 29–30) while Turso itself
+            // was healthy. Over HTTPS each query is an independent request.
+            url: tursoUrl.replace(/^libsql:\/\//, "https://"),
             authToken: process.env.TURSO_AUTH_TOKEN,
+            fetch: fetchWithTimeout,
         });
         const adapter = new PrismaLibSQL(libsql);
         return new PrismaClient({ adapter });

@@ -9,7 +9,7 @@ import { resolveRateForDate } from "@/lib/payRate";
 // requireAuth (apps/web/src/lib/auth.ts) re-SELECTs it from the DB on every authenticated
 // request, so session/profile/`/api/auth/me` would stay stale indefinitely too.
 //
-// Run daily, shortly after UTC midnight (see vercel.json) — matches this app's existing
+// Run daily, shortly after UTC midnight (see .github/workflows/cron-sync-pay-rates.yml) — matches this app's existing
 // convention of treating shift/rate dates as UTC-midnight calendar markers rather than
 // per-market real time (see JobAssignment.date, PayRateHistory.effectiveFrom).
 export async function GET(request: NextRequest) {

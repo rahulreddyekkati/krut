@@ -1,0 +1,15 @@
+name: Cron - sync pay rates
+
+on:
+  schedule:
+    - cron: '10 0 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger sync-pay-rates
+        run: |
+          curl -sf -X GET https://www.krutotastes.com/api/cron/sync-pay-rates \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}"

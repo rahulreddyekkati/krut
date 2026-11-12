@@ -680,12 +680,12 @@ export default function AdminJobsPage() {
                                                         </select>
                                                         <button
                                                             onClick={() => handleRowAssign(shift)}
-                                                            disabled={!shift.date || !perRowWorkerId[key] || !perRowBrand[key] || !!busy}
+                                                            disabled={!shift.date || !perRowWorkerId[key] || !(perRowBrand[key] || shift.brandAllocation) || !!busy}
                                                             style={{
                                                                 padding: "0.4rem 0.75rem", background: "#6366f1", color: "white",
                                                                 border: "none", borderRadius: "8px", fontWeight: 600,
                                                                 cursor: "pointer", fontSize: "0.8rem",
-                                                                opacity: !shift.date || !perRowWorkerId[key] || !perRowBrand[key] || !!busy ? 0.6 : 1
+                                                                opacity: !shift.date || !perRowWorkerId[key] || !(perRowBrand[key] || shift.brandAllocation) || !!busy ? 0.6 : 1
                                                             }}
                                                         >
                                                             {busy === "assign" ? "Assigning..." : "Assign"}

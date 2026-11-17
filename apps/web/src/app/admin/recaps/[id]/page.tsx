@@ -74,7 +74,7 @@ export default function RecapDetailPage() {
             
             if (res.ok) {
                 const data = await res.json();
-                alert(data.message || `Successfully ${action.toLowerCase()}d`);
+                alert((data.message || `Successfully ${action.toLowerCase()}d`) + (data.payrollNotice ? `\n\n${data.payrollNotice}` : ""));
                 // Refresh local state
                 setRecap((prev: any) => ({
                     ...prev,
@@ -357,7 +357,7 @@ export default function RecapDetailPage() {
                             <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                                 {urls.map((url: string, idx: number) => (
                                     <div key={idx} style={{ maxWidth: "100%" }}>
-                                        {url.startsWith('data:image') || url.match(/\.(jpeg|jpg|gif|png)$/i) != null ? (
+                                        {url.startsWith('data:image') || /\.(jpe?g|gif|png|webp|heic)(\?|#|$)/i.test(url) ? (
                                             <a href={url} target="_blank" rel="noopener noreferrer" style={{ display: 'block' }}>
                                                 <img src={url} alt={`Receipt ${idx + 1}`} style={{ maxWidth: "100%", maxHeight: "400px", borderRadius: "8px", border: "1px solid #e5e7eb", objectFit: "contain" }} />
                                             </a>
